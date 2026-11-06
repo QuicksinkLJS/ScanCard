@@ -1,0 +1,13 @@
+{
+  "name": "CardScan",
+  "short_name": "CardScan",
+  "description": "Scan trading cards and see what they might be worth.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#faf9f5",
+  "theme_color": "#1f1e1d",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

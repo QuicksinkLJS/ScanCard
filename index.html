@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1f1e1d">
+  <title>CardScan</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>CardScan</h1>
+    <span class="tag">Yu-Gi-Oh · prototype</span>
+  </header>
+
+  <main>
+    <section class="scan">
+      <label class="btn primary" for="camera">Scan a card</label>
+      <input id="camera" type="file" accept="image/*" capture="environment" hidden>
+      <label class="btn" for="gallery">Choose photo</label>
+      <input id="gallery" type="file" accept="image/*" hidden>
+      <p class="hint">Hold the phone close so the set code under the artwork (e.g. LOB-DE001) is sharp. Avoid glare.</p>
+    </section>
+
+    <form id="manual" class="manual" autocomplete="off">
+      <input id="manual-code" type="text" inputmode="text" placeholder="Or type a set code, e.g. LOB-EN001" autocapitalize="characters" spellcheck="false">
+      <button class="btn" type="submit">Look up</button>
+    </form>
+
+    <div id="status" class="status" hidden></div>
+
+    <img id="preview" class="preview" alt="Your photo" hidden>
+
+    <section id="result" hidden></section>
+
+    <details id="ocr-debug" class="debug" hidden>
+      <summary>What the scanner read</summary>
+      <pre id="ocr-text"></pre>
+    </details>
+
+    <section class="session">
+      <div class="session-head">
+        <h2>This session</h2>
+        <button id="clear" class="link" type="button">Clear</button>
+      </div>
+      <ul id="list"></ul>
+      <p id="total" class="total"></p>
+    </section>
+  </main>
+
+  <footer>
+    Card data: <a href="https://ygoprodeck.com/" target="_blank" rel="noopener">YGOPRODeck</a>.
+    Prices are reference values, not live offers. Not affiliated with Konami or Cardmarket.
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
