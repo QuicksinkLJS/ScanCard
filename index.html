@@ -12,27 +12,24 @@
 <body>
   <header>
     <h1>CardScan</h1>
-    <span class="tag">Yu-Gi-Oh · prototype</span>
+    <span class="tag">Yu-Gi-Oh · beta</span>
   </header>
 
   <main>
     <section class="scan">
-      <label class="btn primary" for="camera">Scan a card</label>
-      <input id="camera" type="file" accept="image/*" capture="environment" hidden>
+      <button id="scan" class="btn primary" type="button">Scan a card</button>
       <label class="btn" for="gallery">Choose photo</label>
       <input id="gallery" type="file" accept="image/*" hidden>
-      <p class="hint">Hold the phone close so the set code under the artwork (e.g. LOB-DE001) is sharp. Avoid glare.</p>
+      <p class="hint">Recognises the card from its artwork, any language. Hold one card inside the frame.</p>
     </section>
 
     <form id="manual" class="manual" autocomplete="off">
-      <input id="manual-code" type="text" inputmode="text" placeholder="Or type a set code, e.g. LOB-EN001" autocapitalize="characters" spellcheck="false">
+      <input id="manual-code" type="text" placeholder="Or type a set code, e.g. LOB-EN001" autocapitalize="characters" spellcheck="false">
       <button class="btn" type="submit">Look up</button>
     </form>
 
     <div id="status" class="status" hidden></div>
-
-    <img id="preview" class="preview" alt="Your photo" hidden>
-
+    <img id="preview" class="preview" alt="Your card" hidden>
     <section id="result" hidden></section>
 
     <details id="ocr-debug" class="debug" hidden>
@@ -50,8 +47,19 @@
     </section>
   </main>
 
+  <div id="cam" class="cam" hidden>
+    <video id="cam-video" playsinline muted autoplay></video>
+    <div id="cam-frame" class="cam-frame"></div>
+    <p class="cam-hint">Fit the card into the frame</p>
+    <div class="cam-bar">
+      <button id="cam-cancel" class="btn" type="button">Cancel</button>
+      <button id="cam-shot" class="shutter" type="button" aria-label="Take photo"></button>
+      <span class="cam-spacer"></span>
+    </div>
+  </div>
+
   <footer>
-    Prices: Cardmarket price guide (trend, EUR), updated daily. Set data:
+    Prices: Cardmarket price guide (trend, EUR), updated daily. Card data:
     <a href="https://github.com/iconmaster5326/YGOJSON" target="_blank" rel="noopener">YGOJSON</a> and
     <a href="https://ygoprodeck.com/" target="_blank" rel="noopener">YGOPRODeck</a>.
     Prices are reference values, not live offers. Not affiliated with Konami or Cardmarket.

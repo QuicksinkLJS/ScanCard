@@ -85,3 +85,24 @@ h2 { font-size: 17px; font-weight: 600; margin: 0; }
 .debug pre { white-space: pre-wrap; word-break: break-word; background: var(--surface); padding: 8px; border-radius: 8px; max-height: 200px; overflow: auto; }
 footer { margin-top: 32px; font-size: 12px; color: var(--muted); }
 footer a { color: inherit; }
+
+/* progress bar inside the status box */
+.status .bar { height: 4px; background: var(--border); border-radius: 2px; margin-top: 8px; overflow: hidden; }
+.status .bar div { height: 100%; background: var(--accent); transition: width .2s; }
+button.btn { font: inherit; }
+
+/* camera */
+body.cam-open { overflow: hidden; }
+.cam { position: fixed; inset: 0; z-index: 10; background: #000; }
+.cam video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.cam-frame {
+  position: absolute; left: 50%; top: 44%; transform: translate(-50%, -50%);
+  width: min(82vw, calc(68vh * 59 / 86)); aspect-ratio: 59 / 86;
+  border: 3px solid #fff; border-radius: 14px; box-shadow: 0 0 0 200vmax rgba(0, 0, 0, .5);
+}
+.cam-hint { position: absolute; left: 0; right: 0; top: 3%; color: #fff; text-align: center; margin: 0; font-size: 15px; }
+.cam-bar { position: absolute; left: 0; right: 0; bottom: calc(24px + env(safe-area-inset-bottom)); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; }
+.cam-bar .btn { background: rgba(0,0,0,.4); color: #fff; border-color: rgba(255,255,255,.5); min-width: 90px; }
+.cam-spacer { min-width: 90px; }
+.shutter { width: 72px; height: 72px; border-radius: 50%; border: 5px solid #fff; background: rgba(255,255,255,.25); cursor: pointer; }
+.shutter:active { background: #fff; }

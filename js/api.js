@@ -1,7 +1,7 @@
 // Card + price lookup from the CardScan data pack (data/ygo/<SET>.json).
 // The pack joins Cardmarket's free price guide (EUR) with set codes; see tools/build_data.py.
 
-import { lookupCandidates } from './parse.js';
+import { lookupCandidates, normName } from './parse.js';
 
 export function createApi({ fetchFn = globalThis.fetch?.bind(globalThis), base = 'data/ygo' } = {}) {
   let indexPromise = null;
@@ -73,5 +73,18 @@ export function createApi({ fetchFn = globalThis.fetch?.bind(globalThis), base =
     return null;
   }
 
-  return { lookup, knowsPrefix, index };
+  // Price summary for a card name (what the artwork recogniser returns).
+  let namesPromise = null;
+  async function nameInfo(name) {
+    if (!namesPromise) {
+      namesPromise = getJson(`${base}/names.json`);
+      namesPromise.catch(() => { namesPromise = null; });
+    }
+    const entry = (await namesPromise)[normName(name)];
+    if (!entry) return null;
+    const [display, min, max, rows] = entry;
+    return { name: display, min, max, versions: rows.map(([set, year, lo, hi]) => ({ set, year, min: lo, max: hi })) };
+  }
+
+  return { lookup, knowsPrefix, index, nameInfo };
 }

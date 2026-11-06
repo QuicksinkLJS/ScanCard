@@ -92,3 +92,8 @@ export function valueTier(eur) {
 export function cardmarketSearchUrl(name) {
   return `https://www.cardmarket.com/en/YuGiOh/Products/Search?searchString=${encodeURIComponent(name)}`;
 }
+
+// Same key as tools/build_data.py norm(): lower case letters and digits only, accents removed.
+export function normName(name) {
+  return String(name || '').normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+}

@@ -253,6 +253,31 @@ def main():
     for prefix, codes in groups.items():
         with open(os.path.join(out_dir, f"{prefix}.json"), "w", encoding="utf-8") as f:
             json.dump(compact(codes, cm[4]), f, ensure_ascii=False, separators=(",", ":"))
+    # Price summary per card name: the artwork recogniser finds the name, not the printed code.
+    by_name = collections.defaultdict(dict)  # norm(name) -> {(set, year): [min, max]}
+    bases = collections.defaultdict(set)      # norm(name) -> {"KICO-042", ...}: printed codes without language
+    display = {}
+    for code, versions in data.items():
+        m = re.fullmatch(r"([A-Z0-9]+)-[A-Z]{0,2}(\d{3})", code)
+        if m:
+            for v in versions:
+                bases[norm(v["n"])].add(f"{m.group(1)}-{m.group(2)}")
+        for v in versions:
+            trends = [p[1] for p in v["p"] if p[1] is not None]
+            if not trends:
+                continue
+            k = norm(v["n"])
+            display.setdefault(k, v["n"])
+            key = (v["s"], v["y"])
+            lo, hi = by_name[k].get(key, [min(trends), max(trends)])
+            by_name[k][key] = [min(lo, min(trends)), max(hi, max(trends))]
+    names_out = {}
+    for k, sets in by_name.items():
+        rows = sorted(([s, y, round(lo, 2), round(hi, 2)] for (s, y), (lo, hi) in sets.items()), key=lambda r: -r[3])
+        names_out[k] = [display[k], round(min(r[2] for r in rows), 2), round(max(r[3] for r in rows), 2), rows,
+                        sorted(bases.get(k, ()))]
+    with open(os.path.join(out_dir, "names.json"), "w", encoding="utf-8") as f:
+        json.dump(names_out, f, ensure_ascii=False, separators=(",", ":"))
     index = {"version": 2, "game": "yugioh", "built": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ"),
              "prices": cm[4], "sets": sorted(groups)}
     with open(os.path.join(out_dir, "index.json"), "w", encoding="utf-8") as f:
