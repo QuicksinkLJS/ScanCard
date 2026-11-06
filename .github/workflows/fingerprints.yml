@@ -26,10 +26,10 @@ jobs:
       - name: Install
         run: |
           pip install --quiet torch --index-url https://download.pytorch.org/whl/cpu
-          pip install --quiet transformers onnx onnxruntime pillow numpy
+          pip install --quiet transformers onnx onnxscript onnxruntime pillow numpy
 
       # Artworks are downloaded once and kept in the cache, as YGOPRODeck asks.
-      - uses: actions/cache@v4
+      - uses: actions/cache/restore@v4
         with:
           path: work/art
           key: artworks-${{ github.run_id }}
@@ -39,6 +39,15 @@ jobs:
         run: |
           mkdir -p work
           curl -fsSL "https://db.ygoprodeck.com/api/v7/cardinfo.php" -o work/cardinfo.json
+
+      - name: Download new artworks
+        run: python tools/build_fingerprints.py --cardinfo work/cardinfo.json --images work/art --download-only
+
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: work/art
+          key: artworks-${{ github.run_id }}
 
       - name: Build fingerprints
         run: python tools/build_fingerprints.py --cardinfo work/cardinfo.json --images work/art --out assets

@@ -85,7 +85,7 @@ def export_model(out_dir):
     fp32 = os.path.join(out_dir, "model_fp32.onnx")
     torch.onnx.export(wrap, torch.zeros(1, 3, SIZE, SIZE), fp32, input_names=["pixel_values"],
                       output_names=["embedding"], dynamic_axes={"pixel_values": {0: "batch"}, "embedding": {0: "batch"}},
-                      opset_version=17)
+                      opset_version=17, dynamo=False)
     quantize_dynamic(fp32, os.path.join(out_dir, "model.onnx"), weight_type=QuantType.QUInt8)
     os.remove(fp32)
     return wrap
@@ -97,11 +97,14 @@ def main():
     ap.add_argument("--images", default="work/art")
     ap.add_argument("--out", default="assets")
     ap.add_argument("--batch", type=int, default=64)
+    ap.add_argument("--download-only", action="store_true")
     a = ap.parse_args()
 
-    import torch
     cardinfo = json.load(open(a.cardinfo, encoding="utf-8"))
     download_images(cardinfo, a.images)
+    if a.download_only:
+        return
+    import torch
     os.makedirs(a.out, exist_ok=True)
     model = export_model(a.out)
 
