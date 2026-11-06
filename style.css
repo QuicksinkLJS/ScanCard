@@ -65,6 +65,11 @@ h2 { font-size: 17px; font-weight: 600; margin: 0; }
 .actions a, .actions button { flex: 1; text-decoration: none; }
 .warn { font-size: 13px; margin: 0 0 10px; }
 
+.versions { list-style: none; padding: 0; margin: 4px 0 12px; }
+.versions li { display: flex; gap: 10px; align-items: baseline; padding: 8px 0; border-top: 1px solid var(--border); font-size: 14px; }
+.versions .what { flex: 1; min-width: 0; }
+.versions small { display: block; color: var(--muted); }
+.versions .eur { font-weight: 600; white-space: nowrap; }
 .session { margin-top: 28px; }
 .session-head { display: flex; justify-content: space-between; align-items: center; }
 #list { list-style: none; padding: 0; margin: 8px 0 0; }

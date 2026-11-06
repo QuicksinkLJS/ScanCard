@@ -10,12 +10,11 @@ const LIST_KEY = 'cardscan-session-v1';
 
 let ocrEngine = null;
 let currentLabel = '';
-let current = null; // { parsed, card, firstEdition, printIndex }
+let current = null; // { parsed, card, firstEdition }
 
 // ---------- helpers ----------
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const eur = (v) => (v == null ? '–' : `€${v.toFixed(2)}`);
-const usd = (v) => (v == null || Number.isNaN(v) ? '–' : `$${v.toFixed(2)}`);
 
 function setStatus(text, isError = false) {
   const el = $('status');
@@ -98,7 +97,7 @@ async function tryCodes(codes, firstEdition) {
     try {
       const card = await api.lookup(parsed);
       if (card) {
-        current = { parsed, card, firstEdition, printIndex: 0 };
+        current = { parsed, card, firstEdition };
         return { status: 'found' };
       }
     } catch (err) {
@@ -129,65 +128,70 @@ function report(outcome, tried) {
   }
 }
 
-// Colour follows this exact print when we know its price, otherwise the cheapest version.
-function tierFor(card, print) {
-  return valueTier(Number.isFinite(print?.usd) ? print.usd : card.cardmarketFromEur);
+// Colour = what the card could be worth at most (the "might be worth something" signal).
+const tierFor = (card) => valueTier(card.max);
+
+const range = (min, max) => (min == null ? '–' : min === max ? eur(min) : `${eur(min)} – ${eur(max)}`);
+
+function versionRows(card) {
+  return card.versions.map((v) => {
+    const prices = v.products.map((p) => p.trend).filter((t) => t != null).sort((a, b) => a - b);
+    const what = v.products.length > 1
+      ? `${v.products.length} versions on Cardmarket (${esc(v.rarities.join(', ') || 'different rarities')})`
+      : esc(v.rarities.join(', '));
+    return `<li><span class="what">${esc(v.set)}${v.year ? ` (${v.year})` : ''}<small>${what}</small></span>
+      <span class="eur">${prices.length ? range(prices[0], prices[prices.length - 1]) : '–'}</span></li>`;
+  }).join('');
 }
 
 function render() {
-  const { parsed, card, firstEdition, printIndex } = current;
-  const print = card.prints[printIndex];
-  const tier = tierFor(card, print);
+  const { parsed, card, firstEdition } = current;
+  const tier = tierFor(card);
   const el = $('result');
+  const p = card.exact ? card.versions[0].products[0] : null;
 
   const edition = firstEdition === null ? ''
     : firstEdition ? '<span class="badge">1st Edition detected</span>'
       : '<span class="badge">1st Edition not detected – check the card</span>';
 
-  const rarityPicker = card.prints.length > 1
-    ? `<p class="warn">This code exists in ${card.prints.length} rarities. Which one is it?</p>
-       <div class="rarities">${card.prints.map((p, i) => `<button type="button" class="rarity${i === printIndex ? ' on' : ''}" data-i="${i}">${esc(p.rarity)}</button>`).join('')}</div>`
-    : '';
+  const priceBlock = card.exact
+    ? `<p class="price">${eur(p.trend)}</p>
+       <p class="price-note">Cardmarket trend price. 30-day average ${eur(p.avg30)}, cheapest offer ${eur(p.low)}. Prices from ${esc((card.pricesDate || '').slice(0, 10))}.</p>`
+    : `<p class="price">${range(card.min, card.max)}</p>
+       <p class="price-note">Cardmarket trend prices. This code exists in more than one version, so the price depends on which one you have.</p>
+       <ul class="versions">${versionRows(card)}</ul>`;
 
   el.innerHTML = `
     <div class="card ${tier}">
-      <p class="name">${esc(card.localName || card.name)}</p>
-      <p class="sub">${card.localName && card.localName !== card.name ? `${esc(card.name)} · ` : ''}${esc(card.setName)}</p>
+      <p class="name">${esc(card.name)}</p>
+      <p class="sub">${esc(card.versions[0].set)}${card.versions[0].year ? ` · ${card.versions[0].year}` : ''}</p>
       <div class="badges">
         <span class="badge">${esc(parsed.code)}</span>
         <span class="badge">${esc(parsed.language.name)}</span>
-        <span class="badge">${esc(print.rarity)}</span>
+        ${card.exact ? `<span class="badge">${esc(card.versions[0].rarities.join(', '))}</span>` : ''}
         ${edition}
       </div>
-      ${rarityPicker}
-      <p class="price">This print: ${usd(print.usd)}</p>
-      <p class="price-note">Reference price for the English ${esc(card.dbCode)} ${esc(print.rarity)} (TCGplayer). Cheapest version of this card on Cardmarket: ${eur(card.cardmarketFromEur)}. Check your language and condition on Cardmarket.</p>
+      ${priceBlock}
+      <p class="price-note">Price for any language and condition. Check yours on Cardmarket.</p>
       <div class="actions">
         <a class="btn" href="${cardmarketSearchUrl(card.name)}" target="_blank" rel="noopener">Open on Cardmarket</a>
         <button class="btn primary" type="button" id="add">Add to session</button>
       </div>
     </div>`;
   el.hidden = false;
-
-  el.querySelectorAll('.rarity').forEach((b) => b.addEventListener('click', () => {
-    current.printIndex = Number(b.dataset.i);
-    render();
-  }));
   $('add').addEventListener('click', addToSession);
 }
 
 function addToSession() {
-  const { parsed, card, printIndex } = current;
-  const print = card.prints[printIndex];
+  const { parsed, card } = current;
   const list = loadList();
   list.unshift({
-    name: card.localName || card.name,
+    name: card.name,
     code: parsed.code,
     lang: parsed.language.code,
-    rarity: print.rarity,
-    usd: Number.isFinite(print.usd) ? print.usd : null,
-    eur: card.cardmarketFromEur,
-    tier: tierFor(card, print),
+    min: card.min,
+    max: card.max,
+    tier: tierFor(card),
   });
   saveList(list);
   renderList();
@@ -198,14 +202,15 @@ function addToSession() {
 }
 
 function renderList() {
-  const list = loadList();
+  const list = loadList().filter((c) => 'min' in c); // drop entries from older app versions
   $('list').innerHTML = list.map((c) => `
     <li><span class="dot ${c.tier}"></span>
-      <span class="what">${esc(c.name)}<small>${esc(c.code)} · ${esc(c.lang)} · ${esc(c.rarity)}</small></span>
-      <span class="eur">${c.usd != null ? usd(c.usd) : eur(c.eur)}</span></li>`).join('');
-  const total = list.reduce((s, c) => s + (c.usd ?? 0), 0);
+      <span class="what">${esc(c.name)}<small>${esc(c.code)} · ${esc(c.lang)}</small></span>
+      <span class="eur">${range(c.min, c.max)}</span></li>`).join('');
+  const lo = list.reduce((s, c) => s + (c.min || 0), 0);
+  const hi = list.reduce((s, c) => s + (c.max || 0), 0);
   const n = list.length;
-  $('total').textContent = n ? `${n} ${n === 1 ? 'card' : 'cards'} · about ${usd(total)} in print reference prices` : 'Scanned cards show up here.';
+  $('total').textContent = n ? `${n} ${n === 1 ? 'card' : 'cards'} · ${range(lo, hi)} on Cardmarket` : 'Scanned cards show up here.';
 }
 
 // ---------- wiring ----------

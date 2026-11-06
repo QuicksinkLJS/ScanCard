@@ -1,0 +1,85 @@
+name: Build prices and deploy
+
+# Runs on every push, every morning (fresh Cardmarket prices) and on demand.
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Tests
+        run: npm test
+
+      - name: Download Cardmarket price guide and product list
+        run: |
+          mkdir -p work
+          base=https://downloads.s3.cardmarket.com/productCatalog
+          if curl -fsSL "$base/priceGuide/price_guide_3.json" -o work/price_guide_3.json \
+             && curl -fsSL "$base/productList/products_singles_3.json" -o work/products_singles_3.json; then
+            echo "Using fresh Cardmarket files"
+          else
+            echo "::warning::Cardmarket download failed, using the files stored in tools/input"
+            gunzip -c tools/input/price_guide_3.json.gz > work/price_guide_3.json
+            gunzip -c tools/input/products_singles_3.json.gz > work/products_singles_3.json
+          fi
+
+      - name: Download set data (YGOJSON, YGOPRODeck)
+        run: |
+          curl -fsSL https://github.com/iconmaster5326/YGOJSON/releases/download/v1/aggregate.zip -o work/ygojson.zip
+          unzip -q work/ygojson.zip -d work/ygojson
+          # newer sets; optional, the build works without them
+          curl -fsSL "https://db.ygoprodeck.com/api/v7/cardinfo.php" -o work/cardinfo.json || rm -f work/cardinfo.json
+          curl -fsSL "https://db.ygoprodeck.com/api/v7/cardsets.php" -o work/cardsets.json || rm -f work/cardsets.json
+
+      - name: Build data pack
+        run: |
+          extra=""
+          [ -s work/cardinfo.json ] && extra="--ygoprodeck-cards work/cardinfo.json"
+          [ -s work/cardinfo.json ] && [ -s work/cardsets.json ] && extra="$extra --ygoprodeck-sets work/cardsets.json"
+          python tools/build_data.py \
+            --products work/products_singles_3.json --prices work/price_guide_3.json \
+            --ygojson-sets work/ygojson/sets.json --ygojson-cards work/ygojson/cards.json \
+            $extra --out data/ygo
+
+      - name: Assemble site
+        run: |
+          mkdir -p _site
+          cp -r index.html style.css manifest.webmanifest icon.svg js data _site/
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,78 +1,77 @@
-// Card lookup against the free YGOPRODeck API (https://ygoprodeck.com/api-guide/).
-// Responses are cached locally so repeat scans don't hit the API again.
+// Card + price lookup from the CardScan data pack (data/ygo/<SET>.json).
+// The pack joins Cardmarket's free price guide (EUR) with set codes; see tools/build_data.py.
 
 import { lookupCandidates } from './parse.js';
 
-const BASE = 'https://db.ygoprodeck.com/api/v7';
-const CACHE_KEY = 'cardscan-cache-v1';
-const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
-
-function makeCache(storage) {
-  let data = {};
-  try { data = JSON.parse(storage?.getItem(CACHE_KEY) || '{}'); } catch { data = {}; }
-  return {
-    get(url) {
-      const hit = data[url];
-      return hit && Date.now() - hit.t < CACHE_TTL_MS ? hit.v : undefined;
-    },
-    set(url, v) {
-      data[url] = { t: Date.now(), v };
-      try { storage?.setItem(CACHE_KEY, JSON.stringify(data)); } catch { /* storage full or blocked */ }
-    },
-  };
-}
-
-export function createApi({ fetchFn = globalThis.fetch?.bind(globalThis), storage = globalThis.localStorage } = {}) {
-  const cache = makeCache(storage);
+export function createApi({ fetchFn = globalThis.fetch?.bind(globalThis), base = 'data/ygo' } = {}) {
+  let indexPromise = null;
+  const setFiles = new Map();
 
   async function getJson(url) {
-    const cached = cache.get(url);
-    if (cached !== undefined) return cached;
     const res = await fetchFn(url);
-    let body = null;
-    try { body = await res.json(); } catch { body = null; }
-    const value = res.ok && body && !body.error ? body : null; // null = not found
-    cache.set(url, value);
-    return value;
+    if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+    return res.json();
+  }
+
+  function index() {
+    if (!indexPromise) {
+      indexPromise = getJson(`${base}/index.json`).then((ix) => ({ ...ix, known: new Set(ix.sets) }));
+      indexPromise.catch(() => { indexPromise = null; });
+    }
+    return indexPromise;
+  }
+
+  async function setFile(prefix) {
+    if (!setFiles.has(prefix)) {
+      const p = getJson(`${base}/${prefix}.json`);
+      setFiles.set(prefix, p);
+      p.catch(() => setFiles.delete(prefix));
+    }
+    return setFiles.get(prefix);
+  }
+
+  // Is this set prefix in the pack at all? Used to throw out OCR noise early.
+  async function knowsPrefix(prefix) {
+    return (await index()).known.has(prefix);
+  }
+
+  function expand(pack, code, entry) {
+    const [nameIdx, versionIdxs] = entry;
+    const versions = versionIdxs.map((i) => {
+      const [setIdx, year, rarityIdxs, expansion, pids] = pack.versions[i];
+      return {
+        set: pack.sets[setIdx],
+        year,
+        rarities: rarityIdxs.map((r) => pack.rarities[r]),
+        expansion,
+        products: pids.map((pid) => {
+          const [trend, avg30, low] = pack.products[String(pid)] || [];
+          return { id: pid, trend, avg30, low };
+        }),
+      };
+    });
+    const trends = versions.flatMap((v) => v.products.map((p) => p.trend)).filter((t) => t != null);
+    return {
+      code,
+      name: pack.names[nameIdx],
+      versions,
+      min: trends.length ? Math.min(...trends) : null,
+      max: trends.length ? Math.max(...trends) : null,
+      exact: versions.length === 1 && versions[0].products.length === 1,
+      pricesDate: pack.prices,
+    };
   }
 
   // parsed = result of findSetCodes / parseManualCode
   async function lookup(parsed) {
-    for (const code of lookupCandidates(parsed)) {
-      const set = await getJson(`${BASE}/cardsetsinfo.php?setcode=${encodeURIComponent(code)}`);
-      if (!set || !set.id) continue;
-
-      const info = await getJson(`${BASE}/cardinfo.php?id=${set.id}`);
-      const card = info?.data?.[0];
-      if (!card) continue;
-
-      const prints = (card.card_sets || []).filter((s) => s.set_code === code);
-      const cmPrice = parseFloat(card.card_prices?.[0]?.cardmarket_price);
-
-      let localName = null;
-      if (parsed.language?.api) {
-        try {
-          const loc = await getJson(`${BASE}/cardinfo.php?id=${set.id}&language=${parsed.language.api}`);
-          localName = loc?.data?.[0]?.name || null;
-        } catch { /* translated name is optional */ }
-      }
-
-      return {
-        id: card.id,
-        name: card.name,
-        localName,
-        type: card.type,
-        setName: set.set_name,
-        dbCode: code,
-        prints: prints.length
-          ? prints.map((p) => ({ rarity: p.set_rarity, rarityCode: p.set_rarity_code, usd: parseFloat(p.set_price) }))
-          : [{ rarity: set.set_rarity, rarityCode: '', usd: parseFloat(set.set_price) }],
-        cardmarketFromEur: Number.isFinite(cmPrice) ? cmPrice : null,
-        ygoprodeckUrl: card.ygoprodeck_url,
-      };
+    if (!(await knowsPrefix(parsed.prefix))) return null;
+    const pack = await setFile(parsed.prefix);
+    for (const code of [parsed.code, ...lookupCandidates(parsed)]) {
+      const entry = pack.cards[code];
+      if (entry) return { ...expand(pack, code, entry), matchedCode: code };
     }
     return null;
   }
 
-  return { lookup };
+  return { lookup, knowsPrefix, index };
 }

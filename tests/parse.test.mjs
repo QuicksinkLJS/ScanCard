@@ -54,31 +54,35 @@ test('value tiers', () => {
   assert.equal(valueTier(12), 'high');
 });
 
-test('lookup falls back to the NA code and filters prints', async () => {
-  const calls = [];
-  const responses = {
-    'cardsetsinfo.php?setcode=SDY-EN046': { error: 'not found' },
-    'cardsetsinfo.php?setcode=SDY-E046': { error: 'not found' },
-    'cardsetsinfo.php?setcode=SDY-046': { id: 123, name: 'Test Card', set_name: 'Starter Deck: Yugi', set_code: 'SDY-046', set_rarity: 'Common', set_price: '1.5' },
-    'cardinfo.php?id=123': { data: [{ id: 123, name: 'Test Card', card_prices: [{ cardmarket_price: '2.10' }],
-      card_sets: [
-        { set_code: 'SDY-046', set_rarity: 'Common', set_price: '1.5' },
-        { set_code: 'LOB-EN010', set_rarity: 'Ultra Rare', set_price: '30' },
-      ] }] },
-    'cardinfo.php?id=123&language=de': { data: [{ name: 'Testkarte' }] },
+test('lookup reads the set file, exact code first, then English fallbacks', async () => {
+  const files = {
+    'data/ygo/index.json': { sets: ['LOB', 'RA01'] },
+    'data/ygo/LOB.json': {
+      prices: '2026-11-06', names: ['Blue-Eyes White Dragon'], sets: ['Legend of Blue Eyes White Dragon'],
+      rarities: ['Ultra Rare'], products: { 706688: [36.48, 37.6, 22], 577481: [106.97, 121.15, 66] },
+      versions: [[0, 2023, [0], 5339, [706688]], [0, 2002, [0], 4411, [577481]]],
+      cards: { 'LOB-DE001': [0, [0]], 'LOB-G001': [0, [1]], 'LOB-EN001': [0, [0, 1]] },
+    },
   };
-  const fetchFn = async (url) => {
-    calls.push(url);
-    const key = Object.keys(responses).find((k) => url.endsWith(k));
-    const body = responses[key] ?? { error: 'nope' };
-    return { ok: !body.error, json: async () => body };
-  };
-  const api = createApi({ fetchFn, storage: null });
-  const card = await api.lookup(parseManualCode('SDY-G046'));
-  assert.equal(card.name, 'Test Card');
-  assert.equal(card.localName, 'Testkarte');
-  assert.equal(card.prints.length, 1);
-  assert.equal(card.prints[0].rarity, 'Common');
-  assert.equal(card.cardmarketFromEur, 2.1);
-  assert.equal(calls.length, 5);
+  const fetchFn = async (url) => ({ ok: url in files, status: url in files ? 200 : 404, json: async () => files[url] });
+  const api = createApi({ fetchFn });
+
+  const de = await api.lookup(parseManualCode('LOB-DE001'));
+  assert.equal(de.name, 'Blue-Eyes White Dragon');
+  assert.ok(de.exact);
+  assert.equal(de.versions[0].year, 2023);
+  assert.equal(de.min, 36.48);
+
+  const g = await api.lookup(parseManualCode('LOB-G001'));
+  assert.equal(g.versions[0].year, 2002);
+
+  const en = await api.lookup(parseManualCode('LOB-EN001'));
+  assert.ok(!en.exact);
+  assert.equal(en.min, 36.48);
+  assert.equal(en.max, 106.97);
+
+  const fr = await api.lookup(parseManualCode('LOB-FR001')); // not in file -> English fallback
+  assert.equal(fr.matchedCode, 'LOB-EN001');
+
+  assert.equal(await api.lookup(parseManualCode('XYZ-EN001')), null); // unknown set
 });
