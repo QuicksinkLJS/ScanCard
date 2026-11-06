@@ -1,0 +1,54 @@
+name: Build artwork fingerprints
+
+# Runs when the builder changes, and by hand (Actions tab -> Run workflow) when new cards are out.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - tools/build_fingerprints.py
+      - .github/workflows/fingerprints.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fingerprints:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: |
+          pip install --quiet torch --index-url https://download.pytorch.org/whl/cpu
+          pip install --quiet transformers onnx onnxruntime pillow numpy
+
+      # Artworks are downloaded once and kept in the cache, as YGOPRODeck asks.
+      - uses: actions/cache@v4
+        with:
+          path: work/art
+          key: artworks-${{ github.run_id }}
+          restore-keys: artworks-
+
+      - name: Card list
+        run: |
+          mkdir -p work
+          curl -fsSL "https://db.ygoprodeck.com/api/v7/cardinfo.php" -o work/cardinfo.json
+
+      - name: Build fingerprints
+        run: python tools/build_fingerprints.py --cardinfo work/cardinfo.json --images work/art --out assets
+
+      - name: Publish to the assets branch
+        run: |
+          cd assets
+          git init -q -b assets
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Artwork fingerprints $(date -u +%Y-%m-%d)"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" assets
