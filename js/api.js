@@ -45,8 +45,8 @@ export function createApi({ fetchFn = globalThis.fetch?.bind(globalThis), base =
         rarities: rarityIdxs.map((r) => pack.rarities[r]),
         expansion,
         products: pids.map((pid) => {
-          const [trend, avg30, low] = pack.products[String(pid)] || [];
-          return { id: pid, trend, avg30, low };
+          const [trend, avg30, low, avg1, avg7] = pack.products[String(pid)] || [];
+          return { id: pid, trend, avg30, low, avg1, avg7 };
         }),
       };
     });
@@ -82,9 +82,19 @@ export function createApi({ fetchFn = globalThis.fetch?.bind(globalThis), base =
     }
     const entry = (await namesPromise)[normName(name)];
     if (!entry) return null;
-    const [display, min, max, rows] = entry;
-    return { name: display, min, max, versions: rows.map(([set, year, lo, hi]) => ({ set, year, min: lo, max: hi })) };
+    const [display, min, max, rows, bases, ban] = entry;
+    return {
+      name: display, min, max, bases: bases || [],
+      ban: ban ? { tcg: ban[0] || null, ocg: ban[1] || null } : null,
+      versions: rows.map(([set, year, lo, hi]) => ({ set, year, min: lo, max: hi })),
+    };
   }
 
-  return { lookup, knowsPrefix, index, nameInfo };
+  let moversPromise = null;
+  function movers() {
+    if (!moversPromise) { moversPromise = getJson(`${base}/movers.json`); moversPromise.catch(() => { moversPromise = null; }); }
+    return moversPromise;
+  }
+
+  return { lookup, knowsPrefix, index, nameInfo, movers };
 }

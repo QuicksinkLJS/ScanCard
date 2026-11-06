@@ -165,8 +165,8 @@ def build(printings, cm, min_score=0.5, keep=0.85):
                     continue
                 out[code].append({
                     "s": set_name, "y": d.year if d else None, "r": c["r"], "e": exp, "n": c["n"],
-                    "p": [[pid, prices.get(pid, {}).get("trend"), prices.get(pid, {}).get("avg30"),
-                           prices.get(pid, {}).get("low")] for pid in pids],
+                    "p": [[pid] + [prices.get(pid, {}).get(k) for k in ("trend", "avg30", "low", "avg1", "avg7")]
+                          for pid in pids],
                 })
     for code, versions in out.items():
         n_products = sum(len(v["p"]) for v in versions)
@@ -178,7 +178,7 @@ def compact(data, prices_date):
     """Small pack: strings, versions and prices are stored once and referenced by index.
 
     names[i], sets[i], rarities[i]           strings
-    products[pid] = [trend, avg30, low]      EUR
+    products[pid] = [trend, avg30, low, avg1, avg7]   EUR
     versions[i]  = [setIdx, year, [rarityIdx...], expansionId, [pid...]]
     cards[code]  = [nameIdx, [versionIdx...]]
     """
@@ -201,7 +201,7 @@ def compact(data, prices_date):
         for v in vs:
             pids = [p[0] for p in v["p"]]
             for p in v["p"]:
-                products[str(p[0])] = [p[1], p[2], p[3]]
+                products[str(p[0])] = p[1:]
             key = (v["s"], v["y"], tuple(v["r"]), v["e"], tuple(pids))
             if key not in ver_index:
                 ver_index[key] = len(versions)
@@ -239,6 +239,13 @@ def main():
 
     data, stats = build(printings, cm)
 
+    banlist = {}
+    if a.ygoprodeck_cards:
+        for card in json.load(open(a.ygoprodeck_cards, encoding="utf-8"))["data"]:
+            b = card.get("banlist_info") or {}
+            if b.get("ban_tcg") or b.get("ban_ocg"):
+                banlist[norm(card["name"])] = [b.get("ban_tcg"), b.get("ban_ocg")]
+
     # One small file per set prefix (LOB.json, RA01.json ...): the app only loads what it scans.
     out_dir = a.out
     os.makedirs(out_dir, exist_ok=True)
@@ -275,9 +282,28 @@ def main():
     for k, sets in by_name.items():
         rows = sorted(([s, y, round(lo, 2), round(hi, 2)] for (s, y), (lo, hi) in sets.items()), key=lambda r: -r[3])
         names_out[k] = [display[k], round(min(r[2] for r in rows), 2), round(max(r[3] for r in rows), 2), rows,
-                        sorted(bases.get(k, ()))]
+                        sorted(bases.get(k, ())), banlist.get(k)]
     with open(os.path.join(out_dir, "names.json"), "w", encoding="utf-8") as f:
         json.dump(names_out, f, ensure_ascii=False, separators=(",", ":"))
+    # Tops and flops for cards worth at least 2 EUR, in two flavours:
+    #   short:  yesterday's average sale against the 7-day average (fast, shows odd sales too)
+    #   stable: smoothed trend price against the 30-day average
+    seen, rows = set(), []
+    for code, versions in data.items():
+        for v in versions:
+            for pid, trend, avg30, low, avg1, avg7 in v["p"]:
+                if pid in seen or not trend or trend < 2:
+                    continue
+                seen.add(pid)
+                rows.append({"name": v["n"], "set": v["s"], "year": v["y"], "id": pid, "trend": trend,
+                             "avg1": avg1, "avg7": avg7, "avg30": avg30})
+    def top(key, a, b):
+        ok = [dict(r, change=round((r[a] - r[b]) / r[b] * 100, 1)) for r in rows if r.get(a) and r.get(b) and r[b] >= 1]
+        ok.sort(key=lambda r: r["change"])
+        return {"up": ok[::-1][:30], "down": ok[:30]}
+    with open(os.path.join(out_dir, "movers.json"), "w", encoding="utf-8") as f:
+        json.dump({"date": cm[4], "short": top("short", "avg1", "avg7"), "stable": top("stable", "trend", "avg30")},
+                  f, ensure_ascii=False, separators=(",", ":"))
     index = {"version": 2, "game": "yugioh", "built": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ"),
              "prices": cm[4], "sets": sorted(groups)}
     with open(os.path.join(out_dir, "index.json"), "w", encoding="utf-8") as f:

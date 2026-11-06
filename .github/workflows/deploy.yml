@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -64,6 +64,23 @@ jobs:
             --products work/products_singles_3.json --prices work/price_guide_3.json \
             --ygojson-sets work/ygojson/sets.json --ygojson-cards work/ygojson/cards.json \
             $extra --out data/ygo
+
+      - name: Save today's prices (history branch, for price charts)
+        if: github.event_name != 'push'
+        run: |
+          git fetch -q origin history:history 2>/dev/null || true
+          mkdir -p hist && cd hist
+          if git -C .. rev-parse -q --verify history >/dev/null; then
+            git clone -q -b history .. . 
+          else
+            git init -q -b history .
+          fi
+          python ../tools/snapshot_prices.py ../work/price_guide_3.json prices
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Prices $(date -u +%Y-%m-%d)" || echo "nothing new"
+          git push -q "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" history
 
       - name: Assemble site
         run: |
