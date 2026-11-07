@@ -5,7 +5,7 @@ import { $, esc, eur, toast, choose } from './util.js';
 import { cardmarketUrl, versionImage, rarityRank, fairTrend } from './prices.js';
 import { syncBody } from './cardpage.js';
 import { loadCollection, saveCollection } from './store.js';
-import { progress } from './mastercalc.js';
+import { progress, sortEntries, SET_SORTS, fillCodes } from './mastercalc.js';
 import { holoKind } from './holo.js';
 import { progressImage, shareCanvas } from './share.js';
 
@@ -92,8 +92,13 @@ export function createMasters({ api, openCard, onCollectionChange = () => {} }) 
     page.scrollTop = 0;
     $('set-title').textContent = t.name;
     $('set-body').innerHTML = '<p class="note">Loading…</p>';
-    const entries = await api.setEntries(exp).catch(() => []);
-    cur = { ...t, entries, filter: cur?.exp === exp ? cur.filter : 'missing', rarity: cur?.exp === exp ? cur.rarity : '', view: cur?.exp === exp ? cur.view : 'list', showHidden: false };
+    let entries = await api.setEntries(exp).catch(() => []);
+    if (entries.some((e) => !e.code)) {
+      const names = [...new Set(entries.filter((e) => !e.code).map((e) => e.name))];
+      const infos = new Map(await Promise.all(names.map(async (n) => [n, await api.nameInfo(n).catch(() => null)])));
+      entries = fillCodes(entries, infos);
+    }
+    cur = { ...t, entries, filter: cur?.exp === exp ? cur.filter : 'missing', rarity: cur?.exp === exp ? cur.rarity : '', view: cur?.exp === exp ? cur.view : 'list', showHidden: false, sort: t.sort || 'number' };
     renderSet();
   }
 
@@ -133,6 +138,8 @@ export function createMasters({ api, openCard, onCollectionChange = () => {} }) 
     return Object.entries(n).sort((a, b) => b[1] - a[1])[0]?.[0] || '';
   }
 
+  const SORT_LABEL = { number: 'Set number', value: 'Value (high → low)', 'value-asc': 'Value (low → high)', name: 'Name (A–Z)', rarity: 'Rarity (highest first)', missing: 'Missing first' };
+
   function renderSet() {
     const { target } = cur;
     const hidden = new Set(cur.hidden || []);
@@ -142,12 +149,14 @@ export function createMasters({ api, openCard, onCollectionChange = () => {} }) 
     const rarities = [...new Set(entries.map((e) => e.rarity || ''))].sort((a, b) => rarityRank(a) - rarityRank(b));
     const have = (e) => Math.min(all[e.key] || 0, target);
     const byRarity = (e) => !cur.rarity || (e.rarity || '') === cur.rarity;
-    let list = (cur.showHidden ? cur.entries : entries).filter(byRarity);
+    const sortOpts = { have, target, rank: (r) => { const k = rarityRank(r); return k >= 99 ? -1 : k; }, value: (e) => fairTrend(e).v ?? e.trend };
+    const sorted = (l) => sortEntries(l, cur.sort, sortOpts);
+    let list = sorted((cur.showHidden ? cur.entries : entries).filter(byRarity));
     if (cur.view === 'list') {
       if (cur.filter === 'missing') list = list.filter((e) => have(e) < target || hidden.has(e.key));
       if (cur.filter === 'have') list = list.filter((e) => have(e) > 0);
     }
-    const binderList = entries.filter(byRarity);
+    const binderList = sorted(entries.filter(byRarity));
     const pages = [];
     for (let i = 0; i < binderList.length; i += 9) pages.push(binderList.slice(i, i + 9));
     const pocket = (e) => {
@@ -171,6 +180,9 @@ export function createMasters({ api, openCard, onCollectionChange = () => {} }) 
       ${cur.view === 'list' ? `<div class="seg small" role="tablist">
         ${['missing', 'have', 'all'].map((f) => `<button type="button" data-f="${f}" class="${cur.filter === f ? 'on' : ''}">${{ missing: 'Missing', have: 'Have', all: 'All' }[f]}</button>`).join('')}
       </div>` : ''}
+      <label class="sortby small">Sort by
+        <select id="set-sort" class="field small-field">${SET_SORTS.map((k) => `<option value="${k}" ${cur.sort === k ? 'selected' : ''}>${SORT_LABEL[k]}</option>`).join('')}</select>
+      </label>
       <div class="chips">
         <button type="button" class="chip ${!cur.rarity ? 'on' : ''}" data-r="">All rarities</button>
         ${rarities.map((r) => `<button type="button" class="chip ${cur.rarity === r ? 'on' : ''}" data-r="${esc(r)}">${esc(r || 'Rarity unknown')}</button>`).join('')}
@@ -216,6 +228,11 @@ export function createMasters({ api, openCard, onCollectionChange = () => {} }) 
       const canvas = progressImage({ name: cur.name, code: setCode(entries), have: p.have, total: p.total, cells });
       const r = await shareCanvas(canvas, `cardscan-masterset-${cur.exp}.png`, cur.name);
       if (r === 'downloaded') toast('Picture saved');
+    });
+    $('set-sort').addEventListener('change', (ev) => {
+      cur.sort = ev.target.value;
+      saveTracked(loadTracked().map((x) => (x.exp === cur.exp ? { ...x, sort: cur.sort } : x)));
+      renderSet();
     });
     body.querySelectorAll('[data-r]').forEach((b) => b.addEventListener('click', () => { cur.rarity = b.dataset.r; renderSet(); }));
     body.querySelectorAll('.tick').forEach((b) => b.addEventListener('click', async () => {
