@@ -18,6 +18,7 @@ import { createMasters } from './masters.js';
 import { createDecks } from './decks.js';
 import { openHolo, closeHolo, holoKind, holoCardHTML } from './holo.js';
 import { fanHTML } from './fan.js';
+import { copyText } from './copy.js';
 import { valueSeries } from './depot.js';
 import { loadWatch, loadWish, removeWatch, belowTarget, migrateLists } from './lists.js';
 import {
@@ -205,6 +206,15 @@ const scanHooks = {
 
 const collHooks = {
   own: true,
+  // condition / language / 1st Edition of your copy
+  onCopy: (s, patch) => {
+    const list = loadCollection();
+    const e = list.find((x) => x.id === s.collId);
+    if (!e) return;
+    Object.assign(e, patch);
+    saveCollection(list);
+    renderCollection();
+  },
   onChange: async (s) => {
     s.price = await quickPrice(api, s);
     upsertEntry(entryFromSubject(s, { id: s.collId }));
@@ -275,7 +285,7 @@ function renderCollection() {
     return `
     <li><button type="button" data-id="${esc(e.id)}">
       ${pictureOf(e) ? `<span class="tframe ${r?.cls || ''}"><img class="thumb" src="${esc(pictureOf(e))}" alt=""></span>` : `<span class="dot ${valueTier(e.price?.hi)}"></span>`}
-      <span class="what"><b>${esc(e.name)}</b><small>${r ? `<span class="rbadge ${r.cls}">${esc(r.label)}</span> ` : ''}${esc(e.price?.label || '')}</small></span>
+      <span class="what"><b>${esc(e.name)}</b><small>${r ? `<span class="rbadge ${r.cls}">${esc(r.label)}</span> ` : ''}${esc(e.price?.label || '')}${copyText(e) ? ` · <span class="copytag">${esc(copyText(e))}</span>` : ''}</small></span>
       <span class="eur">${range(e.price?.lo, e.price?.hi)}${chg(changeOf(e))}</span>
     </button></li>`;
   }).join('');
@@ -404,7 +414,7 @@ async function renderWish() {
   $('wish-empty').hidden = list.length > 0;
   const rows = await Promise.all(list.map(async (w) => ({ w, p: await quickPrice(api, { name: w.name, vkey: w.vkey }).catch(() => null) })));
   $('wish-list').innerHTML = rows.map(({ w, p }) => `<li><button type="button" data-name="${esc(w.name)}" data-vkey="${esc(w.vkey || '')}">
-      <span class="what"><b>${esc(w.name)}</b><small>${esc(w.label || p?.label || '')}</small></span>
+      <span class="what"><b>${esc(w.name)}</b><small>${esc(w.label || p?.label || '')}${copyText(w, { wish: true }) ? ` · <span class="copytag">looking for ${esc(copyText(w, { wish: true }))}</span>` : ''}</small></span>
       <span class="eur">${range(p?.lo, p?.hi)}</span></button></li>`).join('');
   $('wish-list').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => openCardPage({ name: b.dataset.name, vkey: b.dataset.vkey || null }, plainHooks)));
 }

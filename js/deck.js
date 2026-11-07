@@ -2,6 +2,7 @@
 // No browser APIs except atob (also in Node 16+), tested in Node.
 
 import { rarityRank } from './prices.js';
+import { isOcgOption as isOcg } from './copy.js';
 
 // .ydk: "#main", "#extra", "!side", one passcode per line
 export function parseYdk(text) {
@@ -99,7 +100,6 @@ export function allocate(resolved, owned, norm) {
 export function pickVersion(opts, prefs = {}) {
   let pool = opts.filter((o) => o.trend != null);
   // Japanese prints: OCG expansions, or sets whose only codes are Japanese/Korean prints
-  const isOcg = (o) => /\(OCG\)/.test(o.set) || (o.codes.some((c) => /-JP\d/.test(c)) && !o.codes.some((c) => /-(EN|E|DE|G|FR|F|IT|I|SP|S|PT|P)\d/.test(c)));
   if (prefs.lang === 'JP') { const j = pool.filter(isOcg); if (j.length) pool = j; }
   else if (prefs.lang && prefs.lang !== 'any') {
     const l = pool.filter((o) => !isOcg(o) && o.codes.some((c) => new RegExp(`-${prefs.lang}\\d`).test(c)));

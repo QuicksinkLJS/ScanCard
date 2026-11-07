@@ -110,6 +110,12 @@ Object.assign(DE, {
   'On your wishlist (Collection › Wishlist)': 'Auf deiner Wunschliste (Sammlung › Wunschliste)', 'Removed from your wishlist': 'Von der Wunschliste entfernt', 'Removed from your watchlist': 'Von der Merkliste entfernt',
   'Tap “♡ Wishlist” on a card you want. When you scan it later, it is marked. For a target price, use “☆ Watch price”.': 'Tippe bei einer Karte, die du haben willst, auf „♡ Wunschliste“. Scannst du sie später, wird sie markiert. Für einen Wunschpreis nutze „☆ Preis merken“.',
   'Tap “☆ Watch price” on any card to follow its price here – with a target price if you like; cards at or below it are marked.': 'Tippe bei einer Karte auf „☆ Preis merken“, um ihren Preis hier zu verfolgen – auf Wunsch mit Wunschpreis; Karten darunter werden markiert.',
+  'Your copy': 'Dein Exemplar', 'Looking for': 'Gesucht', 'condition, language, 1st Edition': 'Zustand, Sprache, 1st Edition', 'any copy': 'jedes Exemplar',
+  'Condition': 'Zustand', 'Condition at least': 'Zustand mindestens', 'Language': 'Sprache', 'Edition': 'Edition', 'Not set': 'Nicht gesetzt', 'Any': 'Egal', 'Any language': 'Jede Sprache',
+  '1st Edition': '1st Edition', 'Unlimited': 'Unlimited', ' 1st Edition only': ' Nur 1st Edition', '1st Edition only': 'Nur 1st Edition',
+  'Prices are per version – condition and language don\'t change them.': 'Preise gelten pro Version – Zustand und Sprache ändern sie nicht.',
+  'OCG prints (Japanese, Korean, Asian English) have no 1st Edition.': 'OCG-Drucke (Japanisch, Koreanisch, Asian English) haben keine 1st Edition.',
+  'Japanese (OCG)': 'Japanisch (OCG)', 'Korean (OCG)': 'Koreanisch (OCG)', 'Asian English (OCG)': 'Asian English (OCG)',
   'Big moment': 'Big Moment', 'Value · approx. last 30 days': 'Wert · ca. letzte 30 Tage', '30-day avg.': 'Ø 30 Tage', '7-day avg.': 'Ø 7 Tage',
   'yesterday': 'gestern', 'today': 'heute', '🂠 Draw test hand': '🂠 Testhand ziehen', '🂠 New test hand': '🂠 Neue Testhand', 'Draw again': 'Neu ziehen',
   '+1 card': '+1 Karte', 'Test hand': 'Testhand', 'No main deck': 'Kein Main Deck', 'Deck value (max rarity)': 'Deckwert (höchste Seltenheit)',
@@ -135,6 +141,7 @@ Object.assign(DE, {
 
 // [pattern, German] for texts with numbers or names in them
 const P = [
+  [/^looking for (.+)$/, 'gesucht: $1'],
   [/^(\d+) cards? on your watchlist at your target price – see Market › Watchlist$/, '$1 Karte(n) auf deiner Merkliste zum Wunschpreis – siehe Markt › Merkliste'],
   [/^Marked when it is (.+) or less$/, 'Markiert, wenn sie $1 oder weniger kostet'],
   [/^(\d+) of (\d+)$/, '$1 von $2'],

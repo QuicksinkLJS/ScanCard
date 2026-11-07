@@ -12,7 +12,8 @@ import { $, esc, eur, range, toast } from './util.js';
 import { cardmarketSearchUrl, normName } from './parse.js';
 import { matchCode } from './codematch.js';
 import { openHolo, holoCardHTML, holoKind, attachTilt } from './holo.js';
-import { findWatch, toggleWatch, findWish, toggleWish, restoreWish, restoreWatch, setWatchTarget } from './lists.js';
+import { findWatch, toggleWatch, findWish, toggleWish, restoreWish, restoreWatch, setWatchTarget, updateWish } from './lists.js';
+import { CONDS, LANGS, hasFirstEdition, copyText, langOf } from './copy.js';
 import { fairTrend, filterOptions, versionOptions, rankOptions, bestOptions, priceOf, tierOfPrice, oddValues, optionCode, versionLabel, cardmarketUrl, versionImage, historyOf } from './prices.js';
 
 let api = null;
@@ -41,7 +42,64 @@ function holoOf(s, chosen, own, guess = null) {
   return src ? { src, kind: 'plain', shine: true, official: false } : null;
 }
 
+// ---------- your copy / what you look for: condition, language, 1st Edition ----------
+let openBox = null; // keeps a box open across re-renders
+const opt = (list, v, first) => `${first}${list.map(([k, l]) => `<option value="${k}" ${k === v ? 'selected' : ''}>${esc(l)}</option>`).join('')}`;
+const NOTE_PRICE = '<p class="small muted">Prices are per version – condition and language don\'t change them.</p>';
+const NOTE_OCG = '<p class="small muted">OCG prints (Japanese, Korean, Asian English) have no 1st Edition.</p>';
+function copyBoxes(s, chosen, hooks) {
+  let out = '';
+  if (hooks.own) {
+    const lang = langOf(s);
+    const first = hasFirstEdition({ lang, option: chosen });
+    out += `<details class="fold copy-box" id="copy-own" ${openBox === 'own' ? 'open' : ''}>
+      <summary>Your copy <span class="muted small">${esc(copyText(s) || 'condition, language, 1st Edition')}</span></summary>
+      <div class="prefs">
+        <label>Condition <select id="own-cond" class="field small-field">${opt(CONDS, s.cond || '', '<option value="">Not set</option>')}</select></label>
+        <label>Language <select id="own-lang" class="field small-field">${opt(LANGS, lang, '<option value="">Not set</option>')}</select></label>
+        ${first ? `<label>Edition <select id="own-first" class="field small-field">
+          <option value="" ${s.first == null ? 'selected' : ''}>Not set</option><option value="1" ${s.first === true ? 'selected' : ''}>1st Edition</option><option value="0" ${s.first === false ? 'selected' : ''}>Unlimited</option></select></label>` : NOTE_OCG}
+      </div>${NOTE_PRICE}</details>`;
+  }
+  const w = findWish(s);
+  if (w) {
+    const first = hasFirstEdition({ lang: w.lang, option: chosen });
+    out += `<details class="fold copy-box" id="copy-wish" ${openBox === 'wish' ? 'open' : ''}>
+      <summary>Looking for <span class="muted small">${esc(copyText(w, { wish: true }) || 'any copy')}</span></summary>
+      <div class="prefs">
+        <label>Condition at least <select id="wish-cond" class="field small-field">${opt(CONDS, w.cond || '', '<option value="">Any</option>')}</select></label>
+        <label>Language <select id="wish-lang" class="field small-field">${opt(LANGS, w.lang || 'any', '<option value="any">Any language</option>')}</select></label>
+        ${first ? `<label class="check"><input type="checkbox" id="wish-first" ${w.first === true ? 'checked' : ''}> 1st Edition only</label>` : NOTE_OCG}
+      </div>${NOTE_PRICE}</details>`;
+  }
+  return out;
+}
+function bindCopyBoxes(s, chosen, hooks, render) {
+  const keep = (id, name) => $(id)?.addEventListener('toggle', (e) => { if (e.target.open) openBox = name; else if (openBox === name) openBox = null; });
+  keep('copy-own', 'own'); keep('copy-wish', 'wish');
+  const own = (patch) => {
+    if (patch.lang && !hasFirstEdition({ lang: patch.lang, option: chosen })) patch.first = null;
+    Object.assign(s, patch);
+    hooks.onCopy?.(s, patch);
+    render();
+  };
+  $('own-cond')?.addEventListener('change', (e) => own({ cond: e.target.value || null }));
+  $('own-lang')?.addEventListener('change', (e) => own({ lang: e.target.value || null }));
+  $('own-first')?.addEventListener('change', (e) => own({ first: e.target.value === '' ? null : e.target.value === '1' }));
+  const wish = (patch) => {
+    const w = findWish(s);
+    if (!w) return;
+    if (patch.lang && !hasFirstEdition({ lang: patch.lang, option: chosen })) patch.first = null;
+    updateWish(w.id, patch);
+    render();
+  };
+  $('wish-cond')?.addEventListener('change', (e) => wish({ cond: e.target.value || null }));
+  $('wish-lang')?.addEventListener('change', (e) => wish({ lang: e.target.value }));
+  $('wish-first')?.addEventListener('change', (e) => wish({ first: e.target.checked ? true : null }));
+}
+
 export function closeCardPage() {
+  openBox = null;
   holoCleanup?.(); holoCleanup = null; lastHolo = null;
   $('card-page').hidden = true;
   current = null;
@@ -202,6 +260,7 @@ function render() {
       <button class="btn primary" type="submit">Save</button>
       ${findWatch(s).target != null ? '<button class="btn" type="button" id="watch-target-clear">No target</button>' : ''}
     </form>` : ''}
+    ${copyBoxes(s, chosen, hooks)}
     ${hooks.onRemove ? `<button class="btn wide danger" type="button" id="card-remove">${esc(hooks.removeLabel || 'Remove from collection')}</button>` : ''}
   `;
   const priceNow = () => ({ lo: price.lo, hi: price.hi, label: chosen ? [`${chosen.set}`, versionLabel(chosen)].join(' · ') : 'any version' });
@@ -233,6 +292,7 @@ function render() {
     toast(t == null ? 'No target price' : `Marked when it is ${eur(t)} or less`);
     render();
   });
+  bindCopyBoxes(s, chosen, hooks, render);
   $('watch-target-clear')?.addEventListener('click', () => { setWatchTarget(s, null, priceNow()); toast('No target price'); render(); });
 
   const bindVersions = () => $('card-body').querySelectorAll('.versions button').forEach((b) => b.addEventListener('click', () => {
