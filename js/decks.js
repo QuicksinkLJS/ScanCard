@@ -11,7 +11,7 @@ import { loadCollection, newId } from './store.js';
 import { parseDeck, resolveDeck, allocate, pickVersion, wantsLines } from './deck.js';
 
 const KEY = 'cardscan-decks-v1';
-const loadDecks = () => { try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch { return []; } };
+export const loadDecks = () => { try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch { return []; } };
 const saveDecks = (d) => { try { localStorage.setItem(KEY, JSON.stringify(d)); } catch { /* full */ } };
 const DEFAULT_PREFS = { mode: 'cheap', lang: 'any', cond: 'EX', first: false };
 const LANGS = [['any', 'Any language'], ['EN', 'English'], ['DE', 'German'], ['FR', 'French'], ['IT', 'Italian'], ['SP', 'Spanish'], ['PT', 'Portuguese'], ['JP', 'Japanese (OCG)'], ['KR', 'Korean']];

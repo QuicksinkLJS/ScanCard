@@ -74,6 +74,15 @@
         <button type="button" data-ctab="masters">Mastersets</button>
         <button type="button" data-ctab="decks">Decks</button>
         <button type="button" data-ctab="wish">Wishlist</button>
+        <button type="button" data-ctab="friends">Friends</button>
+      </div>
+      <div id="friends" hidden>
+        <div class="actions">
+          <button id="fr-myqr" class="btn primary" type="button">My QR code</button>
+          <button id="fr-scan" class="btn" type="button">Scan a friend's code</button>
+        </div>
+        <ul id="friends-list" class="rows"></ul>
+        <p id="friends-empty" class="empty">Show your QR code to a friend, or scan theirs – then you can look through each other's collections, binders and wishlists and ask for trades.</p>
       </div>
       <div id="wish" hidden>
         <div id="wish-list"></div>
@@ -206,6 +215,40 @@
       <span id="set-title" class="muted small"></span>
     </div>
     <div id="set-body" class="sheet-body"></div>
+  </section>
+
+  <!-- ================= FRIENDS ================= -->
+  <section id="qr-page" class="sheet" hidden>
+    <div class="sheet-bar">
+      <button id="qr-back" class="link" type="button">‹ Back</button>
+      <span class="muted small">My QR code</span>
+    </div>
+    <div class="sheet-body qr-body">
+      <label class="small muted" for="qr-name">Your name for friends</label>
+      <input id="qr-name" class="field" type="text" maxlength="30" placeholder="e.g. Christian" autocomplete="nickname">
+      <div id="qr-box" class="qr-box"></div>
+      <p id="qr-count" class="small qr-count"></p>
+      <p id="qr-sum" class="small muted"></p>
+      <button id="qr-link" class="btn wide" type="button">Send as link instead</button>
+      <p class="small muted">Your friend opens CardScan › Collection › Friends › “Scan a friend's code”. They see everything: cards, binders, wishlist and decks – as of now.</p>
+    </div>
+  </section>
+  <section id="qrscan-page" class="sheet" hidden>
+    <div class="sheet-bar">
+      <button id="qrscan-back" class="link" type="button">‹ Back</button>
+      <span class="muted small">Scan a friend's code</span>
+    </div>
+    <div class="sheet-body">
+      <video id="qrscan-video" class="qrscan-video" playsinline muted></video>
+      <p id="qrscan-status" class="qr-count"></p>
+    </div>
+  </section>
+  <section id="friend-page" class="sheet" hidden>
+    <div class="sheet-bar">
+      <button id="friend-back" class="link" type="button">‹ Back</button>
+      <span id="friend-title" class="muted small"></span>
+    </div>
+    <div id="friend-body" class="sheet-body"></div>
   </section>
 
   <!-- ================= DECK PAGE ================= -->

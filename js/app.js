@@ -19,6 +19,8 @@ import { createMasters } from './masters.js';
 import { createDecks } from './decks.js';
 import { openHolo, closeHolo, holoKind, holoCardHTML } from './holo.js';
 import { fanHTML } from './fan.js';
+import { createFriends } from './friendsui.js';
+import { loadDecks } from './decks.js';
 import { copyText } from './copy.js';
 import { valueSeries } from './depot.js';
 import { loadWatch, loadWish, removeWatch, belowTarget, migrateLists, removeWishId, restoreWish } from './lists.js';
@@ -408,6 +410,9 @@ async function refreshCollectionPrices() {
 // ---------- mastersets ----------
 const masters = createMasters({ api, openCard: (s) => openCardPage(s, plainHooks), onCollectionChange: () => renderCollection() });
 const decks = createDecks({ api, openCard: (s) => openCardPage(s, plainHooks) });
+const friends = createFriends({ api, openCard: (s) => openCardPage(s, plainHooks), loadDecks });
+friends.fromLink();
+window.addEventListener('hashchange', () => friends.fromLink());
 let collTab = 'cards';
 document.querySelectorAll('#coll-tabs [data-ctab]').forEach((b) => b.addEventListener('click', () => {
   collTab = b.dataset.ctab;
@@ -415,6 +420,8 @@ document.querySelectorAll('#coll-tabs [data-ctab]').forEach((b) => b.addEventLis
   $('masters').hidden = collTab !== 'masters';
   $('decks').hidden = collTab !== 'decks';
   $('wish').hidden = collTab !== 'wish';
+  $('friends').hidden = collTab !== 'friends';
+  if (collTab === 'friends') friends.renderList();
   if (collTab === 'wish') renderWish();
   $('coll-cards').hidden = collTab !== 'cards';
   if (collTab === 'masters') masters.renderList();
@@ -622,10 +629,11 @@ $('pack-off').addEventListener('click', () => { setPack(null); history.back(); }
 window.addEventListener('popstate', () => {
   if (!$('holo').hidden) { closeHolo(); return; }
   if (!$('card-page').hidden) {
-    closeCardPage(); masters.refresh(); decks.refresh();
+    closeCardPage(); masters.refresh(); decks.refresh(); friends.refresh();
     if (!$('view-collection').hidden && collTab === 'wish') renderWish();
     if (!$('view-market').hidden && marketTab === 'watch') renderWatch();
   }
+  else if (friends.onBack()) { /* closed a friends sheet */ }
   else if (!$('deck-page').hidden) decks.closeDeck();
   else if (!$('set-page').hidden) masters.closeSet();
   else if (!$('pack-page').hidden) { $('pack-page').hidden = true; syncBody(); }
