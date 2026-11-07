@@ -1,0 +1,30 @@
+# Wishlist = one tap, no price; watchlist = price tracking with optional target; old wish targets move to the watchlist once.
+import sys; sys.path.insert(0, __import__('os').path.dirname(__file__))
+from harness import *
+with sync_playwright() as p:
+    b, page = open_app(p)
+    # an old-style wishlist entry with a target price (as the live app stores it)
+    page.evaluate("""localStorage.setItem('cardscan-wish-v1', JSON.stringify([{id:'old1', name:'Dark Magician', vkey:null, label:'any version', target: 999, at: 3, date: Date.now()}]));
+                     localStorage.removeItem('cardscan-lists-mig1'); localStorage.removeItem('cardscan-watch-v1');""")
+    page.reload(); page.wait_for_timeout(3500)
+    print('migrated watch:', page.evaluate("JSON.parse(localStorage.getItem('cardscan-watch-v1')).map(w => [w.name, w.target])"),
+          '| wish kept:', page.evaluate("JSON.parse(localStorage.getItem('cardscan-wish-v1')).map(w => [w.name, w.target])"))
+    print('toast:', page.inner_text('#toast') if page.is_visible('#toast') else '-')
+    open_card(page, 'Blue-Eyes White Dragon')
+    page.click('#card-wish'); page.wait_for_timeout(300)
+    print('wish button:', page.inner_text('#card-wish'), '| toast:', page.inner_text('#toast'), '| form shown:', page.is_visible('#watch-form'))
+    page.click('#card-watch'); page.wait_for_timeout(300)
+    print('watch:', page.inner_text('#card-watch'), '| target form:', page.is_visible('#watch-form'))
+    page.fill('#watch-target', '50'); page.click('#watch-form button[type=submit]'); page.wait_for_timeout(300)
+    print('after target:', page.inner_text('#toast'), '| stored', page.evaluate("JSON.parse(localStorage.getItem('cardscan-watch-v1')).map(w => [w.name, w.target])"))
+    page.locator('#watch-form').scroll_into_view_if_needed(); page.screenshot(path='/home/claude/shots/t28_card.png')
+    page.click('#card-wish'); page.wait_for_timeout(200)
+    print('removed toast:', page.inner_text('#toast')); page.click('.toast-act'); page.wait_for_timeout(300)
+    print('after undo:', page.inner_text('#card-wish'))
+    page.go_back(); page.wait_for_timeout(200)
+    page.click('nav.tabs button[data-view=collection]'); page.click('[data-ctab=wish]'); page.wait_for_timeout(1500)
+    print('WISHLIST:', page.inner_text('#wish-list').replace('\n', ' | '))
+    page.click('nav.tabs button[data-view=market]'); page.click('[data-mtab=watch]'); page.wait_for_timeout(1500)
+    print('WATCHLIST:', page.inner_text('#watch-list').replace('\n', ' | '))
+    page.screenshot(path='/home/claude/shots/t28_watch.png')
+    b.close()

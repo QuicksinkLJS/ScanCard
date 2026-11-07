@@ -12,7 +12,7 @@ import { $, esc, eur, range, toast } from './util.js';
 import { cardmarketSearchUrl, normName } from './parse.js';
 import { matchCode } from './codematch.js';
 import { openHolo, holoCardHTML, holoKind, attachTilt } from './holo.js';
-import { findWatch, toggleWatch, findWish, setWish, removeWish } from './lists.js';
+import { findWatch, toggleWatch, findWish, toggleWish, restoreWish, restoreWatch, setWatchTarget } from './lists.js';
 import { fairTrend, filterOptions, versionOptions, rankOptions, bestOptions, priceOf, tierOfPrice, oddValues, optionCode, versionLabel, cardmarketUrl, versionImage, historyOf } from './prices.js';
 
 let api = null;
@@ -193,14 +193,15 @@ function render() {
       ${hooks.onAdd ? `<button class="btn primary" type="button" id="card-add">${esc(hooks.addLabel?.(s) || 'Add to collection')}</button>` : ''}
     </div>
     <div class="actions">
+      <button class="btn ${findWish(s) ? 'on' : ''}" type="button" id="card-wish">${findWish(s) ? '♥ On your wishlist' : '♡ Wishlist'}</button>
       <button class="btn ${findWatch(s) ? 'on' : ''}" type="button" id="card-watch">${findWatch(s) ? '★ Watching' : '☆ Watch price'}</button>
-      <button class="btn ${findWish(s) ? 'on' : ''}" type="button" id="card-wish">${findWish(s) ? `♥ Wish ≤ ${eur(findWish(s).target)}` : '♡ Wishlist'}</button>
     </div>
-    <form id="wish-form" class="inline-form" hidden>
-      <input id="wish-target" class="field" type="number" inputmode="decimal" step="0.01" min="0" placeholder="Target price €">
+    ${findWatch(s) ? `<form id="watch-form" class="inline-form target-form" autocomplete="off">
+      <label class="small muted" for="watch-target">Target price${chosen ? '' : ' (any version)'}</label>
+      <input id="watch-target" class="field" type="number" inputmode="decimal" step="0.01" min="0" placeholder="e.g. ${price.lo != null ? (Math.floor(price.lo * 0.9 * 100) / 100).toFixed(2) : '10.00'}" value="${findWatch(s).target ?? ''}">
       <button class="btn primary" type="submit">Save</button>
-      ${findWish(s) ? '<button class="btn" type="button" id="wish-remove">Remove</button>' : ''}
-    </form>
+      ${findWatch(s).target != null ? '<button class="btn" type="button" id="watch-target-clear">No target</button>' : ''}
+    </form>` : ''}
     ${hooks.onRemove ? `<button class="btn wide danger" type="button" id="card-remove">${esc(hooks.removeLabel || 'Remove from collection')}</button>` : ''}
   `;
   const priceNow = () => ({ lo: price.lo, hi: price.hi, label: chosen ? [`${chosen.set}`, versionLabel(chosen)].join(' · ') : 'any version' });
@@ -210,26 +211,29 @@ function render() {
     });
   }
   $('card-watch').addEventListener('click', () => {
+    const before = findWatch(s);
     const on = toggleWatch(s, priceNow());
-    toast(on ? 'Added to your watchlist (Market tab)' : 'Removed from your watchlist');
+    if (on) toast('Watching the price (Market › Watchlist) – set a target price below if you like');
+    else toast('Removed from your watchlist', 2600, { label: 'Undo', run: () => { restoreWatch(before); render(); } });
     render();
   });
   $('card-wish').addEventListener('click', () => {
-    const f = $('wish-form');
-    f.hidden = !f.hidden;
-    const w = findWish(s);
-    $('wish-target').value = w ? w.target : (price.lo != null ? (Math.floor(price.lo * 0.9 * 100) / 100).toFixed(2) : '');
-    if (!f.hidden) $('wish-target').focus();
-  });
-  $('wish-form').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const t = parseFloat(String($('wish-target').value).replace(',', '.'));
-    if (!(t >= 0)) { toast('Enter a target price'); return; }
-    setWish(s, t, priceNow());
-    toast(`On your wishlist – marked when it is ${eur(t)} or less`);
+    const before = findWish(s);
+    const added = toggleWish(s, priceNow());
+    if (added) toast('On your wishlist (Collection › Wishlist)');
+    else toast('Removed from your wishlist', 2600, { label: 'Undo', run: () => { restoreWish(before); render(); } });
     render();
   });
-  $('wish-remove')?.addEventListener('click', () => { removeWish(s); toast('Removed from your wishlist'); render(); });
+  $('watch-form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const raw = String($('watch-target').value).trim().replace(',', '.');
+    const t = raw === '' ? null : parseFloat(raw);
+    if (t != null && !(t >= 0)) { toast('Enter a target price'); return; }
+    setWatchTarget(s, t, priceNow());
+    toast(t == null ? 'No target price' : `Marked when it is ${eur(t)} or less`);
+    render();
+  });
+  $('watch-target-clear')?.addEventListener('click', () => { setWatchTarget(s, null, priceNow()); toast('No target price'); render(); });
 
   const bindVersions = () => $('card-body').querySelectorAll('.versions button').forEach((b) => b.addEventListener('click', () => {
     s.vkey = s.vkey === b.dataset.key ? null : b.dataset.key;

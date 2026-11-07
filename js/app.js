@@ -19,7 +19,7 @@ import { createDecks } from './decks.js';
 import { openHolo, closeHolo, holoKind, holoCardHTML } from './holo.js';
 import { fanHTML } from './fan.js';
 import { valueSeries } from './depot.js';
-import { loadWatch, loadWish, removeWatch, belowTarget } from './lists.js';
+import { loadWatch, loadWish, removeWatch, belowTarget, migrateLists } from './lists.js';
 import {
   loadCollection, saveCollection, newId, loadPack, savePack, putSample, updateSample, allSamples, countSamples,
 } from './store.js';
@@ -398,31 +398,30 @@ document.querySelectorAll('#coll-tabs [data-ctab]').forEach((b) => b.addEventLis
 }));
 
 // ---------- wishlist and watchlist ----------
+migrateLists(); // once: old wishlist target prices move to the watchlist
 async function renderWish() {
   const list = loadWish();
   $('wish-empty').hidden = list.length > 0;
   const rows = await Promise.all(list.map(async (w) => ({ w, p: await quickPrice(api, { name: w.name, vkey: w.vkey }).catch(() => null) })));
-  rows.sort((a, b) => belowTarget(b.w, b.p) - belowTarget(a.w, a.p));
-  $('wish-list').innerHTML = rows.map(({ w, p }) => {
-    const hit = belowTarget(w, p);
-    return `<li class="${hit ? 'deal' : ''}"><button type="button" data-name="${esc(w.name)}" data-vkey="${esc(w.vkey || '')}">
-      <span class="what"><b>${esc(w.name)}</b><small>${hit ? '<span class="dealtag">At your price!</span> ' : ''}${esc(w.label || '')} · target ${eur(w.target)}</small></span>
-      <span class="eur">${range(p?.lo, p?.hi)}</span></button></li>`;
-  }).join('');
+  $('wish-list').innerHTML = rows.map(({ w, p }) => `<li><button type="button" data-name="${esc(w.name)}" data-vkey="${esc(w.vkey || '')}">
+      <span class="what"><b>${esc(w.name)}</b><small>${esc(w.label || p?.label || '')}</small></span>
+      <span class="eur">${range(p?.lo, p?.hi)}</span></button></li>`).join('');
   $('wish-list').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => openCardPage({ name: b.dataset.name, vkey: b.dataset.vkey || null }, plainHooks)));
-  return rows.filter((r) => belowTarget(r.w, r.p)).length;
 }
 
+// Watchlist: price since you marked it; with a target price, cards at or below it come first and are marked.
 async function renderWatch() {
   const list = loadWatch();
   $('watch-empty').hidden = list.length > 0;
   const rows = await Promise.all(list.map(async (w) => ({ w, p: await quickPrice(api, { name: w.name, vkey: w.vkey }).catch(() => null) })));
+  rows.sort((a, b) => belowTarget(b.w, b.p) - belowTarget(a.w, a.p));
   $('watch-list').innerHTML = rows.map(({ w, p }, i) => {
     const now = p?.lo, then = w.at;
     const pct = now != null && then ? (now - then) / then * 100 : null;
     const since = new Date(w.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-    return `<li><button type="button" data-i="${i}">
-      <span class="what"><b>${esc(w.name)}</b><small>${esc(w.label || '')} · ${eur(then)} on ${since}</small></span>
+    const hit = belowTarget(w, p);
+    return `<li class="${hit ? 'deal' : ''}"><button type="button" data-i="${i}">
+      <span class="what"><b>${esc(w.name)}</b><small>${hit ? '<span class="dealtag">At your price!</span> ' : ''}${esc(w.label || '')} · ${eur(then)} on ${since}${w.target != null ? ` · target ${eur(w.target)}` : ''}</small></span>
       <span class="eur">${range(p?.lo, p?.hi)}${pct != null && Math.abs(pct) >= 0.05 ? `<small class="${pct >= 0 ? 'up' : 'down'}">${pctText(pct)}</small>` : '<small>±0 %</small>'}</span>
     </button></li>`;
   }).join('');
@@ -430,6 +429,7 @@ async function renderWatch() {
     const w = rows[Number(b.dataset.i)].w;
     openCardPage({ name: w.name, vkey: w.vkey }, plainHooks);
   }));
+  return rows.filter((r) => belowTarget(r.w, r.p)).length;
 }
 let marketTab = 'movers';
 document.querySelectorAll('#market-tabs [data-mtab]').forEach((b) => b.addEventListener('click', () => {
@@ -439,11 +439,11 @@ document.querySelectorAll('#market-tabs [data-mtab]').forEach((b) => b.addEventL
   $('movers').hidden = marketTab !== 'movers';
   if (marketTab === 'watch') renderWatch(); else renderMarket();
 }));
-// once per start: tell when a wished card is at the target price
+// once per start: tell when a watched card is at its target price
 setTimeout(async () => {
-  if (!loadWish().length) return;
-  const n = await renderWish().catch(() => 0);
-  if (n) toast(`${n} card${n > 1 ? 's' : ''} on your wishlist at your price – see Collection › Wishlist`, 4500);
+  if (!loadWatch().some((w) => w.target != null)) return;
+  const n = await renderWatch().catch(() => 0);
+  if (n) toast(`${n} card${n > 1 ? 's' : ''} on your watchlist at your target price – see Market › Watchlist`, 4500);
 }, 2500);
 
 // ---------- market ----------

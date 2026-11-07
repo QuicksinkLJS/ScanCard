@@ -105,6 +105,11 @@ const DE = {
 
 // 7 Nov: undo, masterset choice, holo, rarity, reveal, beta features
 Object.assign(DE, {
+  '♥ On your wishlist': '♥ Auf der Wunschliste', 'Target price': 'Wunschpreis', 'Target price (any version)': 'Wunschpreis (jede Version)', 'No target': 'Kein Wunschpreis', 'No target price': 'Kein Wunschpreis',
+  'Watching the price (Market › Watchlist) – set a target price below if you like': 'Preis gemerkt (Markt › Merkliste) – unten kannst du einen Wunschpreis setzen',
+  'On your wishlist (Collection › Wishlist)': 'Auf deiner Wunschliste (Sammlung › Wunschliste)', 'Removed from your wishlist': 'Von der Wunschliste entfernt', 'Removed from your watchlist': 'Von der Merkliste entfernt',
+  'Tap “♡ Wishlist” on a card you want. When you scan it later, it is marked. For a target price, use “☆ Watch price”.': 'Tippe bei einer Karte, die du haben willst, auf „♡ Wunschliste“. Scannst du sie später, wird sie markiert. Für einen Wunschpreis nutze „☆ Preis merken“.',
+  'Tap “☆ Watch price” on any card to follow its price here – with a target price if you like; cards at or below it are marked.': 'Tippe bei einer Karte auf „☆ Preis merken“, um ihren Preis hier zu verfolgen – auf Wunsch mit Wunschpreis; Karten darunter werden markiert.',
   'Big moment': 'Big Moment', 'Value · approx. last 30 days': 'Wert · ca. letzte 30 Tage', '30-day avg.': 'Ø 30 Tage', '7-day avg.': 'Ø 7 Tage',
   'yesterday': 'gestern', 'today': 'heute', '🂠 Draw test hand': '🂠 Testhand ziehen', '🂠 New test hand': '🂠 Neue Testhand', 'Draw again': 'Neu ziehen',
   '+1 card': '+1 Karte', 'Test hand': 'Testhand', 'No main deck': 'Kein Main Deck', 'Deck value (max rarity)': 'Deckwert (höchste Seltenheit)',
@@ -130,6 +135,8 @@ Object.assign(DE, {
 
 // [pattern, German] for texts with numbers or names in them
 const P = [
+  [/^(\d+) cards? on your watchlist at your target price – see Market › Watchlist$/, '$1 Karte(n) auf deiner Merkliste zum Wunschpreis – siehe Markt › Merkliste'],
+  [/^Marked when it is (.+) or less$/, 'Markiert, wenn sie $1 oder weniger kostet'],
   [/^(\d+) of (\d+)$/, '$1 von $2'],
   [/^(.+): missing$/, '$1: fehlt'],
   [/^(.+): maybe missing$/, '$1: fehlt evtl.'],

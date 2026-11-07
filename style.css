@@ -564,3 +564,8 @@ textarea.field.area { min-height: 92px; resize: vertical; font-family: inherit; 
 .vc-x span, .vc-v span { flex: 1; text-align: center; } .vc-x span:first-child, .vc-v span:first-child { text-align: left; } .vc-x span:last-child, .vc-v span:last-child { text-align: right; }
 .vc-v { color: var(--text); font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: reduce) { .vc-line { animation: none; stroke-dashoffset: 0; } .vc-area, .vc-dot { animation: none; opacity: 1; } }
+
+/* Target price under the watch button */
+.target-form { flex-wrap: wrap; align-items: center; margin: -6px 0 14px; }
+.target-form label { flex: 1 0 100%; }
+.target-form .field { flex: 1; min-width: 0; margin: 0; }
