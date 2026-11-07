@@ -1,0 +1,32 @@
+name: Store CardTrader files
+
+# On demand: saves the Yu-Gi-Oh blueprints from CardTrader (gzipped) to the branch `cardtrader-files`,
+# so the data pack can be built and tested outside GitHub.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Download and commit
+        env:
+          CARDTRADER_TOKEN: ${{ secrets.CARDTRADER_TOKEN }}
+        run: |
+          mkdir files
+          python tools/fetch_cardtrader.py files/cardtrader_ygo.json.gz
+          cd files
+          ls -la
+          git init -q -b cardtrader-files .
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "CardTrader files $(date -u +%Y-%m-%d)"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" cardtrader-files
