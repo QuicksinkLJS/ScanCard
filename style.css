@@ -149,7 +149,7 @@ body.sheet-open { overflow: hidden; }
 .versions .radio { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border); flex: none; }
 .versions .on .radio { border: 6px solid var(--accent); }
 .versions .what { flex: 1; min-width: 0; }
-.versions .vimg { width: 34px; height: 49px; object-fit: cover; border-radius: 3px; flex: none; background: var(--surface); }
+.versions .vimg, .mlist .vimg { width: 34px; height: 49px; object-fit: cover; border-radius: 3px; flex: none; background: var(--surface); }
 .versions .what small { display: block; color: var(--muted); font-size: 12.5px; }
 .versions .eur { font-weight: 650; white-space: nowrap; }
 .likely { font-size: 11px; font-weight: 700; color: var(--accent); margin-left: 4px; }
@@ -238,3 +238,20 @@ body.cam-open { overflow: hidden; }
 details.fold { margin: 4px 0 12px; border: 1px solid var(--border); border-radius: 12px; padding: 4px 12px; }
 details.fold summary { cursor: pointer; padding: 8px 0; font-weight: 600; }
 details.fold .rows { margin: 0 0 6px; }
+
+/* Mastersets */
+.pbar { display: block; height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; margin: 6px 0 4px; }
+.pbar > span { display: block; height: 100%; background: linear-gradient(90deg, #a893ff, #7b61ff); border-radius: 3px; }
+.pbar.big { height: 10px; border-radius: 5px; }
+.mprog { padding: 6px 0 10px; }
+.mprog .big { font-size: 40px; font-weight: 800; margin: 0; }
+.mprog .big .muted { font-size: 24px; font-weight: 600; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 10px; }
+.mlist .row { gap: 10px; }
+.mlist .what b, .mlist .what small { white-space: normal; }
+.mlist .tick { flex: none; width: 36px; height: 36px; border-radius: 50%; border: 1.5px solid var(--border); background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 700; }
+.mlist li.have .tick { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-size: 18px; }
+.mlist li.have .what b { color: var(--muted); }
+.mlist .plain { background: none; border: 0; color: inherit; font: inherit; text-align: left; padding: 0; min-width: 0; flex: 1; }
+.mlist a.eur { color: var(--text); text-decoration: none; }
+.mlist a.eur small { color: var(--accent); }

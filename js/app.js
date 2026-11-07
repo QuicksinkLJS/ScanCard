@@ -12,6 +12,7 @@ import { createScanner } from './scan.js';
 import { initCardPage, openCardPage, closeCardPage, syncBody, searchNames, quickPrice } from './cardpage.js';
 import { portfolio, changeOf, mid, pctText } from './depot.js';
 import { versionImage } from './prices.js';
+import { createMasters } from './masters.js';
 import {
   loadCollection, saveCollection, newId, loadPack, savePack, putSample, updateSample, allSamples, countSamples,
 } from './store.js';
@@ -253,6 +254,17 @@ async function refreshCollectionPrices() {
   if (changed) { saveCollection(list); renderCollection(); }
 }
 
+// ---------- mastersets ----------
+const masters = createMasters({ api, openCard: (s) => openCardPage(s, plainHooks) });
+let collTab = 'cards';
+document.querySelectorAll('#coll-tabs [data-ctab]').forEach((b) => b.addEventListener('click', () => {
+  collTab = b.dataset.ctab;
+  document.querySelectorAll('#coll-tabs [data-ctab]').forEach((x) => x.classList.toggle('on', x === b));
+  $('masters').hidden = collTab !== 'masters';
+  $('coll-cards').hidden = collTab !== 'cards';
+  if (collTab === 'masters') masters.renderList();
+}));
+
 // ---------- market ----------
 let marketKind = 'short', marketDir = 'up';
 async function renderMarket() {
@@ -369,7 +381,8 @@ $('pack-off').addEventListener('click', () => { setPack(null); history.back(); }
 
 // Android back button / browser back closes the open sheet.
 window.addEventListener('popstate', () => {
-  if (!$('card-page').hidden) closeCardPage();
+  if (!$('card-page').hidden) { closeCardPage(); masters.refresh(); }
+  else if (!$('set-page').hidden) masters.closeSet();
   else if (!$('pack-page').hidden) { $('pack-page').hidden = true; syncBody(); }
 });
 
@@ -378,7 +391,7 @@ function showView(name) {
   document.querySelectorAll('.view').forEach((v) => { v.hidden = v.id !== `view-${name}`; });
   document.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('on', b.dataset.view === name));
   window.scrollTo(0, 0);
-  if (name === 'collection') { renderCollection(); refreshCollectionPrices(); }
+  if (name === 'collection') { renderCollection(); refreshCollectionPrices(); if (collTab === 'masters') masters.renderList(); }
   if (name === 'market') renderMarket();
   if (name === 'more') renderMore();
 }

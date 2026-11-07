@@ -59,12 +59,12 @@ const RARITY_ORDER = [
   'common', 'short print', 'super short print', 'rare', 'super rare', 'ultra rare', 'ultra parallel rare', 'parallel rare',
   'gold rare', 'premium gold rare', 'mosaic rare', 'starfoil rare', 'shatterfoil rare', 'duel terminal',
   'secret rare', 'prismatic secret rare', 'ultra secret rare', 'extra secret rare', 'gold secret rare', 'platinum rare',
-  'platinum secret rare', 'collector\'s rare', 'prismatic collector\'s rare', 'ultimate rare', 'prismatic ultimate rare',
-  'ghost rare', 'starlight rare', 'quarter century secret rare', 'special',
+  'platinum secret rare', 'collectors rare', 'prismatic collectors rare', 'ultimate rare', 'prismatic ultimate rare',
+  'ghost rare', 'starlight rare', 'quarter century secret rare', 'grand master rare', 'special',
 ];
 export function rarityRank(r) {
   if (!r) return 99;
-  const k = r.toLowerCase().replace(/\s+/g, ' ').trim();
+  const k = r.toLowerCase().replace(/['’]/g, '').replace(/\s+/g, ' ').trim();
   const i = RARITY_ORDER.indexOf(k);
   if (i >= 0) return i;
   const j = RARITY_ORDER.findIndex((x) => k.includes(x)); // "Duel Terminal Ultra Rare" etc.

@@ -29,7 +29,7 @@ export function closeCardPage() {
 }
 
 export function syncBody() {
-  document.body.classList.toggle('sheet-open', !$('card-page').hidden || !$('pack-page').hidden);
+  document.body.classList.toggle('sheet-open', !!document.querySelector('.sheet:not([hidden])'));
 }
 
 export async function openCardPage(subject, hooks = {}) {

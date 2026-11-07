@@ -170,5 +170,26 @@ export function createApi({ fetchFn = globalThis.fetch?.bind(globalThis), base =
     return b ? { booster: b[0], box: b[1], id: b[2] } : null;
   }
 
-  return { boosterPrice, lookup, knowsPrefix, index, nameInfo, movers, cardDetail, sets, setCardNames, allNames };
+  // Mastersets: [{exp, name, date, count}] and the entries of one expansion
+  let expPromise = null;
+  function expansions() {
+    if (!expPromise) {
+      expPromise = getJson(`${base}/expansions.json`).then((rows) => rows.map(([exp, name, date, count]) => ({ exp, name, date, count })));
+      expPromise.catch(() => { expPromise = null; });
+    }
+    return expPromise;
+  }
+  const setEntriesCache = new Map();
+  function setEntries(exp) {
+    if (!setEntriesCache.has(exp)) {
+      const p = getJson(`${base}/sets/${exp}.json`).then((rows) => rows.map(([name, label, rarity, id, trend, low, path, image, code]) => ({
+        name, label, rarity, id, key: String(id), trend, low, path, image, code, expansion: exp,
+      })));
+      setEntriesCache.set(exp, p);
+      p.catch(() => setEntriesCache.delete(exp));
+    }
+    return setEntriesCache.get(exp);
+  }
+
+  return { expansions, setEntries, boosterPrice, lookup, knowsPrefix, index, nameInfo, movers, cardDetail, sets, setCardNames, allNames };
 }

@@ -468,6 +468,40 @@ def main():
     for b, entries in buckets.items():
         with open(os.path.join(cards_dir, f"{b}.json"), "w", encoding="utf-8") as f:
             json.dump(entries, f, ensure_ascii=False, separators=(",", ":"))
+    # Masterset lists: every Cardmarket product of an expansion = one entry (set x card x rarity x artwork,
+    # any language). data/ygo/sets/<expansion>.json = [[name, label, rarity, pid, trend, low, path, image, code], ...]
+    # and data/ygo/expansions.json = [[expansion, set name, date, entries], ...] newest first.
+    by_exp = collections.defaultdict(lambda: {"names": collections.Counter(), "date": None, "rows": {}})
+    for k, rows in detail.items():
+        for row in rows.values():
+            exp = row[6]
+            x = by_exp[exp]
+            x["names"][row[0]] += 1
+            d = row[5] or (f"{row[1]}-01-01" if row[1] else None)
+            if d and (x["date"] is None or d < x["date"]):
+                x["date"] = d
+            code = next((c for c in row[3] if re.search(r"-EN\d", c)), row[3][0] if row[3] else "")
+            for p in row[4]:
+                name = meta.get(p[0], (None,))[0] or k
+                lab = p[6] or (row[2][0] if len(row[4]) == 1 and len(row[2]) == 1 else "")
+                x["rows"][p[0]] = [name, lab, p[7], p[0], p[1], p[3], p[10], p[9], code]
+    sets_dir = os.path.join(out_dir, "sets")
+    os.makedirs(sets_dir, exist_ok=True)
+    for old in os.listdir(sets_dir):
+        os.remove(os.path.join(sets_dir, old))
+    exp_rows = []
+    for exp, x in by_exp.items():
+        if len(x["rows"]) < 5:
+            continue
+        entries = sorted(x["rows"].values(), key=lambda r: (r[8] or "~", r[0], r[3]))
+        with open(os.path.join(sets_dir, f"{exp}.json"), "w", encoding="utf-8") as f:
+            json.dump(entries, f, ensure_ascii=False, separators=(",", ":"))
+        exp_rows.append([exp, exp_name.get(exp) or x["names"].most_common(1)[0][0], x["date"], len(entries)])
+    exp_rows.sort(key=lambda r: (r[2] or "0000", r[1]), reverse=True)
+    with open(os.path.join(out_dir, "expansions.json"), "w", encoding="utf-8") as f:
+        json.dump(exp_rows, f, ensure_ascii=False, separators=(",", ":"))
+    stats["masterset_expansions"] = len(exp_rows)
+
     # Set list for pack mode: one row per (prefix, set name), newest release first.
     # Cardmarket-only sets have the prefix "#<expansion>" and carry their card names (no set file for them).
     set_rows = collections.defaultdict(lambda: {"names": set(), "date": None})

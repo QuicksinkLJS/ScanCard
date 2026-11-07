@@ -60,6 +60,18 @@
     <!-- ================= COLLECTION ================= -->
     <section id="view-collection" class="view" hidden>
       <header class="top"><h1>Collection</h1></header>
+      <div class="seg" role="tablist" id="coll-tabs">
+        <button type="button" class="on" data-ctab="cards">Cards</button>
+        <button type="button" data-ctab="masters">Mastersets</button>
+      </div>
+      <div id="masters" hidden>
+        <ul id="masters-list" class="rows"></ul>
+        <p id="masters-empty" class="empty">Track a set and see which versions you still miss – every rarity and artwork counts once, any language.</p>
+        <h2>Track a set</h2>
+        <input id="masters-search" class="field" type="search" placeholder="Set name, e.g. Original Artwork Collection" autocomplete="off">
+        <ul id="masters-results" class="rows compact"></ul>
+      </div>
+      <div id="coll-cards">
       <div class="summary">
         <p class="muted small">Total value on Cardmarket</p>
         <p id="coll-total" class="result-total">€0.00</p>
@@ -80,6 +92,7 @@
       </div>
       <ul id="coll-list" class="rows"></ul>
       <p id="coll-empty" class="empty">Scanned cards you add show up here. Tap a card to check or correct it.</p>
+      </div>
     </section>
 
     <!-- ================= MARKET ================= -->
@@ -132,6 +145,15 @@
       </p>
     </section>
   </main>
+
+  <!-- ================= MASTERSET PAGE ================= -->
+  <section id="set-page" class="sheet" hidden>
+    <div class="sheet-bar">
+      <button id="set-back" class="link" type="button">‹ Back</button>
+      <span id="set-title" class="muted small"></span>
+    </div>
+    <div id="set-body" class="sheet-body"></div>
+  </section>
 
   <!-- ================= CARD PAGE ================= -->
   <section id="card-page" class="sheet" hidden>

@@ -11,7 +11,7 @@ const DATA = 'cardscan-data';
 const SHELL = [
   './', 'index.html', 'style.css', 'manifest.webmanifest', 'icon.svg', 'icons/icon-192.png',
   'js/app.js', 'js/api.js', 'js/camera.js', 'js/cardpage.js', 'js/codematch.js', 'js/detect.js',
-  'js/ocr.js', 'js/parse.js', 'js/prices.js', 'js/recognize.js', 'js/scan.js', 'js/store.js', 'js/util.js', 'js/depot.js', 'js/share.js',
+  'js/ocr.js', 'js/parse.js', 'js/prices.js', 'js/recognize.js', 'js/scan.js', 'js/store.js', 'js/util.js', 'js/depot.js', 'js/share.js', 'js/masters.js', 'js/mastercalc.js',
 ];
 
 self.addEventListener('install', (e) => {
