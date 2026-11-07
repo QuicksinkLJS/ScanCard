@@ -18,6 +18,7 @@ import { createMasters } from './masters.js';
 import { createDecks } from './decks.js';
 import { openHolo, closeHolo, holoKind, holoCardHTML } from './holo.js';
 import { fanHTML } from './fan.js';
+import { valueSeries } from './depot.js';
 import { loadWatch, loadWish, removeWatch, belowTarget } from './lists.js';
 import {
   loadCollection, saveCollection, newId, loadPack, savePack, putSample, updateSample, allSamples, countSamples,
@@ -287,6 +288,7 @@ function renderCollection() {
   const show = [...list].filter((e) => e.price?.exact && e.price?.image).sort((a, b) => (b.price.lo ?? 0) - (a.price.lo ?? 0)).slice(0, 20);
   $('showcase').hidden = !show.length;
   $('showcase').onclick = () => openHolo(show.map((e) => ({ name: e.name, rarity: e.price.rarity, image: e.price.image, price: e.price.lo })));
+  renderValueChart(list);
   // Opening: the most valuable cards as a fanned hand (replayed only when they change)
   const fanCards = pf.top.filter((e) => pictureOf(e, 'show'));
   const fanKey = fanCards.map((e) => `${e.id}:${pictureOf(e, 'show')}:${holoKindOf(e)}`).join('|');
@@ -312,6 +314,43 @@ function renderCollection() {
     <li><div class="row"><span class="what"><b>${esc(s.set)}</b><small>${s.count} card${s.count > 1 ? 's' : ''}</small></span>
     <span class="eur">${eur(s.value)}</span></div></li>`).join('');
 }
+// Value chart like a stock app: ≈30 days from the price averages of each card (real daily history comes later).
+function renderValueChart(list) {
+  const el = $('coll-chart');
+  const vals = valueSeries(list);
+  if (!vals || vals.every((v) => !v)) { el.innerHTML = ''; el._key = ''; return; }
+  const key = vals.join('|');
+  if (el._key === key) return;
+  el._key = key;
+  const W = 320, H = 96, pad = 6;
+  const lo = Math.min(...vals), hi = Math.max(...vals), span = hi - lo || hi * 0.1 || 1;
+  const xs = vals.map((_, i) => pad + i * (W - 2 * pad) / (vals.length - 1));
+  const ys = vals.map((v) => pad + (H - 2 * pad) * (1 - (v - lo + span * 0.15) / (span * 1.3)));
+  // smooth line through the points (Catmull-Rom as Bézier)
+  let d = `M${xs[0]},${ys[0].toFixed(1)}`;
+  for (let i = 0; i < xs.length - 1; i++) {
+    const p0 = [xs[Math.max(0, i - 1)], ys[Math.max(0, i - 1)]], p1 = [xs[i], ys[i]], p2 = [xs[i + 1], ys[i + 1]], p3 = [xs[Math.min(xs.length - 1, i + 2)], ys[Math.min(xs.length - 1, i + 2)]];
+    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6], c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+    d += ` C${c1[0].toFixed(1)},${c1[1].toFixed(1)} ${c2[0].toFixed(1)},${c2[1].toFixed(1)} ${p2[0]},${p2[1].toFixed(1)}`;
+  }
+  const first = vals[0], last = vals[vals.length - 1];
+  const up = last >= first;
+  const pct = first ? (last - first) / first * 100 : null;
+  el.innerHTML = `
+    <div class="vchart ${up ? 'up' : 'down'}">
+      <div class="vc-head"><span class="small muted">Value · approx. last 30 days</span>
+        <span class="vc-chg">${pct == null ? '' : `${pctText(pct)} (${up ? '+' : '−'}${eur(Math.abs(last - first))})`}</span></div>
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+        <defs><linearGradient id="vc-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="currentColor" stop-opacity=".28"/><stop offset="1" stop-color="currentColor" stop-opacity="0"/></linearGradient></defs>
+        <path class="vc-area" d="${d} L${xs[xs.length - 1]},${H} L${xs[0]},${H} Z" fill="url(#vc-fill)"/>
+        <path class="vc-line" d="${d}" pathLength="1"/>
+        <circle class="vc-dot" cx="${xs[xs.length - 1]}" cy="${ys[ys.length - 1].toFixed(1)}" r="3.5"/>
+      </svg>
+      <div class="vc-x small muted"><span>30-day avg.</span><span>7-day avg.</span><span>yesterday</span><span>today</span></div>
+      <div class="vc-v small">${vals.map((v) => `<span>${eur(v)}</span>`).join('')}</div>
+    </div>`;
+}
+
 function openEntry(id) {
   const e = loadCollection().find((x) => x.id === id);
   if (e) openCardPage({ ...e, collId: e.id }, collHooks);
@@ -331,7 +370,7 @@ async function refreshCollectionPrices() {
   let changed = false;
   for (const e of list) {
     const p = await quickPrice(api, e).catch(() => null);
-    if (p && (p.lo !== e.price?.lo || p.hi !== e.price?.hi || p.label !== e.price?.label || p.set !== e.price?.set || p.guess !== e.price?.guess)) { e.price = p; changed = true; }
+    if (p && (p.lo !== e.price?.lo || p.hi !== e.price?.hi || p.label !== e.price?.label || p.set !== e.price?.set || p.guess !== e.price?.guess || JSON.stringify(p.hist) !== JSON.stringify(e.price?.hist))) { e.price = p; changed = true; }
     if (!e.buy && (e.price || p)) { const q = e.price || p; e.buy = { lo: q.lo, hi: q.hi, date: e.added || Date.now() }; changed = true; }
   }
   if (changed) { saveCollection(list); renderCollection(); }

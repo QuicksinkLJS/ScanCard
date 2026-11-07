@@ -127,6 +127,22 @@ export function priceOf(opts) {
   return out;
 }
 
+// The price of a version (or of the open versions: middle of the range) at four points:
+// 30-day average, 7-day average, yesterday, trend. Odd values (one strange sale) fall back to the fair trend.
+export function historyOf(opts) {
+  const out = {};
+  for (const k of ['avg30', 'avg7', 'avg1', 'trend']) {
+    const vals = opts.map((o) => {
+      const fair = fairTrend(o).v;
+      const v = k === 'trend' ? fair : o[k];
+      if (v == null) return null;
+      return fair != null && v > fair * 2.5 && v - fair > 20 ? fair : v;
+    }).filter((v) => v != null);
+    out[k] = vals.length ? Math.round((Math.min(...vals) + Math.max(...vals)) / 2 * 100) / 100 : null;
+  }
+  return out;
+}
+
 export const tierOfPrice = (p) => valueTier(p?.hi ?? p?.lo);
 
 // Values that are far from the others, e.g. one odd sale yesterday.

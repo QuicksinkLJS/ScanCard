@@ -45,3 +45,19 @@ export function portfolio(list, top = 5) {
 }
 
 export const pctText = (p) => (p == null ? '' : `${p >= 0 ? '+' : '−'}${Math.abs(p) < 10 ? Math.abs(p).toFixed(1) : Math.round(Math.abs(p))} %`);
+
+// Value of the collection at four points (≈30 days ago … today), from each card's price averages.
+// Cards without averages count with their current value. null when no card has averages.
+export const SERIES_KEYS = ['avg30', 'avg7', 'avg1', 'trend'];
+export function valueSeries(list) {
+  if (!list.some((e) => e.price?.hist)) return null;
+  return SERIES_KEYS.map((k) => {
+    let v = 0;
+    for (const e of list) {
+      const h = e.price?.hist;
+      const x = h?.[k] ?? h?.trend ?? mid(e.price);
+      v += x || 0;
+    }
+    return Math.round(v * 100) / 100;
+  });
+}

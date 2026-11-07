@@ -13,7 +13,7 @@ import { cardmarketSearchUrl, normName } from './parse.js';
 import { matchCode } from './codematch.js';
 import { openHolo, holoCardHTML, holoKind, attachTilt } from './holo.js';
 import { findWatch, toggleWatch, findWish, setWish, removeWish } from './lists.js';
-import { fairTrend, filterOptions, versionOptions, rankOptions, bestOptions, priceOf, tierOfPrice, oddValues, optionCode, versionLabel, cardmarketUrl, versionImage } from './prices.js';
+import { fairTrend, filterOptions, versionOptions, rankOptions, bestOptions, priceOf, tierOfPrice, oddValues, optionCode, versionLabel, cardmarketUrl, versionImage, historyOf } from './prices.js';
 
 let api = null;
 let current = null; // {subject, hooks, info, ranked, showAll}
@@ -296,5 +296,5 @@ export async function quickPrice(theApi, s) {
     ? [`${chosen.set}${chosen.year ? ` (${chosen.year})` : ''}`, optionCode(chosen, lang?.code), chosen.label || (chosen.variants <= 1 ? chosen.rarities[0] : '')].filter(Boolean).join(' · ')
     : best?.length ? `${best[0].set} · ${best.length} versions` : (ranked.length ? `${ranked.length} version${ranked.length > 1 ? 's' : ''}` : 'no price found');
   return { ...price, label, exact: !!chosen, rarity: chosen ? (chosen.rarity || (chosen.variants <= 1 ? chosen.rarities[0] : '') || '') : '',
-    image: chosen?.image || '', guess: likeliest(chosen, best, ranked)?.image || '', set: chosen?.set || (best?.length && best.every((o) => o.set === best[0].set) ? best[0].set : ''), pid: chosen ? Number(chosen.key) : null };
+    image: chosen?.image || '', guess: likeliest(chosen, best, ranked)?.image || '', hist: historyOf(chosen ? [chosen] : (best?.length ? best : ranked)), set: chosen?.set || (best?.length && best.every((o) => o.set === best[0].set) ? best[0].set : ''), pid: chosen ? Number(chosen.key) : null };
 }

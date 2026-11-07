@@ -547,3 +547,20 @@ textarea.field.area { min-height: 92px; resize: vertical; font-family: inherit; 
 .hand-names { margin: 0 0 8px; padding-left: 20px; columns: 2; }
 .deck-sum { text-align: center; margin-top: 0; }
 @media (prefers-reduced-motion: reduce) { .fan-card { animation: none; } }
+
+/* Value chart (collection) */
+.vchart { margin: 2px 0 12px; padding: 10px 12px 8px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
+.vchart.up { color: #4fd08a; } .vchart.down { color: #ff7b7b; }
+.vc-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.vc-chg { font-weight: 700; font-size: 14px; }
+.vchart svg { display: block; width: 100%; height: 96px; margin: 6px 0 4px; overflow: visible; }
+.vc-line { fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; vector-effect: non-scaling-stroke;
+  stroke-dasharray: 1; stroke-dashoffset: 1; animation: vc-draw 1.1s ease-out .15s forwards; }
+.vc-area { opacity: 0; animation: vc-fade .6s ease-out .9s forwards; }
+.vc-dot { fill: currentColor; opacity: 0; animation: vc-fade .3s ease-out 1.2s forwards; }
+@keyframes vc-draw { to { stroke-dashoffset: 0; } }
+@keyframes vc-fade { to { opacity: 1; } }
+.vc-x, .vc-v { display: flex; justify-content: space-between; }
+.vc-x span, .vc-v span { flex: 1; text-align: center; } .vc-x span:first-child, .vc-v span:first-child { text-align: left; } .vc-x span:last-child, .vc-v span:last-child { text-align: right; }
+.vc-v { color: var(--text); font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) { .vc-line { animation: none; stroke-dashoffset: 0; } .vc-area, .vc-dot { animation: none; opacity: 1; } }
