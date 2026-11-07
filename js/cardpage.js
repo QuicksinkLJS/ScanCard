@@ -13,7 +13,7 @@ import { cardmarketSearchUrl, normName } from './parse.js';
 import { matchCode } from './codematch.js';
 import { openHolo, holoCardHTML, holoKind, attachTilt } from './holo.js';
 import { findWatch, toggleWatch, findWish, setWish, removeWish } from './lists.js';
-import { versionOptions, rankOptions, bestOptions, priceOf, tierOfPrice, oddValues, optionCode, versionLabel, cardmarketUrl, versionImage } from './prices.js';
+import { filterOptions, versionOptions, rankOptions, bestOptions, priceOf, tierOfPrice, oddValues, optionCode, versionLabel, cardmarketUrl, versionImage } from './prices.js';
 
 let api = null;
 let current = null; // {subject, hooks, info, ranked, showAll}
@@ -138,15 +138,17 @@ function render() {
   else if (lang && !lang.supported) notes.push(`${esc(lang.name)} print. Cardmarket has no separate listing for it, so the prices are those of the European print of the same card – check before buying or selling.`);
   if (s.pack) notes.push(`Pack mode: ${esc(s.pack.name || s.pack.prefix)}.`);
 
-  const list = current.showAll ? ranked : ranked.slice(0, 8);
-  const versions = list.map((o) => `
+  const versionsHTML = (opts) => opts.map((o) => `
     <li class="${o.key === s.vkey ? 'on' : ''}"><button type="button" data-key="${esc(o.key)}">
       <span class="radio"></span>
       ${o.image ? `<img class="vimg" loading="lazy" src="${esc(versionImage(o, 'preview'))}" alt="" onerror="this.remove()">` : ''}
       <span class="what">${esc(o.set)}${o.year ? ` (${o.year})` : ''}${o.likely ? '<span class="likely">LIKELY</span>' : ''}
         <small>${esc([optionCode(o, lang?.code), versionLabel(o)].filter(Boolean).join(' · '))}${!o.label && o.variants > 1 && o.rarities.length ? `<span class="muted"> (one of: ${esc(o.rarities.join(', '))})</span>` : ''}</small></span>
       <span class="eur">${eur(o.trend)}</span>
-    </button></li>`).join('');
+    </button></li>`).join('') || '<li><div class="row muted small">No version matches.</div></li>';
+  const filtered = filterOptions(ranked, current.vq);
+  const list = current.showAll || current.vq ? filtered : filtered.slice(0, 8);
+  const versions = versionsHTML(list);
 
   const alts = (s.top || []).filter((a) => normName(a.name) !== normName(s.name)).slice(0, 5);
   const sub = s.top ? (s.confident === false ? '<span class="unsure">Not sure</span> – check the name, or pick the right card below' : 'Recognised from the artwork') : '';
@@ -171,8 +173,10 @@ function render() {
     ${s.thumb && chosen?.image ? `<div class="compare"><figure><img src="${s.thumb}" alt=""><figcaption>Your photo</figcaption></figure>
       <figure><img src="${esc(versionImage(chosen, 'show'))}" alt="" onerror="this.closest('figure').remove()"><figcaption>${esc(versionLabel(chosen))} (official)</figcaption></figure></div>` : ''}
     ${notes.map((n) => `<p class="note">${n}</p>`).join('')}
-    ${ranked.length ? `<h2>Which version do you have?</h2><ul class="versions">${versions}</ul>` : ''}
-    ${ranked.length > 8 && !current.showAll ? `<button type="button" class="link more-btn" id="show-all">Show all ${ranked.length} versions</button>` : ''}
+    ${ranked.length ? `<h2>Which version do you have?</h2>
+      ${ranked.length > 4 ? `<input id="ver-filter" class="field ver-filter" type="search" placeholder="Set code or set name, e.g. MP19" autocomplete="off" spellcheck="false" value="${esc(current.vq || '')}">` : ''}
+      <ul class="versions">${versions}</ul>` : ''}
+    ${ranked.length > 8 && !current.showAll && !current.vq ? `<button type="button" class="link more-btn" id="show-all">Show all ${ranked.length} versions</button>` : ''}
     <h2>Wrong card?</h2>
     ${alts.length ? `<div class="alts">${alts.map((a) => `<button type="button" class="chip alt" data-name="${esc(a.name)}">${esc(a.name)}</button>`).join('')}</div>` : ''}
     <input id="fix-name" class="field" type="search" placeholder="Type the right name" autocomplete="off" spellcheck="false">
@@ -220,11 +224,19 @@ function render() {
   });
   $('wish-remove')?.addEventListener('click', () => { removeWish(s); toast('Removed from your wishlist'); render(); });
 
-  $('card-body').querySelectorAll('.versions button').forEach((b) => b.addEventListener('click', () => {
+  const bindVersions = () => $('card-body').querySelectorAll('.versions button').forEach((b) => b.addEventListener('click', () => {
     s.vkey = s.vkey === b.dataset.key ? null : b.dataset.key;
     hooks.onChange?.(s, current);
     render();
   }));
+  bindVersions();
+  $('ver-filter')?.addEventListener('input', (e) => {
+    current.vq = e.target.value;
+    const f = filterOptions(ranked, current.vq);
+    $('card-body').querySelector('.versions').innerHTML = versionsHTML(current.vq || current.showAll ? f : f.slice(0, 8));
+    $('show-all')?.toggleAttribute('hidden', !!current.vq);
+    bindVersions();
+  });
   $('show-all')?.addEventListener('click', () => { current.showAll = true; render(); });
   $('card-body').querySelectorAll('.alt').forEach((b) => b.addEventListener('click', () => rename(b.dataset.name)));
   $('card-add')?.addEventListener('click', () => { hooks.onAdd(s, current); render(); });

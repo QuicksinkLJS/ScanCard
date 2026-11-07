@@ -51,3 +51,18 @@ test('odd values: one unusual sale', () => {
   assert.deepEqual([...oddValues({ avg1: 34.99, avg7: 2.12, avg30: 2.38, trend: 4.62 })], ['avg1']);
   assert.equal(oddValues({ avg1: 1, avg7: 1.1, avg30: 1, trend: 1 }).size, 0);
 });
+
+test('version filter: set code, set name, rarity', async () => {
+  const { filterOptions } = await import('../js/prices.js');
+  const opts = [
+    { set: 'Mega Pack 2019', codes: ['MP19-EN001'], rarity: 'Ultra Rare', label: '', rarities: ['Ultra Rare'] },
+    { set: 'Tin of Ancient Battles 2009', codes: ['TN09-EN002', 'TN09-DE002'], rarity: 'Secret Rare', label: '', rarities: [] },
+    { set: 'Legend of Blue Eyes', codes: ['LOB-EN001'], rarity: 'Ultra Rare', label: '', rarities: [] },
+  ];
+  assert.deepEqual(filterOptions(opts, 'mp19').map((o) => o.set), ['Mega Pack 2019']);
+  assert.deepEqual(filterOptions(opts, 'TN09-DE').map((o) => o.set), ['Tin of Ancient Battles 2009']);
+  assert.deepEqual(filterOptions(opts, 'lobEN001').map((o) => o.set), ['Legend of Blue Eyes']);
+  assert.deepEqual(filterOptions(opts, 'blue eyes').map((o) => o.set), ['Legend of Blue Eyes']);
+  assert.equal(filterOptions(opts, 'secret').length, 1);
+  assert.equal(filterOptions(opts, '').length, 3);
+});

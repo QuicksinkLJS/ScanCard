@@ -130,3 +130,13 @@ export function optionCode(o, lang) {
   }
   return o.codes[0] || '';
 }
+
+// Version filter on the card page: set code ("MP19", "tn09-en", "LOB-EN001"), set name or rarity.
+export function filterOptions(opts, q) {
+  const t = String(q || '').trim().toLowerCase();
+  if (!t) return opts;
+  const code = t.toUpperCase().replace(/\s+/g, '');
+  return opts.filter((o) => o.codes.some((c) => c.startsWith(code) || c.replace('-', '').startsWith(code.replace('-', '')))
+    || (o.set || '').toLowerCase().includes(t)
+    || `${o.rarity} ${o.label} ${(o.rarities || []).join(' ')}`.toLowerCase().includes(t));
+}
