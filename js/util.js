@@ -8,6 +8,29 @@ export const eur = (v) => (v == null ? '–' : `€${v.toFixed(2)}`);
 
 export const range = (lo, hi) => (lo == null ? '–' : (hi == null || Math.abs(lo - hi) < 0.005) ? eur(lo) : `${eur(lo)} – ${eur(hi)}`);
 
+// A total that counts up (or down) to its new value instead of jumping.
+export function countTo(el, lo, hi, ms = 900) {
+  const to = { lo: lo ?? 0, hi: hi ?? lo ?? 0 };
+  const same = (a, b) => a && Math.abs(a.lo - b.lo) < 0.005 && Math.abs(a.hi - b.hi) < 0.005;
+  if (same(el._val, to) && (el._raf || el.textContent)) return; // already there or on the way
+  const from = el._now || { lo: 0, hi: 0 };
+  el._val = to;
+  cancelAnimationFrame(el._raf);
+  el._raf = 0;
+  const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  if (lo == null || still || same(from, to)) { el._now = to; el.textContent = range(lo, hi); return; }
+  const t0 = performance.now();
+  const step = (t) => {
+    const k = Math.min(1, (t - t0) / ms);
+    const e = 1 - (1 - k) ** 3;
+    el._now = { lo: from.lo + (to.lo - from.lo) * e, hi: from.hi + (to.hi - from.hi) * e };
+    el.textContent = range(el._now.lo, el._now.hi);
+    if (k < 1) el._raf = requestAnimationFrame(step);
+    else { el._raf = 0; el._now = to; el.textContent = range(lo, hi); }
+  };
+  el._raf = requestAnimationFrame(step);
+}
+
 let toastTimer = null;
 // action: optional {label, run} – a button in the toast (e.g. Undo); the toast then stays a bit longer.
 export function toast(text, ms = 2600, action = null) {

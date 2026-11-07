@@ -1,6 +1,6 @@
 // The scan screen: photo -> find cards -> recognise -> read set codes -> list, most valuable first.
 
-import { $, esc, range, thumbOf, rotate180, toast } from './util.js';
+import { $, esc, range, thumbOf, rotate180, toast, countTo } from './util.js';
 import { cutCard, corners } from './detect.js';
 import { cardsFromPhoto } from './camera.js';
 import { prepare } from './ocr.js';
@@ -254,7 +254,7 @@ export function createScanner({ api, recognizer, detector, getOcr, getPack, setP
     $('found').querySelectorAll('li > button').forEach((b) => b.addEventListener('click', () => open(Number(b.dataset.n))));
     const lo = cards.reduce((s, c) => s + (c.price?.lo || 0), 0);
     const hi = cards.reduce((s, c) => s + (c.price?.hi || 0), 0);
-    $('result-total').textContent = cards.length ? range(lo, hi) : '';
+    if (cards.length) countTo($('result-total'), lo, hi); else { $('result-total').textContent = ''; $('result-total')._val = null; $('result-total')._now = null; }
     const unsure = cards.filter((c) => !c.confident).length;
     $('result-sub').textContent = cards.length
       ? `${cards.length} card${cards.length > 1 ? 's' : ''}${unsure ? ` · ${unsure} to check` : ''} · tap a card for details`
