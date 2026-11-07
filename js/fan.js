@@ -7,14 +7,14 @@ import { holoCardHTML } from './holo.js';
 export function fanHTML(items, { cls = '', shine = true } = {}) {
   const n = items.length;
   if (!n) return '';
-  // positions of a symmetric hand; the best card gets the middle, the next ones alternate right / left
+  // positions of a symmetric hand; the best card gets the middle, the next ones alternate right / left.
+  // Spacing, tilt and drop come from CSS and shrink with the number of cards and the screen width (never wider than the page).
   const pos = Array.from({ length: n }, (_, j) => j - (n - 1) / 2).sort((x, y) => Math.abs(x) - Math.abs(y) || y - x);
-  const step = n > 5 ? 32 : 40;
-  return `<div class="fan ${cls}">${items.map((it, i) => {
+  return `<div class="fan ${cls}" style="--n1:${Math.max(n - 1, 1)}">${items.map((it, i) => {
     const k = pos[i];
     const a = Math.abs(k);
     return `<button type="button" class="fan-card" data-i="${i}" aria-label="${it.name ? String(it.name).replace(/"/g, '&quot;') : ''}"
-      style="--x:${(k * step).toFixed(1)}px;--r:${(k * 8).toFixed(1)}deg;--y:${(a * a * 5).toFixed(1)}px;--z:${20 - Math.round(a * 2)};--d:${i * 80}ms">
+      style="--k:${k};--a:${a};--z:${20 - Math.round(a * 2)};--d:${i * 70}ms">
       ${holoCardHTML({ src: it.src, kind: it.kind || 'plain', alt: it.name || '', shine })}</button>`;
   }).join('')}</div>`;
 }

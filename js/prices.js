@@ -169,9 +169,47 @@ export function optionCode(o, lang) {
 }
 
 // Version filter on the card page: set code ("MP19", "tn09-en", "LOB-EN001"), set name or rarity.
+// Rarity names and the short forms collectors type ("QCSR", "QCR", "ScR", "UR" …) -> a test on the rarity text.
+const RARITY_WORDS = [
+  [/^(qcsr|qcscr|qcr|qc|qcs|25th|quarter( century)?( secret)?( rare)?)$/, /quarter century/],
+  [/^(psr|pscr|prismatic( secret)?( rare)?)$/, /prismatic/],
+  [/^(plsr|plscr|platinum( secret)?( rare)?)$/, /platinum secret/],
+  [/^(str|stlr|starlight( rare)?)$/, /starlight/],
+  [/^(cr|collector'?s?( rare)?)$/, /collector/],
+  [/^(utr|ult|ultimate( rare)?)$/, /ultimate/],
+  [/^(gr|ghost( rare)?)$/, /^ghost rare/],
+  [/^(ggr|ghost\/gold( rare)?)$/, /ghost\/gold/],
+  [/^(gur|gold( rare)?)$/, /^gold rare/],
+  [/^(pg|pgr|premium gold( rare)?)$/, /premium gold/],
+  [/^(scr|sec|secret( rare)?)$/, /^secret rare/],
+  [/^(ur|ultra( rare)?)$/, /^ultra rare/],
+  [/^(sr|super( rare)?)$/, /^super rare/],
+  [/^(r|rare)$/, /^rare$/],
+  [/^(c|common)$/, /^common$/],
+  [/^(sp|ssp|short print)$/, /short print/],
+  [/^(sfr|starfoil( rare)?)$/, /starfoil/],
+  [/^(shr|shatterfoil( rare)?)$/, /shatterfoil/],
+  [/^(msr|mosaic( rare)?)$/, /mosaic/],
+  [/^(pr|parallel( rare)?)$/, /parallel/],
+];
+export function rarityQuery(q) {
+  const t = String(q || '').trim().toLowerCase().replace(/[.\-_]/g, ' ').replace(/\s+/g, ' ');
+  for (const [words, test] of RARITY_WORDS) if (words.test(t) || words.test(t.replace(/\s/g, ''))) return test;
+  return null;
+}
+const raritiesOf = (o) => [o.rarity, ...(o.rarities || [])].filter(Boolean).map((r) => r.toLowerCase());
+
+// Version filter: set code, set name, rarity (also short forms: "QCSR", "UR", "ScR").
+// For a rarity, the versions with exactly that rarity come first, then those that may have it ("one of …").
 export function filterOptions(opts, q) {
   const t = String(q || '').trim().toLowerCase();
   if (!t) return opts;
+  const rar = rarityQuery(t);
+  if (rar) {
+    const exact = opts.filter((o) => o.rarity && rar.test(o.rarity.toLowerCase()));
+    const maybe = opts.filter((o) => !exact.includes(o) && raritiesOf(o).some((r) => rar.test(r)));
+    return [...exact, ...maybe];
+  }
   const code = t.toUpperCase().replace(/\s+/g, '');
   return opts.filter((o) => o.codes.some((c) => c.startsWith(code) || c.replace('-', '').startsWith(code.replace('-', '')))
     || (o.set || '').toLowerCase().includes(t)

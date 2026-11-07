@@ -239,7 +239,7 @@ function render() {
       <figure><img src="${esc(versionImage(chosen, 'show'))}" alt="" onerror="this.closest('figure').remove()"><figcaption>${esc(versionLabel(chosen))} (official)</figcaption></figure></div>` : ''}
     ${notes.map((n) => `<p class="note">${n}</p>`).join('')}
     ${ranked.length ? `<h2>Which version do you have?</h2>
-      ${ranked.length > 4 ? `<input id="ver-filter" class="field ver-filter" type="search" placeholder="Set code or set name, e.g. MP19" autocomplete="off" spellcheck="false" value="${esc(current.vq || '')}">` : ''}
+      ${ranked.length > 4 ? `<input id="ver-filter" class="field ver-filter" type="search" placeholder="Set code, set or rarity, e.g. MP19 or QCSR" autocomplete="off" spellcheck="false" value="${esc(current.vq || '')}">` : ''}
       <ul class="versions">${versions}</ul>` : ''}
     ${ranked.length > 8 && !current.showAll && !current.vq ? `<button type="button" class="link more-btn" id="show-all">Show all ${ranked.length} versions</button>` : ''}
     <h2>Wrong card?</h2>

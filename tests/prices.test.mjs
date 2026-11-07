@@ -67,6 +67,24 @@ test('version filter: set code, set name, rarity', async () => {
   assert.equal(filterOptions(opts, '').length, 3);
 });
 
+test('version filter: rarity short forms put exactly that rarity first', async () => {
+  const { filterOptions } = await import('../js/prices.js');
+  const opts = [
+    { set: 'A', codes: ['A-EN1'], rarity: 'Ultra Rare', label: '', rarities: ['Ultra Rare'] },
+    { set: 'B', codes: ['B-KR1'], rarity: '', label: '', rarities: ['Ultra Rare', 'Quarter Century Secret Rare'] },
+    { set: 'C', codes: ['C-EN1'], rarity: 'Quarter Century Secret Rare', label: '', rarities: ['Quarter Century Secret Rare'] },
+    { set: 'D', codes: ['D-EN1'], rarity: 'Secret Rare', label: '', rarities: ['Secret Rare'] },
+    { set: 'E', codes: ['E-EN1'], rarity: 'Prismatic Secret Rare', label: '', rarities: [] },
+  ];
+  const sets = (q) => filterOptions(opts, q).map((o) => o.set).join('');
+  for (const q of ['QCSR', 'qcr', 'quarter century', 'Quarter Century Secret Rare', '25th']) assert.equal(sets(q), 'CB', q);
+  assert.equal(sets('ScR'), 'D');
+  assert.equal(sets('secret rare'), 'D');
+  assert.equal(sets('UR'), 'AB');
+  assert.equal(sets('psr'), 'E');
+  assert.equal(sets('mp19'), '');
+});
+
 test('outlier trend (Sky Striker €8975) stays out of ranges and sums', async () => {
   const { fairTrend, priceOf } = await import('../js/prices.js');
   const { progress } = await import('../js/mastercalc.js');
