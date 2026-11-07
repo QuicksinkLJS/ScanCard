@@ -14,8 +14,11 @@ import { openReveal } from './reveal.js';
 import { loadWish } from './lists.js';
 import { loadTracked, ownedCounts } from './masters.js';
 import { normName } from './parse.js';
+import { holoCardHTML, holoKind } from './holo.js';
 
 const SHOW_MAX = 1600; // longest side of the photo shown on screen
+
+export function bigMomentOn() { try { return localStorage.getItem('cardscan-bigmoment') !== 'off'; } catch { return true; } }
 
 export function createScanner({ api, recognizer, detector, getOcr, getPack, setPack, onOpen, onAddAll, setStatus, onCorrect = () => {} }) {
   let scanId = 0;
@@ -24,6 +27,16 @@ export function createScanner({ api, recognizer, detector, getOcr, getPack, setP
   let packs = 1;          // packs in this photo (pack balance)
   let piles = false;      // show the sort suggestion
   const celebrated = new Set();
+
+  // Vibration for hits and alarms: at most once per photo (a bulk photo with 20 hits buzzes once),
+  // and never again within a few seconds. Only a higher level (alarm < hit < jackpot) may buzz again in the same photo.
+  let buzzScan = -1, buzzLevel = 0, buzzAt = 0;
+  function buzzOnce(level, pattern) {
+    const now = Date.now();
+    if (buzzScan === scanId ? level <= buzzLevel : now - buzzAt < 4000) return;
+    buzzScan = scanId; buzzLevel = level; buzzAt = now;
+    try { navigator.vibrate?.(pattern); } catch { /* ignore */ }
+  }
 
   // Let the browser paint the photo and the scan animation before the heavy work starts:
   // the card finder runs on the main thread and would otherwise keep the old (black) screen for seconds.
@@ -320,19 +333,48 @@ export function createScanner({ api, recognizer, detector, getOcr, getPack, setP
   }
   const eurS = (v) => (v == null ? '–' : `€${v.toFixed(2)}`);
 
-  // A hit worth more than €10: let the row shine, buzz once.
+  // A hit worth more than €10: let the row shine, buzz once ("ba-dum").
+  // A card worth €50+ is a big moment (switchable in More): dark screen, the card flies in big with its holo and price.
+  let jackpotScan = -1;
   function celebrate() {
-    let buzz = false;
+    let buzz = false, top = null;
     for (const c of cards) {
       const v = c.price?.lo ?? 0;
       if (v < 10 || celebrated.has(c.sampleId)) continue;
       celebrated.add(c.sampleId);
       buzz = true;
+      if (v >= 50 && (!top || v > top.price.lo)) top = c;
       const row = $('found').querySelector(`button[data-n="${c.n}"]`);
       row?.classList.add('hit');
     }
     for (const c of cards) if (celebrated.has(c.sampleId)) $('found').querySelector(`button[data-n="${c.n}"]`)?.classList.add('hit-glow');
-    if (buzz && getPack()) navigator.vibrate?.([60, 40, 120]);
+    if (top && bigMomentOn() && jackpotScan !== scanId) {
+      jackpotScan = scanId; // one big moment per photo, even in a bulk photo
+      showJackpot(top);
+      buzzOnce(3, [70, 60, 70, 60, 320]);
+    } else if (buzz) buzzOnce(2, [45, 70, 110]); // also outside pack mode
+  }
+
+  function showJackpot(c) {
+    let el = document.getElementById('jackpot');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'jackpot';
+      el.className = 'jackpot';
+      document.body.appendChild(el);
+      el.addEventListener('click', () => el.classList.remove('show'));
+    }
+    const p = c.price || {};
+    const pic = p.image || p.guess;
+    const src = pic ? versionImage({ image: pic }, 'show') : c.thumb;
+    el.innerHTML = `<div class="jp-card">${holoCardHTML({ src, kind: p.image ? holoKind(p.rarity) : 'rare', alt: c.name })}</div>
+      <div class="jp-info"><b>${esc(c.name)}</b><span class="jp-price">€0</span><small>${esc(p.rarity || p.set || '')}</small></div>`;
+    el.classList.remove('show');
+    void el.offsetWidth;
+    el.classList.add('show');
+    countTo(el.querySelector('.jp-price'), p.lo, p.hi ?? p.lo, 1100);
+    clearTimeout(showJackpot.t);
+    showJackpot.t = setTimeout(() => el.classList.remove('show'), 3600);
   }
 
   // Price alarm: scanned cards you are looking for – on the wishlist, or missing in a tracked masterset.
@@ -370,7 +412,7 @@ export function createScanner({ api, recognizer, detector, getOcr, getPack, setP
       const key = JSON.stringify(out);
       if (key !== JSON.stringify(c.alerts || [])) { c.alerts = out; changed = true; }
     }
-    if (changed) { renderList(true); if (cards.some((c) => c.alerts?.length)) navigator.vibrate?.([30, 60, 30]); }
+    if (changed) { renderList(true); if (cards.some((c) => c.alerts?.length)) buzzOnce(1, [30, 60, 30]); }
   }
 
   // "Did you mean …?": small official pictures of the candidates; one tap fixes the card.

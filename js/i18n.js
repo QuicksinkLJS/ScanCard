@@ -105,6 +105,8 @@ const DE = {
 
 // 7 Nov: undo, masterset choice, holo, rarity, reveal, beta features
 Object.assign(DE, {
+  'Big moment': 'Big Moment', 'On': 'An', 'Off': 'Aus',
+  'A card worth €50 or more flies in full screen when you scan it.': 'Eine Karte ab €50 fliegt beim Scannen groß ins Bild.',
   'Undo': 'Rückgängig', 'Undone': 'Rückgängig gemacht', 'Ticked': 'Abgehakt', 'Tick removed': 'Haken entfernt',
   'Remove from collection': 'Aus der Sammlung entfernen', "Don't count for this set": 'Für dieses Set nicht zählen',
   'This tick comes from a card in your collection.': 'Dieser Haken kommt von einer Karte in deiner Sammlung.',

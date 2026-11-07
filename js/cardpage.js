@@ -26,9 +26,15 @@ export function initCardPage(theApi) {
 
 let holoCleanup = null, lastHolo = null;
 
-// The picture for the big tilting card: the official one once the version is known, else your photo.
-function holoOf(s, chosen, own) {
+// The official version that fits best (for pictures while the version is still open).
+export function likeliest(chosen, best, ranked) {
+  return chosen?.image ? chosen : [...(best || []), ...(ranked || [])].find((o) => o.image) || null;
+}
+
+// The picture for the big tilting card: the official one of your version, or of the likeliest version; else your photo.
+function holoOf(s, chosen, own, guess = null) {
   if (chosen?.image) return { src: versionImage(chosen, 'show'), kind: holoKind(chosen.rarity || versionLabel(chosen)), shine: own, official: true };
+  if (guess?.image) return { src: versionImage(guess, 'show'), kind: 'plain', shine: own, official: true };
   if (!own) return null;
   if (s.canvas && !s.bigPic) { try { s.bigPic = s.canvas.toDataURL('image/jpeg', 0.9); } catch { /* tainted */ } }
   const src = s.bigPic || s.thumb;
@@ -155,7 +161,7 @@ function render() {
   const sub = s.top ? (s.confident === false ? '<span class="unsure">Not sure</span> – check the name, or pick the right card below' : 'Recognised from the artwork') : '';
 
   holoCleanup?.(); holoCleanup = null;
-  const holo = holoOf(s, chosen, !!hooks.own);
+  const holo = holoOf(s, chosen, !!hooks.own, likeliest(chosen, best, ranked));
   const prev = lastHolo && lastHolo.subject === s ? lastHolo.src : '';
   lastHolo = holo ? { subject: s, src: holo.src } : null;
   $('card-bar-title').textContent = s.name;
@@ -290,5 +296,5 @@ export async function quickPrice(theApi, s) {
     ? [`${chosen.set}${chosen.year ? ` (${chosen.year})` : ''}`, optionCode(chosen, lang?.code), chosen.label || (chosen.variants <= 1 ? chosen.rarities[0] : '')].filter(Boolean).join(' · ')
     : best?.length ? `${best[0].set} · ${best.length} versions` : (ranked.length ? `${ranked.length} version${ranked.length > 1 ? 's' : ''}` : 'no price found');
   return { ...price, label, exact: !!chosen, rarity: chosen ? (chosen.rarity || (chosen.variants <= 1 ? chosen.rarities[0] : '') || '') : '',
-    image: chosen?.image || '', set: chosen?.set || (best?.length && best.every((o) => o.set === best[0].set) ? best[0].set : ''), pid: chosen ? Number(chosen.key) : null };
+    image: chosen?.image || '', guess: likeliest(chosen, best, ranked)?.image || '', set: chosen?.set || (best?.length && best.every((o) => o.set === best[0].set) ? best[0].set : ''), pid: chosen ? Number(chosen.key) : null };
 }

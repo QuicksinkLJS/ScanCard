@@ -13,10 +13,13 @@ import { versionImage } from './prices.js';
 export function holoKind(rarity) {
   const r = (rarity || '').toLowerCase();
   if (!r) return 'plain';
-  if (/starlight|quarter century|25th|prismatic|grand master|pharaoh/.test(r)) return 'rainbow';
+  if (/quarter century|25th/.test(r)) return 'qcsr';
+  if (/starlight/.test(r)) return 'starlight';
+  if (/prismatic/.test(r)) return 'prismatic';
+  if (/grand master|pharaoh/.test(r)) return 'rainbow';
   if (/ultimate/.test(r)) return 'relief';
   if (/ghost/.test(r)) return 'ghost';
-  if (/collector/.test(r)) return 'rainbow';
+  if (/collector/.test(r)) return 'collector';
   if (/secret/.test(r)) return 'secret';
   if (/ultra|gold|platinum/.test(r)) return 'ultra';
   if (/super|parallel|starfoil|shatterfoil|mosaic/.test(r)) return 'super';
@@ -25,12 +28,33 @@ export function holoKind(rarity) {
   return 'plain';
 }
 
+// Where on the card each rarity shines, and how: [area, effect]. Areas have soft edges (CSS masks).
+//   Rare: only the name in silver · Super: rainbow artwork · Ultra: foil artwork + gold name
+//   Secret: fine diagonal lines with rainbow glitter in the artwork + silver name · Ultimate: raised matte gold everywhere, no rainbow
+//   Ghost: pale silvery ghost picture · Starlight: the whole card glitters · QCSR: secret pattern + glitter over everything
+//   Collector's: fine prism texture · Prismatic: coarse prism texture
+const LOOK = {
+  rare: [['name', 'silver']],
+  super: [['art', 'rainbow']],
+  ultra: [['art', 'foil'], ['name', 'gold']],
+  secret: [['art', 'secret'], ['name', 'silver']],
+  relief: [['all', 'relief']],
+  ghost: [['art', 'ghost'], ['name', 'silver']],
+  starlight: [['all', 'glitter']],
+  qcsr: [['all', 'secret'], ['all', 'glitter']],
+  rainbow: [['all', 'glitter']],
+  collector: [['art', 'prism-fine'], ['name', 'silver'], ['all', 'glitter-soft']],
+  prismatic: [['art', 'prism-coarse'], ['name', 'silver']],
+};
+
 // src: picture URL; kind: holoKind(); shine: false = tilt only (cards that are not yours)
 // prev: picture shown before (fades out, for a soft change when a version is picked)
-export function holoCardHTML({ src, kind = 'plain', shine = true, alt = '', prev = '' }) {
-  return `<div class="holo-card k-${kind} ${shine ? 'shiny' : ''}">
+// layout: 'normal' | 'pendulum' (Pendulum artworks are wider; Link and YAC1 use the normal one)
+export function holoCardHTML({ src, kind = 'plain', shine = true, alt = '', prev = '', layout = 'normal' }) {
+  const look = shine ? (LOOK[kind] || []) : [];
+  return `<div class="holo-card k-${kind} lay-${layout} ${shine ? 'shiny' : ''}">
       <img class="h-base" src="${esc(src)}" alt="${esc(alt)}" draggable="false">
-      ${shine ? `<div class="h-shine"><img class="h-map" src="${esc(src)}" alt="" draggable="false"><div class="h-fx"></div></div>` : ''}
+      ${look.map(([area, fx]) => `<div class="h-shine a-${area} fx-${fx}"><img class="h-map" src="${esc(src)}" alt="" draggable="false"><div class="h-fx"></div></div>`).join('')}
       <div class="h-glare"></div>
       ${prev && prev !== src ? `<img class="h-prev" src="${esc(prev)}" alt="" draggable="false">` : ''}
     </div>`;

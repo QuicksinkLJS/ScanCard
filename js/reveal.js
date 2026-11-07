@@ -7,7 +7,7 @@ import { versionImage } from './prices.js';
 import { holoKind } from './holo.js';
 import { loadTracked, ownedCounts } from './masters.js';
 
-const RCLASS = { rainbow: 'r-rainbow', secret: 'r-secret', ghost: 'r-secret', ultra: 'r-ultra', relief: 'r-ultra', super: 'r-super', rare: 'r-rare', common: 'r-common', plain: 'r-common' };
+const RCLASS = { rainbow: 'r-rainbow', starlight: 'r-rainbow', qcsr: 'r-rainbow', prismatic: 'r-rainbow', collector: 'r-rainbow', secret: 'r-secret', ghost: 'r-secret', ultra: 'r-ultra', relief: 'r-ultra', super: 'r-super', rare: 'r-rare', common: 'r-common', plain: 'r-common' };
 const HIT = 10; // € (lowest price) that counts as a hit
 
 const buzz = (p) => { try { navigator.vibrate?.(p); } catch { /* ignore */ } };

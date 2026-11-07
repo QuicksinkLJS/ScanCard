@@ -16,13 +16,19 @@ import { portfolio, changeOf, mid, pctText } from './depot.js';
 import { versionImage, rarityRank } from './prices.js';
 import { createMasters } from './masters.js';
 import { createDecks } from './decks.js';
-import { openHolo, closeHolo, holoKind } from './holo.js';
+import { openHolo, closeHolo, holoKind, holoCardHTML } from './holo.js';
 import { loadWatch, loadWish, removeWatch, belowTarget } from './lists.js';
 import {
   loadCollection, saveCollection, newId, loadPack, savePack, putSample, updateSample, allSamples, countSamples,
 } from './store.js';
 
 startI18n();
+{
+  const segs = document.querySelectorAll('#bigmoment-seg [data-v]');
+  const paint = () => { const on = localStorage.getItem('cardscan-bigmoment') !== 'off'; segs.forEach((b) => b.classList.toggle('on', (b.dataset.v === 'on') === on)); };
+  segs.forEach((b) => b.addEventListener('click', () => { try { localStorage.setItem('cardscan-bigmoment', b.dataset.v); } catch { /* ignore */ } paint(); }));
+  try { paint(); } catch { /* ignore */ }
+}
 document.querySelectorAll('#lang-seg [data-lang]').forEach((b) => {
   b.classList.toggle('on', b.dataset.lang === lang);
   b.addEventListener('click', () => { if (b.dataset.lang !== lang) setLang(b.dataset.lang); });
@@ -224,7 +230,7 @@ const plainHooks = {
 let collSort = 'value';
 let collRarity = '';
 // Rarity badge of a collection card: colour by kind, short name; no exact version yet -> "choose rarity".
-const RCLASS = { rainbow: 'r-rainbow', secret: 'r-secret', ghost: 'r-secret', ultra: 'r-ultra', relief: 'r-ultra', super: 'r-super', rare: 'r-rare', common: 'r-common', plain: 'r-common' };
+const RCLASS = { rainbow: 'r-rainbow', starlight: 'r-rainbow', qcsr: 'r-rainbow', prismatic: 'r-rainbow', collector: 'r-rainbow', secret: 'r-secret', ghost: 'r-secret', ultra: 'r-ultra', relief: 'r-ultra', super: 'r-super', rare: 'r-rare', common: 'r-common', plain: 'r-common' };
 function shortRarity(r) {
   return ({ 'quarter century secret rare': 'QCSR', 'prismatic secret rare': 'PSR', "collector's rare": 'CR', 'starlight rare': 'Starlight', 'ultimate rare': 'Ultimate', 'ghost rare': 'Ghost', 'platinum secret rare': 'PlSR' })[r.toLowerCase()]
     || (r.length > 14 ? r.replace(/ Rare$/, '') : r);
@@ -234,8 +240,13 @@ function rarityOf(e) {
   if (!e.price.exact || !e.price.rarity) return { key: '~open', cls: 'r-open', label: 'choose rarity' };
   return { key: e.price.rarity, cls: RCLASS[holoKind(e.price.rarity)] || 'r-common', label: shortRarity(e.price.rarity) };
 }
-// Official picture once the version is known (sharp), else the own photo.
-const pictureOf = (e, size = 'preview') => (e.price?.exact && e.price?.image ? versionImage({ image: e.price.image }, size) : '') || e.thumb || versionImage({ image: e.price?.image }, size) || '';
+// Official picture: of your version, or of the likeliest version while it is open; your own photo only if there is none.
+// (Your photo stays stored – for learning and for comparing on the card page.)
+const pictureOf = (e, size = 'preview') => {
+  const img = (e.price?.exact && e.price?.image) || e.price?.guess || e.price?.image;
+  return (img ? versionImage({ image: img }, size) : '') || e.thumb || '';
+};
+const holoKindOf = (e) => (e.price?.exact && e.price?.rarity ? holoKind(e.price.rarity) : 'plain');
 function renderCollection() {
   const list = loadCollection();
   const pf = portfolio(list);
@@ -280,7 +291,7 @@ function renderCollection() {
   $('coll-top').innerHTML = pf.top.map((e, i) => `
     <button type="button" class="topcard" data-id="${esc(e.id)}">
       <span class="rank">${i + 1}</span>
-      ${pictureOf(e, 'show') ? `<img src="${esc(pictureOf(e, 'show'))}" alt="">` : '<span class="noimg"></span>'}
+      ${pictureOf(e, 'show') ? `<span class="topholo">${holoCardHTML({ src: pictureOf(e, 'show'), kind: holoKindOf(e), alt: e.name })}</span>` : '<span class="noimg"></span>'}
       <b>${esc(e.name)}</b><span class="eur">${range(e.price?.lo, e.price?.hi)}</span>${chg(changeOf(e))}
     </button>`).join('');
   $('coll-top').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => openEntry(b.dataset.id)));
@@ -309,7 +320,7 @@ async function refreshCollectionPrices() {
   let changed = false;
   for (const e of list) {
     const p = await quickPrice(api, e).catch(() => null);
-    if (p && (p.lo !== e.price?.lo || p.hi !== e.price?.hi || p.label !== e.price?.label || p.set !== e.price?.set)) { e.price = p; changed = true; }
+    if (p && (p.lo !== e.price?.lo || p.hi !== e.price?.hi || p.label !== e.price?.label || p.set !== e.price?.set || p.guess !== e.price?.guess)) { e.price = p; changed = true; }
     if (!e.buy && (e.price || p)) { const q = e.price || p; e.buy = { lo: q.lo, hi: q.hi, date: e.added || Date.now() }; changed = true; }
   }
   if (changed) { saveCollection(list); renderCollection(); }
