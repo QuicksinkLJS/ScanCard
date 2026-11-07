@@ -122,7 +122,33 @@ export function createRecognizer({ base = 'models/ygo', onStatus = () => {}, lig
     const model = await fetchWithProgress(`${base}/model.onnx`, (p) => onStatus('Downloading the card recogniser (first time only)…', 0.3 + p * 0.7));
     onStatus('Starting the recogniser…', 1);
     const session = await ort.InferenceSession.create(model, { executionProviders: ['wasm'], graphOptimizationLevel: 'all' });
-    return { ort, meta, fp, session };
+    const all = await withExtra(meta, fp);
+    return { ort, meta: all.meta, fp: all.fp, session };
+  }
+
+  // Extra fingerprints from CardTrader pictures (artworks YGOPRODeck has no picture of, e.g. YAC1 manga style).
+  // Optional: tools/build_extra_fingerprints.py, same int8 scale. Appended to the main list.
+  async function withExtra(meta, fp) {
+    try {
+      const ex = await fetch(`${base}/extra.json?h=${Math.floor(Date.now() / 3.6e6)}`).then((r) => (r.ok ? r.json() : null));
+      if (!ex?.count || ex.dim !== meta.dim) return { meta, fp };
+      const buf = await fetch(`${base}/extra.i8?n=${ex.count}&d=${ex.date}`).then((r) => (r.ok ? r.arrayBuffer() : null));
+      if (!buf || buf.byteLength !== ex.count * ex.dim) return { meta, fp };
+      const names = [...meta.names];
+      const index = new Map(names.map((n, i) => [n, i]));
+      const nameIdx = [...meta.nameIdx];
+      for (const n of ex.names) {
+        if (!index.has(n)) { index.set(n, names.length); names.push(n); }
+        nameIdx.push(index.get(n));
+      }
+      const all = new Int8Array(fp.length + buf.byteLength);
+      all.set(fp, 0);
+      all.set(new Int8Array(buf), fp.length);
+      return { meta: { ...meta, names, nameIdx, ids: [...meta.ids, ...ex.ids.map((id) => `ct${id}`)], count: meta.count + ex.count, extra: ex.count }, fp: all };
+    } catch (e) {
+      console.warn('no extra fingerprints', e);
+      return { meta, fp };
+    }
   }
 
   function ready() {
