@@ -24,6 +24,11 @@ import {
   loadCollection, saveCollection, newId, loadPack, savePack, putSample, updateSample, allSamples, countSamples,
 } from './store.js';
 
+// The BETA channel marker only on the beta site (/beta/), the live app shows the normal tag.
+if (/\/beta\//.test(location.pathname)) {
+  document.querySelector('.beta-flag')?.removeAttribute('hidden');
+  document.querySelector('.live-flag')?.setAttribute('hidden', '');
+}
 startI18n();
 {
   const segs = document.querySelectorAll('#bigmoment-seg [data-v]');
