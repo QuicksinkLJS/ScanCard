@@ -352,3 +352,11 @@ textarea.field.area { min-height: 92px; resize: vertical; font-family: inherit; 
 .compare figure { flex: 1; margin: 0; text-align: center; }
 .compare img { width: 100%; aspect-ratio: 59 / 86; object-fit: cover; border-radius: 6px; background: var(--surface); }
 .compare figcaption { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+/* Sort suggestion */
+.pile { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 11.5px; font-weight: 700; letter-spacing: .02em; }
+.pile.p-sell { background: rgba(79,208,138,.18); color: #4fd08a; }
+.pile.p-keep { background: var(--accent-soft); color: var(--accent); }
+.pile.p-bulk { background: rgba(255,255,255,.08); color: var(--muted); }
+.pile.p-check { background: rgba(242,180,90,.16); color: #f2b45a; }
+#pile-sum { margin: -6px 0 8px; line-height: 1.9; }

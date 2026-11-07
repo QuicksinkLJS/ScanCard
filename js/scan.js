@@ -8,6 +8,7 @@ import { matchCode, languageFromText } from './codematch.js';
 import { valueTier } from './parse.js';
 import { quickPrice } from './cardpage.js';
 import { sharePulls } from './share.js';
+import { pileOf, PILES } from './sortpile.js';
 
 const SHOW_MAX = 1600; // longest side of the photo shown on screen
 
@@ -16,6 +17,7 @@ export function createScanner({ api, recognizer, detector, getOcr, getPack, setP
   let cards = [];   // the cards of the current photo
   let photoSize = null;
   let packs = 1;          // packs in this photo (pack balance)
+  let piles = false;      // show the sort suggestion
   const celebrated = new Set();
 
   // ---------- entry points ----------
@@ -237,7 +239,7 @@ export function createScanner({ api, recognizer, detector, getOcr, getPack, setP
       return `<li><button type="button" data-n="${c.n}">
         <span class="badge-num ${tierOf(c)}">${c.n}</span>
         <img class="thumb" src="${c.thumb}" alt="">
-        <span class="what"><b>${esc(c.name)}</b><small>${c.confident ? '' : '<span class="unsure">check</span> '}${esc(sub)}</small></span>
+        <span class="what"><b>${esc(c.name)}</b><small>${piles ? `<span class="pile p-${pileOf(c.price)}">${PILES[pileOf(c.price)].label}</span> ` : ''}${c.confident ? '' : '<span class="unsure">check</span> '}${esc(sub)}</small></span>
         <span class="eur">${range(c.price?.lo, c.price?.hi)}${c.added ? '<small>added ✓</small>' : ''}</span>
       </button></li>`;
     }).join('');
@@ -251,6 +253,15 @@ export function createScanner({ api, recognizer, detector, getOcr, getPack, setP
       : '';
     $('add-all').hidden = !cards.length || cards.every((c) => c.added);
     $('share-pulls').hidden = !cards.length;
+    $('sort-piles').hidden = !cards.length;
+    $('sort-piles').textContent = piles ? 'Hide piles' : 'Sort into piles';
+    const ps = $('pile-sum');
+    ps.hidden = !piles || !cards.length;
+    if (piles) {
+      const n = {};
+      for (const c of cards) { const k = pileOf(c.price); n[k] = (n[k] || 0) + 1; }
+      ps.innerHTML = ['sell', 'keep', 'bulk', 'check'].filter((k) => n[k]).map((k) => `<span class="pile p-${k}">${n[k]} ${PILES[k].label}</span> <span>${PILES[k].hint}</span>`).join(' · ');
+    }
     renderBalance(lo, hi);
     celebrate();
   }
@@ -329,6 +340,7 @@ export function createScanner({ api, recognizer, detector, getOcr, getPack, setP
   }
 
   $('add-all').addEventListener('click', () => onAddAll(cards.filter((c) => !c.added)));
+  $('sort-piles').addEventListener('click', () => { piles = !piles; renderList(); });
   $('share-pulls').addEventListener('click', async () => {
     if (!cards.length) return;
     const pack = getPack();
