@@ -73,7 +73,7 @@ const scanner = createScanner({
   onAddAll: async (list) => {
     for (const c of list) await addScanned(c, false);
     scanner.renderList();
-    toast(`${list.length} card${list.length > 1 ? 's' : ''} added to your collection`);
+    toast(`${list.length} card${list.length > 1 ? 's' : ''} added to your collection`, 5000, undoAdd(list.map((c) => c.collId), list));
   },
 });
 
@@ -155,13 +155,23 @@ async function saveSample(s) {
   }
 }
 
+function undoAdd(ids, subjects = []) {
+  return { label: 'Undo', run: () => {
+    saveCollection(loadCollection().filter((e) => !ids.includes(e.id)));
+    for (const x of subjects) { x.added = false; x.collId = null; }
+    scanner.renderList();
+    renderCollection();
+    toast('Undone');
+  } };
+}
+
 async function addScanned(c, notify = true) {
   c.price = await quickPrice(api, c);
   c.collId = c.collId || newId();
   upsertEntry(entryFromSubject(c, { id: c.collId }));
   c.added = true;
   await saveSample(c);
-  if (notify) toast('Added to your collection');
+  if (notify) toast('Added to your collection', 5000, undoAdd([c.collId], [c]));
 }
 
 const scanHooks = {
@@ -185,9 +195,14 @@ const collHooks = {
     renderCollection();
   },
   onRemove: (s) => {
-    saveCollection(loadCollection().filter((e) => e.id !== s.collId));
+    const list = loadCollection();
+    const i = list.findIndex((e) => e.id === s.collId);
+    const gone = list[i];
+    saveCollection(list.filter((e) => e.id !== s.collId));
     renderCollection();
-    toast('Removed');
+    toast('Removed', 5000, gone ? { label: 'Undo', run: () => {
+      const l = loadCollection(); l.splice(i, 0, gone); saveCollection(l); renderCollection(); toast('Undone');
+    } } : null);
   },
 };
 
@@ -198,7 +213,7 @@ const plainHooks = {
     s.price = await quickPrice(api, s);
     s.collId = newId();
     upsertEntry(entryFromSubject(s, { id: s.collId }));
-    toast('Added to your collection');
+    toast('Added to your collection', 5000, undoAdd([s.collId], [s]));
   },
 };
 
@@ -272,7 +287,7 @@ async function refreshCollectionPrices() {
 }
 
 // ---------- mastersets ----------
-const masters = createMasters({ api, openCard: (s) => openCardPage(s, plainHooks) });
+const masters = createMasters({ api, openCard: (s) => openCardPage(s, plainHooks), onCollectionChange: () => renderCollection() });
 const decks = createDecks({ api, openCard: (s) => openCardPage(s, plainHooks) });
 let collTab = 'cards';
 document.querySelectorAll('#coll-tabs [data-ctab]').forEach((b) => b.addEventListener('click', () => {

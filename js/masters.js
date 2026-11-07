@@ -1,10 +1,10 @@
 // Masterset tracker: pick a set, see which versions you have (any language counts), what is missing and what it costs.
 // One entry per Cardmarket product of the set = set x card x rarity x artwork.
 
-import { $, esc, eur, toast } from './util.js';
+import { $, esc, eur, toast, choose } from './util.js';
 import { cardmarketUrl, versionImage, rarityRank } from './prices.js';
 import { syncBody } from './cardpage.js';
-import { loadCollection } from './store.js';
+import { loadCollection, saveCollection } from './store.js';
 import { progress } from './mastercalc.js';
 
 const TRACK_KEY = 'cardscan-masters-v1';
@@ -23,11 +23,12 @@ export function ownedCounts() {
   const n = {};
   for (const e of loadCollection()) if (e.vkey) n[e.vkey] = (n[e.vkey] || 0) + 1;
   const fromColl = { ...n };
-  for (const [k, v] of Object.entries(loadManual())) n[k] = (n[k] || 0) + v;
+  // manual values may be negative: "don't count these collection copies for the set"
+  for (const [k, v] of Object.entries(loadManual())) n[k] = Math.max(0, (n[k] || 0) + v);
   return { all: n, fromColl };
 }
 
-export function createMasters({ api, openCard }) {
+export function createMasters({ api, openCard, onCollectionChange = () => {} }) {
   let cur = null; // {exp, name, target, entries, filter, rarity}
 
   async function renderList() {
@@ -127,15 +128,41 @@ export function createMasters({ api, openCard }) {
     const body = $('set-body');
     body.querySelectorAll('[data-f]').forEach((b) => b.addEventListener('click', () => { cur.filter = b.dataset.f; renderSet(); }));
     body.querySelectorAll('[data-r]').forEach((b) => b.addEventListener('click', () => { cur.rarity = b.dataset.r; renderSet(); }));
-    body.querySelectorAll('.tick').forEach((b) => b.addEventListener('click', () => {
+    body.querySelectorAll('.tick').forEach((b) => b.addEventListener('click', async () => {
       const k = b.dataset.key;
-      const m = loadManual();
-      const total = (fromColl[k] || 0) + (m[k] || 0);
-      if (total >= cur.target) m[k] = 0; // full: clear the ticks (collection copies stay)
-      else m[k] = (m[k] || 0) + 1;
+      const before = loadManual();
+      const m = { ...before };
+      const coll = fromColl[k] || 0;
+      const total = Math.max(0, coll + (m[k] || 0));
+      if (total < cur.target) m[k] = (m[k] || 0) + 1;
+      else if ((m[k] || 0) > 0) m[k] = 0; // full by own ticks: clear them (collection copies stay)
+      else {
+        // the tick comes from the collection: ask what to do
+        const e = cur.entries.find((x) => x.key === k);
+        const v = await choose(e?.name || 'This card', [
+          { label: 'Remove from collection', value: 'coll', danger: true },
+          { label: "Don't count for this set", value: 'set' },
+        ], 'This tick comes from a card in your collection.');
+        if (v === 'coll') {
+          const list = loadCollection();
+          const i = list.findIndex((x) => x.vkey === k);
+          if (i < 0) return;
+          const [gone] = list.splice(i, 1);
+          saveCollection(list);
+          onCollectionChange();
+          renderSet();
+          toast('Removed from your collection', 5000, { label: 'Undo', run: () => {
+            const l = loadCollection(); l.splice(i, 0, gone); saveCollection(l); onCollectionChange(); renderSet();
+          } });
+          return;
+        }
+        if (v !== 'set') return;
+        m[k] = -coll;
+      }
       if (!m[k]) delete m[k];
       saveManual(m);
       renderSet();
+      toast(total < cur.target ? 'Ticked' : 'Tick removed', 5000, { label: 'Undo', run: () => { saveManual(before); renderSet(); } });
     }));
     body.querySelectorAll('[data-open]').forEach((b) => b.addEventListener('click', () => {
       const e = cur.entries.find((x) => x.key === b.dataset.open);

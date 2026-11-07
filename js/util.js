@@ -9,12 +9,42 @@ export const eur = (v) => (v == null ? '–' : `€${v.toFixed(2)}`);
 export const range = (lo, hi) => (lo == null ? '–' : (hi == null || Math.abs(lo - hi) < 0.005) ? eur(lo) : `${eur(lo)} – ${eur(hi)}`);
 
 let toastTimer = null;
-export function toast(text, ms = 2600) {
+// action: optional {label, run} – a button in the toast (e.g. Undo); the toast then stays a bit longer.
+export function toast(text, ms = 2600, action = null) {
   const el = $('toast');
   el.textContent = text;
+  if (action) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'toast-act';
+    b.textContent = action.label;
+    b.addEventListener('click', () => { el.hidden = true; clearTimeout(toastTimer); action.run(); });
+    el.append(' ', b);
+    ms = Math.max(ms, 5000);
+  }
   el.hidden = false;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { el.hidden = true; }, ms);
+}
+
+// A small choice sheet. options: [{label, value, danger?}]; resolves with the value or null (cancel).
+export function choose(title, options, text = '') {
+  return new Promise((resolve) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'choose';
+    wrap.innerHTML = `<div class="choose-box" role="dialog" aria-modal="true">
+      <p class="choose-title"><b>${esc(title)}</b>${text ? `<br><small class="muted">${esc(text)}</small>` : ''}</p>
+      ${options.map((o, i) => `<button type="button" class="btn ${o.danger ? 'danger' : ''}" data-i="${i}">${esc(o.label)}</button>`).join('')}
+      <button type="button" class="btn ghost" data-i="-1">Cancel</button></div>`;
+    const done = (v) => { wrap.remove(); resolve(v); };
+    wrap.addEventListener('click', (e) => {
+      const b = e.target.closest('button');
+      if (b) done(Number(b.dataset.i) >= 0 ? options[Number(b.dataset.i)].value : null);
+      else if (e.target === wrap) done(null);
+    });
+    document.body.append(wrap);
+    wrap.querySelector('button').focus();
+  });
 }
 
 // Downscale in halving steps: one big jump drops most pixels and looks grainy.

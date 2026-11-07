@@ -103,6 +103,14 @@ const DE = {
   '. Prices are reference values, not live offers. Not affiliated with Konami or Cardmarket.': '. Preise sind Richtwerte, keine Live-Angebote. Nicht verbunden mit Konami oder Cardmarket.', 'CardScan · Cardmarket trend prices': 'CardScan · Cardmarket-Trendpreise',
 };
 
+// 7 Nov: undo, masterset choice, holo, rarity, reveal, beta features
+Object.assign(DE, {
+  'Undo': 'Rückgängig', 'Undone': 'Rückgängig gemacht', 'Ticked': 'Abgehakt', 'Tick removed': 'Haken entfernt',
+  'Remove from collection': 'Aus der Sammlung entfernen', "Don't count for this set": 'Für dieses Set nicht zählen',
+  'This tick comes from a card in your collection.': 'Dieser Haken kommt von einer Karte in deiner Sammlung.',
+  'Removed from your collection': 'Aus der Sammlung entfernt', 'This card': 'Diese Karte',
+});
+
 // [pattern, German] for texts with numbers or names in them
 const P = [
   [/^Pack: (.+)$/, 'Pack: $1'],
