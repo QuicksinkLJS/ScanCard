@@ -1,0 +1,233 @@
+// The scan screen: photo -> find cards -> recognise -> read set codes -> list, most valuable first.
+
+import { $, esc, range, thumbOf, rotate180, toast } from './util.js';
+import { cutCard, corners } from './detect.js';
+import { cardsFromPhoto } from './camera.js';
+import { prepare } from './ocr.js';
+import { matchCode, languageFromText } from './codematch.js';
+import { valueTier } from './parse.js';
+import { quickPrice } from './cardpage.js';
+
+const SHOW_MAX = 1600; // longest side of the photo shown on screen
+
+export function createScanner({ api, recognizer, detector, getOcr, getPack, setPack, onOpen, onAddAll, setStatus }) {
+  let scanId = 0;
+  let cards = [];   // the cards of the current photo
+  let photoSize = null;
+
+  // ---------- entry points ----------
+  async function scanPhoto(image, mode) {
+    const id = ++scanId;
+    showPhoto(image);
+    cards = [];
+    renderList();
+    try {
+      let found = null;
+      if (mode === 'multi') {
+        setStatus('Looking for cards in the photo…');
+        try {
+          const boxes = await detector.find(image);
+          if (boxes.length) found = boxes.map((b) => ({ box: b, canvas: cutCard(image, b) }));
+        } catch (e) {
+          console.warn('card finder not available', e);
+        }
+        if (id !== scanId) return;
+      }
+      if (!found) {
+        // one card filling the photo: try upright and sideways, keep the better one
+        setStatus('Recognising the card…');
+        const cands = cardsFromPhoto(image);
+        const res = await recognizer.identifyMany(cands.map((c) => c.canvas), { allow: await allowed() });
+        const k = res[0].top[0].score >= res[1].top[0].score ? 0 : 1;
+        if (id !== scanId) return;
+        if (mode === 'multi') toast('No separate cards found – read the photo as one card.');
+        await finish(id, [{ ...cands[k], result: res[k] }]);
+        return;
+      }
+      await recogniseAll(id, found);
+    } catch (err) {
+      console.error(err);
+      if (id === scanId) setStatus(`Recognition failed: ${err.message || err}`, true);
+    }
+  }
+
+  // A card cut out by the camera frame.
+  async function scanCard(canvas) {
+    const id = ++scanId;
+    showPhoto(canvas);
+    cards = [];
+    renderList();
+    try {
+      setStatus('Recognising the card…');
+      const W = canvas.width, H = canvas.height;
+      await recogniseAll(id, [{ canvas, box: { cx: W / 2, cy: H / 2, w: W * 0.98, h: H * 0.98, angle: 0 } }]);
+    } catch (err) {
+      console.error(err);
+      if (id === scanId) setStatus(`Recognition failed: ${err.message || err}`, true);
+    }
+  }
+
+  async function allowed() {
+    const pack = getPack();
+    if (!pack?.prefix) return null;
+    try { return await api.setCardNames(pack.prefix, pack.name); } catch { return null; }
+  }
+
+  async function recogniseAll(id, found) {
+    const n = found.length;
+    setStatus(`Recognising ${n} card${n > 1 ? 's' : ''}…`, false, 0);
+    const res = await recognizer.identifyMany(found.map((f) => f.canvas), {
+      allow: await allowed(),
+      onEach: (i) => { if (id === scanId) setStatus(`Recognising ${n} card${n > 1 ? 's' : ''}…`, false, (i + 1) / n); },
+    });
+    if (id !== scanId) return;
+    await finish(id, found.map((f, i) => ({ ...f, result: res[i] })));
+  }
+
+  async function finish(id, found) {
+    const pack = getPack();
+    cards = found.map((f, i) => {
+      const canvas = f.result.upsideDown ? rotate180(f.canvas) : f.canvas;
+      const top = f.result.top.map((t) => ({ name: t.name, score: Math.round(t.score * 1000) / 1000 }));
+      return {
+        n: i + 1, box: f.box, canvas, thumb: thumbOf(canvas),
+        name: top[0].name, top, score: top[0].score, confident: f.result.confident,
+        code: null, language: null, ocrText: null, codeStatus: 'waiting',
+        pack: pack?.prefix ? { prefix: pack.prefix, name: pack.name } : null,
+        vkey: null, price: null, sampleId: `s${Date.now().toString(36)}${i}${Math.random().toString(36).slice(2, 5)}`,
+      };
+    });
+    await Promise.all(cards.map(async (c) => { c.price = await quickPrice(api, c); }));
+    if (id !== scanId) return;
+    setStatus('');
+    renderList();
+    readCodes(id);
+  }
+
+  // ---------- set codes (one card after the other, list updates as they come in) ----------
+  async function readCodes(id) {
+    let engine;
+    try { engine = await getOcr(); } catch (e) { console.warn('no OCR', e); }
+    for (const c of [...cards].sort((a, b) => (b.price?.hi ?? 0) - (a.price?.hi ?? 0))) {
+      if (id !== scanId) return;
+      if (!engine) { c.codeStatus = 'none'; continue; }
+      c.codeStatus = 'reading';
+      renderList();
+      const info = await api.nameInfo(c.name).catch(() => null);
+      let text = '';
+      const passes = [
+        { region: { x: 0.40, y: 0.69, w: 0.58, h: 0.085 }, binarize: true },
+        { region: { x: 0.0, y: 0.66, w: 1, h: 0.15 }, binarize: true },
+        { region: { x: 0.40, y: 0.69, w: 0.58, h: 0.085 } },
+      ];
+      for (const opts of passes) {
+        try { text += `${await engine.read(prepare(c.canvas, opts))}\n`; } catch (e) { console.warn(e); break; }
+        if (id !== scanId) return;
+        if (matchCode(text, info?.bases)) break;
+      }
+      c.ocrText = text;
+      c.code = matchCode(text, info?.bases);
+      c.language = c.code?.language || languageFromText(text);
+      c.codeStatus = c.code ? 'done' : 'none';
+      c.price = await quickPrice(api, c);
+      if (id !== scanId) return;
+      renderList();
+    }
+    if (id === scanId) autoPack();
+  }
+
+  // Pack mode "detect": two cards from the same set decide it.
+  async function autoPack() {
+    const pack = getPack();
+    if (!pack?.auto) return;
+    const counts = {};
+    for (const c of cards) if (c.code) { const p = c.code.base.split('-')[0]; counts[p] = (counts[p] || 0) + 1; }
+    const [prefix, k] = Object.entries(counts).sort((a, b) => b[1] - a[1])[0] || [];
+    if (!prefix || (k < 2 && cards.length > 1)) return;
+    const sets = await api.sets().catch(() => []);
+    const set = sets.filter((s) => s.prefix === prefix).sort((a, b) => b.count - a.count)[0];
+    setPack({ prefix, name: set?.name || null, year: set?.year || null });
+    toast(`Pack mode: ${set?.name || prefix}`);
+  }
+
+  // ---------- drawing ----------
+  function showPhoto(image) {
+    const W = image.naturalWidth || image.width, H = image.naturalHeight || image.height;
+    const r = Math.min(1, SHOW_MAX / Math.max(W, H));
+    const cv = $('photo');
+    cv.width = Math.round(W * r); cv.height = Math.round(H * r);
+    cv.getContext('2d').drawImage(image, 0, 0, cv.width, cv.height);
+    photoSize = { W, H };
+    $('scan-result').hidden = false;
+    $('marks').innerHTML = '';
+  }
+
+  const tierOf = (c) => valueTier(c.price?.hi ?? c.price?.lo);
+  const COLORS = { high: '#e24b4a', mid: '#ef9f27', low: '#9c9a91', unknown: '#9c9a91' };
+
+  function renderMarks() {
+    const svg = $('marks');
+    if (!photoSize) return;
+    svg.setAttribute('viewBox', `0 0 ${photoSize.W} ${photoSize.H}`);
+    const r = Math.max(photoSize.W, photoSize.H) / 45;
+    svg.innerHTML = cards.map((c) => {
+      if (!c.box) return '';
+      const pts = corners(c.box).map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+      const col = COLORS[tierOf(c)];
+      return `<g data-n="${c.n}" style="cursor:pointer">
+        <polygon points="${pts}" stroke="${col}"/>
+        <circle cx="${c.box.cx}" cy="${c.box.cy}" r="${r}" fill="${col}" stroke="#fff" stroke-width="${r / 6}"/>
+        <text class="num" x="${c.box.cx}" y="${c.box.cy}" style="font-size:${r * 1.2}px">${c.n}</text></g>`;
+    }).join('');
+    svg.querySelectorAll('g').forEach((g) => g.addEventListener('click', () => open(Number(g.dataset.n))));
+  }
+
+  function renderList() {
+    renderMarks();
+    const sorted = [...cards].sort((a, b) => (b.price?.hi ?? -1) - (a.price?.hi ?? -1));
+    $('found').innerHTML = sorted.map((c) => {
+      const codeLine = {
+        waiting: '', reading: 'reading set code…', none: 'set code not readable', done: '',
+      }[c.codeStatus];
+      const sub = [c.price?.label, codeLine].filter(Boolean).join(' · ');
+      return `<li><button type="button" data-n="${c.n}">
+        <span class="badge-num ${tierOf(c)}">${c.n}</span>
+        <img class="thumb" src="${c.thumb}" alt="">
+        <span class="what"><b>${esc(c.name)}</b><small>${c.confident ? '' : '<span class="unsure">check</span> '}${esc(sub)}</small></span>
+        <span class="eur">${range(c.price?.lo, c.price?.hi)}${c.added ? '<small>added ✓</small>' : ''}</span>
+      </button></li>`;
+    }).join('');
+    $('found').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => open(Number(b.dataset.n))));
+    const lo = cards.reduce((s, c) => s + (c.price?.lo || 0), 0);
+    const hi = cards.reduce((s, c) => s + (c.price?.hi || 0), 0);
+    $('result-total').textContent = cards.length ? range(lo, hi) : '';
+    const unsure = cards.filter((c) => !c.confident).length;
+    $('result-sub').textContent = cards.length
+      ? `${cards.length} card${cards.length > 1 ? 's' : ''}${unsure ? ` · ${unsure} to check` : ''} · tap a card for details`
+      : '';
+    $('add-all').hidden = !cards.length || cards.every((c) => c.added);
+  }
+
+  function open(n) {
+    const c = cards.find((x) => x.n === n);
+    if (c) onOpen(c);
+  }
+
+  // after the card page changed a card
+  async function refresh(c) {
+    c.price = await quickPrice(api, c);
+    renderList();
+  }
+
+  function clear() {
+    scanId++;
+    cards = [];
+    photoSize = null;
+    $('scan-result').hidden = true;
+    setStatus('');
+  }
+
+  $('add-all').addEventListener('click', () => onAddAll(cards.filter((c) => !c.added)));
+
+  return { scanPhoto, scanCard, refresh, renderList, clear, cards: () => cards };
+}

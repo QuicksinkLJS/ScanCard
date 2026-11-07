@@ -3,6 +3,9 @@
 
 import { lookupCandidates, normName } from './parse.js';
 
+// Same rule as bucket_of() in tools/build_data.py
+export const bucketOf = (k) => (k.slice(0, 2) || '_').padEnd(2, '_');
+
 export function createApi({ fetchFn = globalThis.fetch?.bind(globalThis), base = 'data/ygo' } = {}) {
   let indexPromise = null;
   const setFiles = new Map();
@@ -96,5 +99,53 @@ export function createApi({ fetchFn = globalThis.fetch?.bind(globalThis), base =
     return moversPromise;
   }
 
-  return { lookup, knowsPrefix, index, nameInfo, movers };
+  // Every printing of a card, for the card page (data/ygo/cards/<first two letters>.json).
+  const buckets = new Map();
+  async function cardDetail(name) {
+    const k = normName(name);
+    const b = bucketOf(k);
+    if (!buckets.has(b)) {
+      const p = getJson(`${base}/cards/${b}.json`);
+      buckets.set(b, p);
+      p.catch(() => buckets.delete(b));
+    }
+    const rows = (await buckets.get(b))[k];
+    if (!rows) return [];
+    return rows.map(([set, year, rarities, codes, products], i) => ({
+      key: `${i}`,
+      set, year, rarities, codes,
+      products: products.map(([id, trend, avg30, low, avg1, avg7]) => ({ id, trend, avg30, low, avg1, avg7 })),
+    }));
+  }
+
+  // [{prefix, name, year, count}] for pack mode
+  let setsPromise = null;
+  function sets() {
+    if (!setsPromise) {
+      setsPromise = getJson(`${base}/sets.json`).then((rows) => rows.map(([prefix, name, year, count]) => ({ prefix, name, year, count })));
+      setsPromise.catch(() => { setsPromise = null; });
+    }
+    return setsPromise;
+  }
+
+  // Card names (normalised) printed in a set, for pack mode.
+  async function setCardNames(prefix, setName) {
+    const pack = await setFile(prefix);
+    const out = new Set();
+    for (const [nameIdx, versionIdxs] of Object.values(pack.cards)) {
+      if (!setName || versionIdxs.some((i) => pack.sets[pack.versions[i][0]] === setName)) out.add(normName(pack.names[nameIdx]));
+    }
+    return out;
+  }
+
+  // All display names, for search by name.
+  async function allNames() {
+    if (!namesPromise) {
+      namesPromise = getJson(`${base}/names.json`);
+      namesPromise.catch(() => { namesPromise = null; });
+    }
+    return Object.values(await namesPromise).map((e) => e[0]);
+  }
+
+  return { lookup, knowsPrefix, index, nameInfo, movers, cardDetail, sets, setCardNames, allNames };
 }

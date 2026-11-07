@@ -6,6 +6,8 @@
 //
 // Files (made by tools/pack_model.py): models/ygo/model.onnx, fingerprints.i8, cards.json
 
+import { normName } from './parse.js';
+
 const ORT_URL = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.31.1/dist/ort.min.js';
 const SIZE = 224;
 const MEAN = [0.485, 0.456, 0.406];
@@ -120,7 +122,8 @@ export function createRecognizer({ base = 'models/ygo', onStatus = () => {} } = 
     return scores;
   }
 
-  function ranked(engine, scores, k = 6) {
+  // allow: optional Set of normalised names (pack mode: only cards of one set)
+  function ranked(engine, scores, k = 6, allow = null) {
     const { meta } = engine;
     const order = Array.from(scores.keys()).sort((a, b) => scores[b] - scores[a]);
     const out = [];
@@ -128,6 +131,7 @@ export function createRecognizer({ base = 'models/ygo', onStatus = () => {} } = 
     for (const i of order) {
       const name = meta.names[meta.nameIdx[i]];
       if (seen.has(name)) continue;
+      if (allow && !allow.has(normName(name))) continue;
       seen.add(name);
       out.push({ name, score: scores[i], artworkId: meta.ids[i], index: i });
       if (out.length >= k) break;
@@ -153,12 +157,12 @@ export function createRecognizer({ base = 'models/ygo', onStatus = () => {} } = 
   }
 
   // card: an upright card image (canvas), roughly 59:86. Returns best guesses, best first.
-  async function identify(card) {
-    return (await identifyMany([card]))[0];
+  async function identify(card, opts) {
+    return (await identifyMany([card], opts))[0];
   }
 
   // Several cards in one go (faster than one by one).
-  async function identifyMany(cards, onEach = () => {}) {
+  async function identifyMany(cards, { onEach = () => {}, allow = null } = {}) {
     const engine = await ready();
     const out = [];
     const batch = 4;
@@ -170,7 +174,9 @@ export function createRecognizer({ base = 'models/ygo', onStatus = () => {} } = 
       part.forEach((_, k) => {
         const e = emb.subarray(k * 2 * dim, (k + 1) * 2 * dim);
         const scores = scoreAll(engine, e, 2);
-        const result = judge(ranked(engine, scores));
+        let top = allow ? ranked(engine, scores, 6, allow) : [];
+        if (!top.length) top = ranked(engine, scores); // nothing from that set looks like it: ignore the filter
+        const result = judge(top);
         // which way round did the best match fit? (needed to read the set code in the right place)
         const best = result.top[0].index * dim;
         let s0 = 0, s1 = 0;

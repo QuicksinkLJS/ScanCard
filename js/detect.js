@@ -74,16 +74,18 @@ function nms(boxes, thr = 0.4) {
 }
 
 // ---- cut out an upright card ----
-export function cutCard(img, b) {
+// scale 1.5: enough pixels to read the set code
+export function cutCard(img, b, scale = 1.5) {
   // make the long side vertical
   let { w, h, angle } = b;
   if (w > h) { [w, h] = [h, w]; angle += Math.PI / 2; }
   const c = document.createElement('canvas');
-  c.width = CARD_W; c.height = CARD_H;
+  const CW = Math.round(CARD_W * scale), CH = Math.round(CARD_H * scale);
+  c.width = CW; c.height = CH;
   const ctx = c.getContext('2d', { willReadFrequently: true });
   ctx.imageSmoothingQuality = 'high';
-  ctx.translate(CARD_W / 2, CARD_H / 2);
-  ctx.scale(CARD_W / w, CARD_H / h);
+  ctx.translate(CW / 2, CH / 2);
+  ctx.scale(CW / w, CH / h);
   ctx.rotate(-angle);
   ctx.drawImage(img, -b.cx, -b.cy);
   return c;
@@ -95,7 +97,10 @@ export function createDetector({ base = 'models/ygo', size = 1024, onStatus = ()
   async function load() {
     if (!window.ort) await loadScript(ORT_URL);
     onStatus('Downloading the card finder (first time only)…');
-    const session = await window.ort.InferenceSession.create(`${base}/detector.onnx`, { executionProviders: ['wasm'] });
+    const res = await fetch(`${base}/detector.onnx`);
+    if (!res.ok) throw new Error('no card finder');
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    const session = await window.ort.InferenceSession.create(bytes, { executionProviders: ['wasm'] });
     return { ort: window.ort, session };
   }
 

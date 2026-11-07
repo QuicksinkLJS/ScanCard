@@ -1,24 +1,23 @@
-import {
-  findSetCodes, parseManualCode, detectFirstEdition, valueTier, cardmarketSearchUrl, normName,
-} from './parse.js';
+// The boss: tabs, camera, and what happens when a button is pressed.
+
+import { $, esc, eur, range, toast, loadImage, canvasBlob, blobToDataURL } from './util.js';
+import { parseManualCode, valueTier } from './parse.js';
+import { baseOf } from './codematch.js';
 import { createApi } from './api.js';
-import { prepare, createOcr } from './ocr.js';
+import { createOcr } from './ocr.js';
 import { createRecognizer } from './recognize.js';
-import { createCamera, cardsFromPhoto } from './camera.js';
+import { createDetector } from './detect.js';
+import { createCamera } from './camera.js';
+import { createScanner } from './scan.js';
+import { initCardPage, openCardPage, closeCardPage, syncBody, searchNames, quickPrice } from './cardpage.js';
+import {
+  loadCollection, saveCollection, newId, loadPack, savePack, putSample, updateSample, allSamples, countSamples,
+} from './store.js';
 
-const $ = (id) => document.getElementById(id);
 const api = createApi();
-const LIST_KEY = 'cardscan-session-v2';
+initCardPage(api);
 
-let ocrEngine = null;
-let scanId = 0;      // ignore results of an older scan when a new one started
-let current = null;  // what the result card shows
-
-// ---------- small helpers ----------
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const eur = (v) => (v == null ? '–' : `€${v.toFixed(2)}`);
-const range = (lo, hi) => (lo == null ? '–' : lo === hi ? eur(lo) : `${eur(lo)} – ${eur(hi)}`);
-
+// ---------- status line on the scan screen ----------
 function setStatus(text, isError = false, progress = null) {
   const el = $('status');
   if (!text) { el.hidden = true; return; }
@@ -27,225 +26,332 @@ function setStatus(text, isError = false, progress = null) {
   el.innerHTML = `${esc(text)}${progress != null ? `<div class="bar"><div style="width:${Math.round(progress * 100)}%"></div></div>` : ''}`;
 }
 
-function loadList() {
-  try { return JSON.parse(localStorage.getItem(LIST_KEY) || '[]'); } catch { return []; }
-}
-function saveList(list) {
-  try { localStorage.setItem(LIST_KEY, JSON.stringify(list)); } catch { /* storage blocked */ }
-}
-
-function loadImage(file) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = URL.createObjectURL(file);
-  });
-}
-
 // ---------- engines ----------
 const recognizer = createRecognizer({ onStatus: (t, p) => setStatus(t, false, p) });
-
-async function getOcr() {
-  if (ocrEngine) return ocrEngine;
-  if (!window.Tesseract) throw new Error('Text scanner not loaded');
-  ocrEngine = await createOcr(window.Tesseract);
-  return ocrEngine;
+const detector = createDetector({ onStatus: (t) => setStatus(t) });
+let ocrPromise = null;
+function getOcr() {
+  if (!ocrPromise) {
+    if (!window.Tesseract) return Promise.reject(new Error('Text scanner not loaded'));
+    ocrPromise = createOcr(window.Tesseract);
+    ocrPromise.catch(() => { ocrPromise = null; });
+  }
+  return ocrPromise;
 }
 
+// ---------- pack mode ----------
+let pack = loadPack();
+function setPack(p) {
+  pack = p;
+  savePack(p);
+  const chip = $('pack-chip');
+  chip.textContent = !p ? 'Pack mode: off' : p.auto ? 'Pack mode: detect' : `Pack: ${p.prefix}`;
+  chip.classList.toggle('pack-on', !!p);
+}
+setPack(pack);
+
+// ---------- scanning ----------
+let mode = 'multi';
+const scanner = createScanner({
+  api, recognizer, detector, getOcr, setStatus,
+  getPack: () => pack,
+  setPack,
+  onOpen: (c) => openCardPage(c, scanHooks),
+  onAddAll: async (list) => {
+    for (const c of list) await addScanned(c, false);
+    scanner.renderList();
+    toast(`${list.length} card${list.length > 1 ? 's' : ''} added to your collection`);
+  },
+});
+
 const camera = createCamera({
-  root: $('cam'),
-  video: $('cam-video'),
-  frame: $('cam-frame'),
-  onCapture: (card) => scanCards([card]),
+  root: $('cam'), video: $('cam-video'), frame: $('cam-frame'), hint: $('cam-hint'),
+  onPhoto: (img) => scanner.scanPhoto(img, 'multi'),
+  onCard: (card) => scanner.scanCard(card),
   onError: () => setStatus('The camera could not be opened. Allow camera access, or use "Choose photo".', true),
 });
 
-// ---------- scanning ----------
-async function scanCards(candidates) {
-  const id = ++scanId;
-  $('result').hidden = true;
-  $('ocr-debug').hidden = true;
-  const preview = $('preview');
-  preview.src = candidates[0].toDataURL('image/jpeg', 0.8);
-  preview.hidden = false;
-  try {
-    setStatus('Recognising the card…');
-    let best = null, bestCard = null;
-    for (const card of candidates) {
-      const r = await recognizer.identify(card);
-      if (!best || r.top[0].score > best.top[0].score) { best = r; bestCard = card; }
-    }
-    if (id !== scanId) return;
-    preview.src = bestCard.toDataURL('image/jpeg', 0.8);
-    setStatus('');
-    await showCard(best.top[0].name, { alternatives: best.top, confident: best.confident });
-    readSetCode(bestCard, id);
-  } catch (err) {
-    console.error(err);
-    setStatus(`Recognition failed: ${err.message || err}`, true);
-  }
+function warmUp() {
+  recognizer.ready().catch(() => {});
+  if (mode === 'multi') detector.ready().catch(() => {});
 }
 
-// Second opinion: read the printed set code. If it belongs to the recognised card,
-// show the exact price of that printing.
-async function readSetCode(card, id) {
-  try {
-    current.codeStatus = 'reading';
-    render();
-    const engine = await getOcr();
-    const lower = { region: { x: 0.3, y: 0.62, w: 0.7, h: 0.16 } }; // set code: right, just under the artwork
-    let text = '';
-    for (const opts of [{ ...lower, binarize: true }, { region: { x: 0, y: 0.55, w: 1, h: 0.45 }, binarize: true }]) {
-      text += `${await engine.read(prepare(card, opts))}\n`;
-      if (id !== scanId) return;
-      const codes = findSetCodes(text);
-      for (const parsed of codes) {
-        if (!parsed.language.supported) {
-          current.code = { parsed, unsupported: true };
-          current.codeStatus = 'done';
-          render();
-          return;
-        }
-        const hit = await api.lookup(parsed);
-        if (hit && normName(hit.name) === normName(current.name)) {
-          current.code = { parsed, hit, firstEdition: detectFirstEdition(text) };
-          current.codeStatus = 'done';
-          render();
-          return;
-        }
-      }
-    }
-    current.ocrText = text;
-    current.codeStatus = 'none';
-    render();
-  } catch (err) {
-    console.warn('set code reading failed', err);
-    if (current) { current.codeStatus = 'none'; render(); }
-  }
-}
-
-async function showCard(name, extra = {}) {
-  const info = await api.nameInfo(name).catch(() => null);
-  current = { name, info, code: null, codeStatus: null, ...extra };
-  render();
-}
-
-// ---------- result card ----------
-function tierOf(cur) {
-  if (cur.code?.hit) return valueTier(cur.code.hit.max);
-  return valueTier(cur.info?.max);
-}
-
-function render() {
-  if (!current) return;
-  const c = current;
-  const el = $('result');
-  const tier = tierOf(c);
-  const alts = (c.alternatives || []).filter((a) => a.name !== c.name).slice(0, 4);
-
-  let price;
-  if (c.code?.hit) {
-    const h = c.code.hit;
-    const p = h.exact ? h.versions[0].products[0] : null;
-    price = `<p class="price">${p ? eur(p.trend) : range(h.min, h.max)}</p>
-      <p class="price-note">Exact printing ${esc(c.code.parsed.code)} (${esc(h.versions[0].set)}${h.versions[0].year ? `, ${h.versions[0].year}` : ''}). Cardmarket trend${p ? `, 30-day average ${eur(p.avg30)}` : ''}.</p>`;
-  } else if (c.info) {
-    const rows = c.info.versions.slice(0, 6).map((v) => `<li><span class="what">${esc(v.set)}${v.year ? ` (${v.year})` : ''}</span><span class="eur">${range(v.min, v.max)}</span></li>`).join('');
-    price = `<p class="price">${range(c.info.min, c.info.max)}</p>
-      <p class="price-note">Depends on which printing you have (${c.info.versions.length} on Cardmarket). Most valuable first:</p>
-      <ul class="versions">${rows}</ul>`;
-  } else {
-    price = '<p class="price-note">No Cardmarket price found. This is often a card only printed in Japan or Korea.</p>';
-  }
-
-  const codeLine = {
-    reading: '<p class="price-note">Reading the set code for the exact printing…</p>',
-    none: '<p class="price-note">Set code not readable. Take a close-up of the code under the artwork for the exact price.</p>',
-    done: c.code?.unsupported ? `<p class="price-note">Set code ${esc(c.code.parsed.code)}: ${esc(c.code.parsed.language.name)} printing. Showing prices of the European versions.</p>` : '',
-  }[c.codeStatus] || '';
-
-  const badges = [];
-  if (c.code?.parsed) badges.push(c.code.parsed.code, c.code.parsed.language.name);
-  if (c.code?.firstEdition) badges.push('1st Edition');
-
-  el.innerHTML = `
-    <div class="card ${tier}">
-      <p class="name">${esc(c.name)}</p>
-      <p class="sub">${c.confident === false ? 'Not sure – check the suggestions below' : 'Recognised from the artwork'}</p>
-      ${badges.length ? `<div class="badges">${badges.map((b) => `<span class="badge">${esc(b)}</span>`).join('')}</div>` : ''}
-      ${price}
-      ${codeLine}
-      ${alts.length ? `<p class="price-note">Not this card?</p><div class="rarities">${alts.map((a) => `<button type="button" class="rarity alt" data-name="${esc(a.name)}">${esc(a.name)}</button>`).join('')}</div>` : ''}
-      <div class="actions">
-        <a class="btn" href="${cardmarketSearchUrl(c.name)}" target="_blank" rel="noopener">Open on Cardmarket</a>
-        <button class="btn primary" type="button" id="add">Add to session</button>
-      </div>
-    </div>`;
-  el.hidden = false;
-  el.querySelectorAll('.alt').forEach((b) => b.addEventListener('click', () => {
-    scanId++; // stop the running set-code check, it belonged to the other card
-    showCard(b.dataset.name, { alternatives: c.alternatives, confident: true });
-  }));
-  $('add').addEventListener('click', addToSession);
-}
-
-function addToSession() {
-  const c = current;
-  const lo = c.code?.hit ? c.code.hit.min : c.info?.min ?? null;
-  const hi = c.code?.hit ? c.code.hit.max : c.info?.max ?? null;
-  const list = loadList();
-  list.unshift({ name: c.name, code: c.code?.parsed?.code || '', lang: c.code?.parsed?.language?.code || '', min: lo, max: hi, tier: tierOf(c) });
-  saveList(list);
-  renderList();
-  $('result').hidden = true;
-  $('preview').hidden = true;
-  setStatus('Added. Scan the next card.');
-}
-
-function renderList() {
-  const list = loadList();
-  $('list').innerHTML = list.map((c) => `
-    <li><span class="dot ${c.tier}"></span>
-      <span class="what">${esc(c.name)}<small>${esc([c.code, c.lang].filter(Boolean).join(' · ') || 'printing unknown')}</small></span>
-      <span class="eur">${range(c.min, c.max)}</span></li>`).join('');
-  const lo = list.reduce((s, c) => s + (c.min || 0), 0);
-  const hi = list.reduce((s, c) => s + (c.max || 0), 0);
-  const n = list.length;
-  $('total').textContent = n ? `${n} ${n === 1 ? 'card' : 'cards'} · ${range(lo, hi)} on Cardmarket` : 'Scanned cards show up here.';
-}
-
-// ---------- manual set code ----------
-async function manualLookup(input) {
-  const parsed = parseManualCode(input);
-  if (!parsed) { setStatus("That doesn't look like a set code. Example: LOB-EN001", true); return; }
-  scanId++;
-  $('preview').hidden = true;
-  setStatus(`Looking up ${parsed.code}…`);
-  const hit = await api.lookup(parsed).catch(() => null);
-  if (!hit) { setStatus(`No card found for ${parsed.code}.`, true); return; }
-  setStatus('');
-  await showCard(hit.name, { confident: true });
-  current.code = { parsed, hit };
-  current.codeStatus = 'done';
-  render();
-}
-
-// ---------- wiring ----------
-$('scan').addEventListener('click', () => { recognizer.ready().catch(() => {}); camera.open(); });
+$('scan').addEventListener('click', () => { warmUp(); camera.open(mode); });
 $('cam-shot').addEventListener('click', () => camera.capture());
 $('cam-cancel').addEventListener('click', () => camera.close());
 $('gallery').addEventListener('change', async (e) => {
   const file = e.target.files[0];
   e.target.value = '';
   if (!file) return;
+  warmUp();
   const img = await loadImage(file);
-  scanCards(cardsFromPhoto(img));
+  scanner.scanPhoto(img, mode);
 });
-$('manual').addEventListener('submit', (e) => { e.preventDefault(); manualLookup($('manual-code').value); });
-$('clear').addEventListener('click', () => { saveList([]); renderList(); });
-renderList();
+$('scan-again').addEventListener('click', () => { scanner.clear(); warmUp(); camera.open(mode); });
+document.querySelectorAll('.modes [data-mode]').forEach((b) => b.addEventListener('click', () => {
+  mode = b.dataset.mode;
+  document.querySelectorAll('.modes [data-mode]').forEach((x) => {
+    x.classList.toggle('on', x === b);
+    x.setAttribute('aria-checked', String(x === b));
+  });
+  $('scan-hint').textContent = mode === 'multi'
+    ? 'Put 2–9 cards on a table, side by side, and take one photo. Works with any language.'
+    : 'Hold one card inside the frame. Works with any language.';
+}));
+
+// ---------- collection ----------
+function entryFromSubject(s, extra = {}) {
+  return {
+    id: s.collId || newId(),
+    name: s.name, vkey: s.vkey || null,
+    code: s.code ? { code: s.code.code, base: s.code.base, lang: s.code.lang, language: s.code.language } : null,
+    language: s.language || null, ocrText: s.ocrText ?? null,
+    pack: s.pack || null, top: s.top || null, confident: s.confident ?? true,
+    thumb: s.thumb || null, sampleId: s.sampleId || null,
+    price: s.price || null, added: Date.now(), ...extra,
+  };
+}
+
+function upsertEntry(entry) {
+  const list = loadCollection();
+  const i = list.findIndex((e) => e.id === entry.id);
+  if (i >= 0) list[i] = { ...list[i], ...entry, added: list[i].added };
+  else list.unshift(entry);
+  saveCollection(list);
+}
+
+// Training example: the cut-out card and the final answer. Saving again replaces it (last choice counts).
+async function saveSample(s) {
+  if (!s.sampleId) return;
+  const final = { name: s.name, version: s.vkey || null, code: s.code?.code || null };
+  if (s.canvas) {
+    const blob = await canvasBlob(s.canvas);
+    await putSample({
+      id: s.sampleId, image: blob, time: Date.now(), final,
+      predicted: { name: s.top?.[0]?.name, score: s.top?.[0]?.score, top: (s.top || []).slice(0, 3) },
+      corrected: !!s.corrected,
+    });
+  } else {
+    await updateSample(s.sampleId, { final, corrected: !!s.corrected });
+  }
+}
+
+async function addScanned(c, notify = true) {
+  c.price = await quickPrice(api, c);
+  c.collId = c.collId || newId();
+  upsertEntry(entryFromSubject(c, { id: c.collId }));
+  c.added = true;
+  await saveSample(c);
+  if (notify) toast('Added to your collection');
+}
+
+const scanHooks = {
+  addLabel: (s) => (s.added ? 'Saved ✓ – save again' : 'Add to collection'),
+  onAdd: async (s) => { await addScanned(s); scanner.renderList(); },
+  onChange: async (s) => {
+    await scanner.refresh(s);
+    if (s.added) { upsertEntry(entryFromSubject(s, { id: s.collId })); saveSample(s); }
+  },
+};
+
+const collHooks = {
+  onChange: async (s) => {
+    s.price = await quickPrice(api, s);
+    upsertEntry(entryFromSubject(s, { id: s.collId }));
+    saveSample(s);
+    renderCollection();
+  },
+  onRemove: (s) => {
+    saveCollection(loadCollection().filter((e) => e.id !== s.collId));
+    renderCollection();
+    toast('Removed');
+  },
+};
+
+const plainHooks = {
+  addLabel: (s) => (s.collId ? 'Added ✓' : 'Add to collection'),
+  onAdd: async (s) => {
+    if (s.collId) return;
+    s.price = await quickPrice(api, s);
+    s.collId = newId();
+    upsertEntry(entryFromSubject(s, { id: s.collId }));
+    toast('Added to your collection');
+  },
+};
+
+function renderCollection() {
+  const list = loadCollection();
+  $('coll-empty').hidden = list.length > 0;
+  $('coll-list').innerHTML = list.map((e) => `
+    <li><button type="button" data-id="${esc(e.id)}">
+      ${e.thumb ? `<img class="thumb" src="${e.thumb}" alt="">` : `<span class="dot ${valueTier(e.price?.hi)}"></span>`}
+      <span class="what"><b>${esc(e.name)}</b><small>${esc(e.price?.label || '')}</small></span>
+      <span class="eur">${range(e.price?.lo, e.price?.hi)}</span>
+    </button></li>`).join('');
+  $('coll-list').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
+    const e = loadCollection().find((x) => x.id === b.dataset.id);
+    if (!e) return;
+    openCardPage({ ...e, collId: e.id }, collHooks);
+  }));
+  const lo = list.reduce((s, e) => s + (e.price?.lo || 0), 0);
+  const hi = list.reduce((s, e) => s + (e.price?.hi || 0), 0);
+  const open = list.filter((e) => e.price && !e.price.exact).length;
+  $('coll-total').textContent = range(lo, hi);
+  $('coll-sub').textContent = list.length
+    ? `${list.length} card${list.length > 1 ? 's' : ''}${open ? ` · ${open} without exact version (shown as a range)` : ''}`
+    : '';
+}
+
+// Refresh the stored prices with today's data once per app start.
+let refreshed = false;
+async function refreshCollectionPrices() {
+  if (refreshed) return;
+  refreshed = true;
+  const list = loadCollection();
+  let changed = false;
+  for (const e of list) {
+    const p = await quickPrice(api, e).catch(() => null);
+    if (p && (p.lo !== e.price?.lo || p.hi !== e.price?.hi || p.label !== e.price?.label)) { e.price = p; changed = true; }
+  }
+  if (changed) { saveCollection(list); renderCollection(); }
+}
+
+// ---------- market ----------
+let marketKind = 'short', marketDir = 'up';
+async function renderMarket() {
+  const ul = $('market-list');
+  let m;
+  try { m = await api.movers(); } catch { ul.innerHTML = '<li><div class="row muted small">Market data not available.</div></li>'; return; }
+  const day = m.date ? new Date(m.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '';
+  $('market-note').textContent = marketKind === 'short'
+    ? `Yesterday's average sale against the last 7 days. Fast, but one odd sale can show up here. Prices of ${day}, cards from €2.`
+    : `Cardmarket trend against the 30-day average – the steadier movers. Prices of ${day}, cards from €2.`;
+  const rows = m[marketKind][marketDir];
+  const now = marketKind === 'short' ? 'avg1' : 'trend';
+  ul.innerHTML = rows.map((r, i) => `
+    <li><button type="button" data-i="${i}">
+      <span class="what"><b>${esc(r.name)}</b><small>${esc(r.set)}${r.year ? ` (${r.year})` : ''}</small></span>
+      <span class="eur">${eur(r[now])}<small class="${r.change >= 0 ? 'up' : 'down'}">${r.change >= 0 ? '+' : ''}${r.change.toFixed(0)} %</small></span>
+    </button></li>`).join('');
+  ul.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
+    const r = rows[Number(b.dataset.i)];
+    openCardPage({ name: r.name, vkey: String(r.id) }, plainHooks);
+  }));
+}
+document.querySelectorAll('#view-market [data-kind]').forEach((b) => b.addEventListener('click', () => {
+  marketKind = b.dataset.kind;
+  document.querySelectorAll('#view-market [data-kind]').forEach((x) => x.classList.toggle('on', x === b));
+  renderMarket();
+}));
+document.querySelectorAll('#view-market [data-dir]').forEach((b) => b.addEventListener('click', () => {
+  marketDir = b.dataset.dir;
+  document.querySelectorAll('#view-market [data-dir]').forEach((x) => x.classList.toggle('on', x === b));
+  renderMarket();
+}));
+
+// ---------- more ----------
+const nameInput = $('name-search');
+nameInput.addEventListener('input', () => searchNames(nameInput.value, $('name-results'), (name) => {
+  nameInput.value = '';
+  openCardPage({ name }, plainHooks);
+}, 10));
+
+$('manual').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const parsed = parseManualCode($('manual-code').value);
+  if (!parsed) { toast("That doesn't look like a set code. Example: LOB-EN001"); return; }
+  const hit = await api.lookup(parsed).catch(() => null);
+  if (!hit) { toast(`No card found for ${parsed.code}.`); return; }
+  openCardPage({
+    name: hit.name,
+    code: { code: parsed.code, base: baseOf(parsed.code), lang: parsed.lang, language: parsed.language, read: parsed.code, distance: 0 },
+    language: parsed.language,
+  }, plainHooks);
+});
+
+$('export').addEventListener('click', async () => {
+  const samples = await allSamples();
+  if (!samples.length) { toast('No training examples yet. Add scanned cards to your collection first.'); return; }
+  toast(`Preparing ${samples.length} examples…`);
+  const out = [];
+  for (const s of samples) out.push({ ...s, image: s.image ? await blobToDataURL(s.image) : null });
+  const blob = new Blob([JSON.stringify({ app: 'cardscan', version: 1, exported: new Date().toISOString(), samples: out })], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `cardscan-training-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+});
+
+$('clear-coll').addEventListener('click', () => {
+  if (!loadCollection().length) return;
+  if (!window.confirm('Remove all cards from your collection? Training examples stay.')) return;
+  saveCollection([]);
+  renderCollection();
+});
+
+async function renderMore() {
+  const n = await countSamples();
+  $('export').textContent = `Export training data (${n})`;
+  try {
+    const ix = await api.index();
+    const d = ix.prices ? new Date(ix.prices).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '?';
+    $('data-info').textContent = `Prices of ${d} · ${ix.sets.length} set codes · ${loadCollection().length} cards in your collection`;
+  } catch { $('data-info').textContent = 'Price data not available.'; }
+}
+
+// ---------- pack picker ----------
+let allSets = null;
+async function renderPackList() {
+  if (!allSets) allSets = await api.sets().catch(() => []);
+  const q = $('pack-search').value.trim().toLowerCase();
+  const rows = allSets.filter((s) => !q || s.name.toLowerCase().includes(q) || s.prefix.toLowerCase().startsWith(q)).slice(0, 40);
+  $('pack-list').innerHTML = rows.map((s, i) => `
+    <li><button type="button" data-i="${i}"><span class="what"><b>${esc(s.name)}</b><small>${esc(s.prefix)}${s.year ? ` · ${s.year}` : ''} · ${s.count} cards</small></span>
+    ${pack?.prefix === s.prefix && pack?.name === s.name ? '<span class="eur">✓</span>' : ''}</button></li>`).join('');
+  $('pack-list').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
+    const s = rows[Number(b.dataset.i)];
+    setPack({ prefix: s.prefix, name: s.name, year: s.year });
+    toast(`Pack mode: ${s.name}`);
+    history.back();
+  }));
+}
+$('pack-chip').addEventListener('click', () => {
+  $('pack-page').hidden = false;
+  syncBody();
+  history.pushState({ sheet: 'pack' }, '');
+  $('pack-search').value = '';
+  renderPackList();
+});
+$('pack-search').addEventListener('input', renderPackList);
+$('pack-back').addEventListener('click', () => history.back());
+$('pack-auto').addEventListener('click', () => { setPack({ auto: true }); toast('The set is taken from the first cards you scan'); history.back(); });
+$('pack-off').addEventListener('click', () => { setPack(null); history.back(); });
+
+// Android back button / browser back closes the open sheet.
+window.addEventListener('popstate', () => {
+  if (!$('card-page').hidden) closeCardPage();
+  else if (!$('pack-page').hidden) { $('pack-page').hidden = true; syncBody(); }
+});
+
+// ---------- tabs ----------
+function showView(name) {
+  document.querySelectorAll('.view').forEach((v) => { v.hidden = v.id !== `view-${name}`; });
+  document.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('on', b.dataset.view === name));
+  window.scrollTo(0, 0);
+  if (name === 'collection') { renderCollection(); refreshCollectionPrices(); }
+  if (name === 'market') renderMarket();
+  if (name === 'more') renderMore();
+}
+document.querySelectorAll('.tabs button').forEach((b) => b.addEventListener('click', () => showView(b.dataset.view)));
+
 // Start loading the recogniser in the background so the first scan is quick.
 setTimeout(() => recognizer.ready().then(() => {
   if (/first time|Starting/.test($('status').textContent)) setStatus('');
+  detector.ready().then(() => setStatus('')).catch(() => setStatus(''));
 }).catch(() => {}), 500);
+
+// for tests
+window.cardscan = { scanner, api, setPack, showView };

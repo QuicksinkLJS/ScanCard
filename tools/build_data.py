@@ -29,6 +29,11 @@ def norm(name):
     return re.sub(r"[^a-z0-9]+", "", s)
 
 
+def bucket_of(k):
+    """Card detail files are split by the first two letters of the normalised name (same rule in js/api.js)."""
+    return (k[:2] or "_").ljust(2, "_")
+
+
 def to_date(s):
     try:
         return date.fromisoformat(str(s)[:10])
@@ -285,6 +290,50 @@ def main():
                         sorted(bases.get(k, ())), banlist.get(k)]
     with open(os.path.join(out_dir, "names.json"), "w", encoding="utf-8") as f:
         json.dump(names_out, f, ensure_ascii=False, separators=(",", ":"))
+    # Every printing per card name, for the card page: data/ygo/cards/<first two letters>.json
+    #   {norm(name): [[set, year, [rarities], [codes], [[pid, trend, avg30, low, avg1, avg7], ...]], ...]}
+    detail = collections.defaultdict(dict)  # norm(name) -> {(set, year, expansion, pids): row}
+    for code, versions in data.items():
+        for v in versions:
+            k = norm(v["n"])
+            key = (v["s"], v["e"], tuple(p[0] for p in v["p"]))
+            row = detail[k].get(key)
+            if row is None:
+                row = detail[k][key] = [v["s"], v["y"], list(v["r"]), [], v["p"]]
+            elif row[1] is None:
+                row[1] = v["y"]
+            row[3].append(code)
+            for r in v["r"]:
+                if r not in row[2]:
+                    row[2].append(r)
+    buckets = collections.defaultdict(dict)
+    for k, rows in detail.items():
+        out_rows = []
+        for row in rows.values():
+            row[3].sort(key=lambda c: (not re.search(r"-EN\d", c), c))
+            out_rows.append(row)
+        out_rows.sort(key=lambda r: (-(r[1] or 0), r[0]))
+        buckets[bucket_of(k)][k] = out_rows
+    cards_dir = os.path.join(out_dir, "cards")
+    os.makedirs(cards_dir, exist_ok=True)
+    for old in os.listdir(cards_dir):
+        os.remove(os.path.join(cards_dir, old))
+    for b, entries in buckets.items():
+        with open(os.path.join(cards_dir, f"{b}.json"), "w", encoding="utf-8") as f:
+            json.dump(entries, f, ensure_ascii=False, separators=(",", ":"))
+    # Set list for pack mode: one row per (prefix, set name)
+    set_rows = collections.defaultdict(lambda: {"names": set(), "year": None})
+    for code, versions in data.items():
+        prefix = code.split("-")[0]
+        for v in versions:
+            r = set_rows[(prefix, v["s"])]
+            r["names"].add(norm(v["n"]))
+            if v["y"] and (r["year"] is None or v["y"] < r["year"]):
+                r["year"] = v["y"]
+    sets_out = sorted(([p, s, r["year"], len(r["names"])] for (p, s), r in set_rows.items() if len(r["names"]) >= 5),
+                      key=lambda x: (-(x[2] or 0), x[1]))
+    with open(os.path.join(out_dir, "sets.json"), "w", encoding="utf-8") as f:
+        json.dump(sets_out, f, ensure_ascii=False, separators=(",", ":"))
     # Tops and flops for cards worth at least 2 EUR, in two flavours:
     #   short:  yesterday's average sale against the 7-day average (fast, shows odd sales too)
     #   stable: smoothed trend price against the 30-day average

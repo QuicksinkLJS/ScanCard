@@ -1,21 +1,32 @@
-// Live camera with a card-shaped frame. Returns an upright card image (canvas, 590 x 860).
+// Live camera.
+//  * "multi": full picture at the camera's best resolution (ImageCapture.takePhoto), cards are found later
+//  * "single": card-shaped frame, returns the upright card (canvas, CARD_W x CARD_H)
 
 export const CARD_W = 590;
 export const CARD_H = 860;
 
-export function createCamera({ root, video, frame, onCapture, onError }) {
+export function createCamera({ root, video, frame, hint, onPhoto, onCard, onError }) {
   let stream = null;
+  let mode = 'multi';
 
-  async function open() {
+  async function open(m = 'multi') {
+    mode = m;
     root.hidden = false;
+    root.classList.toggle('multi', mode === 'multi');
+    hint.textContent = mode === 'multi'
+      ? 'Lay the cards flat, side by side, not overlapping'
+      : 'Fit the card into the frame';
     document.body.classList.add('cam-open');
     try {
       stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1440 } },
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 3840 }, height: { ideal: 2160 } },
         audio: false,
       });
       video.srcObject = stream;
       await video.play();
+      const [track] = stream.getVideoTracks();
+      // continuous autofocus where the phone supports it
+      try { await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }); } catch { /* not supported */ }
     } catch (err) {
       close();
       onError(err);
@@ -30,10 +41,34 @@ export function createCamera({ root, video, frame, onCapture, onError }) {
     document.body.classList.remove('cam-open');
   }
 
+  function videoFrame() {
+    const c = document.createElement('canvas');
+    c.width = video.videoWidth; c.height = video.videoHeight;
+    c.getContext('2d').drawImage(video, 0, 0);
+    return c;
+  }
+
+  // Full-resolution still photo; falls back to the current video frame.
+  async function stillPhoto() {
+    const [track] = stream?.getVideoTracks() || [];
+    if (track && 'ImageCapture' in window) {
+      try {
+        const ic = new window.ImageCapture(track);
+        const caps = await ic.getPhotoCapabilities().catch(() => null);
+        const settings = caps?.imageWidth?.max ? { imageWidth: caps.imageWidth.max, imageHeight: caps.imageHeight.max } : {};
+        const blob = await ic.takePhoto(settings);
+        const bmp = await createImageBitmap(blob, { imageOrientation: 'from-image' });
+        if (bmp.width >= video.videoWidth) return bmp;
+      } catch (e) {
+        console.warn('takePhoto failed, using the video frame', e);
+      }
+    }
+    return videoFrame();
+  }
+
   // The video is shown with object-fit: cover, so map the frame on screen back to video pixels.
-  function capture() {
+  function cutFrame() {
     const vw = video.videoWidth, vh = video.videoHeight;
-    if (!vw) return;
     const el = video.getBoundingClientRect();
     const fr = frame.getBoundingClientRect();
     const scale = Math.max(el.width / vw, el.height / vh);
@@ -44,18 +79,32 @@ export function createCamera({ root, video, frame, onCapture, onError }) {
     const sw = fr.width / scale;
     const sh = fr.height / scale;
     const card = document.createElement('canvas');
-    card.width = CARD_W; card.height = CARD_H;
+    card.width = Math.round(CARD_W * 1.5); card.height = Math.round(CARD_H * 1.5);
     const ctx = card.getContext('2d', { willReadFrequently: true });
     ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, CARD_W, CARD_H);
+    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, card.width, card.height);
+    return card;
+  }
+
+  async function capture() {
+    if (!video.videoWidth) return;
+    if (mode === 'single') {
+      const card = cutFrame();
+      close();
+      onCard(card);
+      return;
+    }
+    root.classList.add('busy');
+    const photo = await stillPhoto();
+    root.classList.remove('busy');
     close();
-    onCapture(card);
+    onPhoto(photo);
   }
 
   return { open, close, capture };
 }
 
-// For a photo from the gallery: assume one card fills most of the picture.
+// For a photo with one card filling most of it (no card finder available).
 // Returns upright and sideways candidates; the recogniser picks the better one.
 export function cardsFromPhoto(img) {
   const W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
@@ -66,17 +115,19 @@ export function cardsFromPhoto(img) {
     if (w > W * 0.92) { w = W * 0.92; h = w / ratio; }
     const x = (W - w) / 2, y = (H - h) / 2;
     const c = document.createElement('canvas');
-    c.width = CARD_W; c.height = CARD_H;
+    const cw = Math.round(CARD_W * 1.5), ch = Math.round(CARD_H * 1.5);
+    c.width = cw; c.height = ch;
     const ctx = c.getContext('2d', { willReadFrequently: true });
     ctx.imageSmoothingQuality = 'high';
     if (sideways) {
-      ctx.translate(CARD_W, 0);
+      ctx.translate(cw, 0);
       ctx.rotate(Math.PI / 2);
-      ctx.drawImage(img, x, y, w, h, 0, 0, CARD_H, CARD_W);
+      ctx.drawImage(img, x, y, w, h, 0, 0, ch, cw);
     } else {
-      ctx.drawImage(img, x, y, w, h, 0, 0, CARD_W, CARD_H);
+      ctx.drawImage(img, x, y, w, h, 0, 0, cw, ch);
     }
-    out.push(c);
+    // where it sits in the photo, so it can be marked like a found card
+    out.push({ canvas: c, box: { cx: W / 2, cy: H / 2, w, h, angle: 0 } });
   }
   return out;
 }
