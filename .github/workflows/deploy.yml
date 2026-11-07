@@ -3,7 +3,7 @@ name: Build prices and deploy
 # Runs on every push, every morning (fresh Cardmarket prices) and on demand.
 on:
   push:
-    branches: [main]
+    branches: [main, beta]
   schedule:
     - cron: "17 4 * * *"
   workflow_dispatch:
@@ -21,7 +21,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      # the live site is always built from main; branch beta goes to /beta/ (see "Assemble site")
       - uses: actions/checkout@v4
+        with:
+          ref: main
 
       - uses: actions/setup-python@v5
         with:
@@ -105,8 +108,16 @@ jobs:
         run: |
           mkdir -p _site
           cp -r index.html style.css manifest.webmanifest sw.js icon.svg icons js data models _site/
-          sed -i "s/const BUILD = 'dev';/const BUILD = '${GITHUB_SHA::7}-${{ github.run_number }}';/" _site/sw.js
+          sed -i "s/const BUILD = 'dev';/const BUILD = '$(git rev-parse --short HEAD)-${{ github.run_number }}';/" _site/sw.js
           grep -n "const BUILD" _site/sw.js
+          # Beta channel: the app files of branch beta under /beta/, using the live site's data and models
+          if git fetch -q --depth 1 origin beta; then
+            mkdir -p _site/beta
+            git archive FETCH_HEAD index.html style.css manifest.webmanifest sw.js icon.svg icons js | tar -x -C _site/beta
+            sed -i "s/const BUILD = 'dev';/const BUILD = 'beta-$(git rev-parse --short FETCH_HEAD)-${{ github.run_number }}';/" _site/beta/sw.js
+            sed -i "s#'models/ygo'#'../models/ygo'#g; s#'data/ygo'#'../data/ygo'#g" _site/beta/js/*.js
+            grep -n "const BUILD" _site/beta/sw.js
+          fi
 
       - uses: actions/upload-pages-artifact@v3
         with:
