@@ -22,6 +22,10 @@ export function createScanner({ api, recognizer, detector, getOcr, getPack, setP
   let piles = false;      // show the sort suggestion
   const celebrated = new Set();
 
+  // Let the browser paint the photo and the scan animation before the heavy work starts:
+  // the card finder runs on the main thread and would otherwise keep the old (black) screen for seconds.
+  const painted = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 0))));
+
   // ---------- entry points ----------
   async function scanPhoto(image, mode) {
     const id = ++scanId;
@@ -30,6 +34,8 @@ export function createScanner({ api, recognizer, detector, getOcr, getPack, setP
     scanning(true);
     cards = [];
     renderList();
+    await painted();
+    if (id !== scanId) return;
     try {
       let found = null;
       if (mode === 'multi') {
@@ -67,6 +73,8 @@ export function createScanner({ api, recognizer, detector, getOcr, getPack, setP
     scanning(true);
     cards = [];
     renderList();
+    await painted();
+    if (id !== scanId) return;
     try {
       setStatus('Recognising the card…');
       const W = canvas.width, H = canvas.height;
