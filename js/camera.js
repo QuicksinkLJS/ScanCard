@@ -48,22 +48,29 @@ export function createCamera({ root, video, frame, hint, onPhoto, onCard, onErro
     return c;
   }
 
-  // Full-resolution still photo; falls back to the current video frame.
+  // A sharper still photo when the video stream itself is small. Capped at ~12 MP: the phone's
+  // maximum (often 50 MP) makes Android switch the camera mode (black preview) and takes seconds to decode.
+  const PHOTO_MAX = 4000;
   async function stillPhoto() {
     const [track] = stream?.getVideoTracks() || [];
-    if (track && 'ImageCapture' in window) {
-      try {
-        const ic = new window.ImageCapture(track);
-        const caps = await ic.getPhotoCapabilities().catch(() => null);
-        const settings = caps?.imageWidth?.max ? { imageWidth: caps.imageWidth.max, imageHeight: caps.imageHeight.max } : {};
-        const blob = await ic.takePhoto(settings);
-        const bmp = await createImageBitmap(blob, { imageOrientation: 'from-image' });
-        if (bmp.width >= video.videoWidth) return bmp;
-      } catch (e) {
-        console.warn('takePhoto failed, using the video frame', e);
+    if (!track || !('ImageCapture' in window)) return null;
+    try {
+      const ic = new window.ImageCapture(track);
+      const caps = await ic.getPhotoCapabilities().catch(() => null);
+      let settings = {};
+      const wr = caps?.imageWidth, hr = caps?.imageHeight;
+      if (wr?.max && hr?.max) {
+        const k = Math.min(1, PHOTO_MAX / Math.max(wr.max, hr.max));
+        const fit = (r, v) => { const st = r.step || 1; return Math.max(r.min || 1, Math.round(v / st) * st); };
+        settings = { imageWidth: fit(wr, wr.max * k), imageHeight: fit(hr, hr.max * k) };
       }
+      const blob = await ic.takePhoto(settings);
+      const bmp = await createImageBitmap(blob, { imageOrientation: 'from-image' });
+      if (bmp.width * bmp.height > video.videoWidth * video.videoHeight * 1.2) return bmp;
+    } catch (e) {
+      console.warn('takePhoto failed, using the video frame', e);
     }
-    return videoFrame();
+    return null;
   }
 
   // The video is shown with object-fit: cover, so map the frame on screen back to video pixels.
@@ -94,11 +101,20 @@ export function createCamera({ root, video, frame, hint, onPhoto, onCard, onErro
       onCard(card);
       return;
     }
-    root.classList.add('busy');
+    // Show the picture at once (scan animation runs over it) – no waiting for the photo pipeline.
+    const frameNow = videoFrame();
+    if (Math.max(video.videoWidth, video.videoHeight) >= 1920 || !('ImageCapture' in window)) {
+      close();
+      onPhoto(frameNow);
+      return;
+    }
+    // small video stream: start with the frame, then hand over the sharper photo
+    root.hidden = true;
+    document.body.classList.remove('cam-open');
+    onPhoto(frameNow);
     const photo = await stillPhoto();
-    root.classList.remove('busy');
     close();
-    onPhoto(photo);
+    if (photo) onPhoto(photo, { better: true });
   }
 
   return { open, close, capture };

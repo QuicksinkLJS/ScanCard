@@ -17,14 +17,29 @@ export function toast(text, ms = 2600) {
   toastTimer = setTimeout(() => { el.hidden = true; }, ms);
 }
 
-// Small JPEG preview of a card canvas (for lists and the collection).
-export function thumbOf(canvas, w = 120) {
+// Downscale in halving steps: one big jump drops most pixels and looks grainy.
+export function shrink(canvas, w) {
+  let src = canvas;
+  const h = Math.round(w * canvas.height / canvas.width);
+  while (src.width / 2 >= w * 1.05) {
+    const c = document.createElement('canvas');
+    c.width = Math.round(src.width / 2); c.height = Math.round(src.height / 2);
+    const ctx = c.getContext('2d');
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(src, 0, 0, c.width, c.height);
+    src = c;
+  }
   const c = document.createElement('canvas');
-  c.width = w; c.height = Math.round(w * canvas.height / canvas.width);
+  c.width = w; c.height = h;
   const ctx = c.getContext('2d');
   ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(canvas, 0, 0, c.width, c.height);
-  return c.toDataURL('image/jpeg', 0.75);
+  ctx.drawImage(src, 0, 0, w, h);
+  return c;
+}
+
+// JPEG preview of a card canvas (lists, collection).
+export function thumbOf(canvas, w = 240, quality = 0.85) {
+  return shrink(canvas, w).toDataURL('image/jpeg', quality);
 }
 
 export function canvasBlob(canvas, w = 590, quality = 0.85) {

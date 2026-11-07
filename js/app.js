@@ -1,7 +1,7 @@
 // The boss: tabs, camera, and what happens when a button is pressed.
 
 import { startI18n, lang, setLang } from './i18n.js';
-import { $, esc, eur, range, toast, loadImage, canvasBlob, blobToDataURL } from './util.js';
+import { $, esc, eur, range, toast, loadImage, canvasBlob, blobToDataURL, thumbOf } from './util.js';
 import { parseManualCode, valueTier } from './parse.js';
 import { baseOf } from './codematch.js';
 import { createApi } from './api.js';
@@ -120,7 +120,7 @@ function entryFromSubject(s, extra = {}) {
     code: s.code ? { code: s.code.code, base: s.code.base, lang: s.code.lang, language: s.code.language } : null,
     language: s.language || null, ocrText: s.ocrText ?? null,
     pack: s.pack || null, top: s.top || null, confident: s.confident ?? true,
-    thumb: s.thumb || null, sampleId: s.sampleId || null,
+    thumb: (s.canvas ? thumbOf(s.canvas, 180, 0.8) : s.thumb) || null, sampleId: s.sampleId || null,
     price: s.price || null, added: Date.now(), ...extra,
   };
 }
@@ -203,8 +203,8 @@ const plainHooks = {
 };
 
 let collSort = 'value';
-// Own photo, else the official picture of the chosen version.
-const pictureOf = (e, size = 'preview') => e.thumb || versionImage({ image: e.price?.image }, size) || '';
+// Official picture once the version is known (sharp), else the own photo.
+const pictureOf = (e, size = 'preview') => (e.price?.exact && e.price?.image ? versionImage({ image: e.price.image }, size) : '') || e.thumb || versionImage({ image: e.price?.image }, size) || '';
 function renderCollection() {
   const list = loadCollection();
   const pf = portfolio(list);
