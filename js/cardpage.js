@@ -11,6 +11,7 @@
 import { $, esc, eur, range, toast } from './util.js';
 import { cardmarketSearchUrl, normName } from './parse.js';
 import { matchCode } from './codematch.js';
+import { openHolo } from './holo.js';
 import { findWatch, toggleWatch, findWish, setWish, removeWish } from './lists.js';
 import { versionOptions, rankOptions, bestOptions, priceOf, tierOfPrice, oddValues, optionCode, versionLabel, cardmarketUrl, versionImage } from './prices.js';
 
@@ -148,6 +149,7 @@ function render() {
         <div class="badges">${lang ? `<span class="badge">${esc(lang.name)}</span>` : ''}${banBadges(info)}</div>
       </div>
     </div>
+    ${hooks.own && chosen?.image ? `<button type="button" class="btn wide holo-btn" id="card-holo">✨ View your card</button>` : ''}
     ${priceBox}
     ${notes.map((n) => `<p class="note">${n}</p>`).join('')}
     ${ranked.length ? `<h2>Which version do you have?</h2><ul class="versions">${versions}</ul>` : ''}
@@ -172,6 +174,7 @@ function render() {
     ${hooks.onRemove ? `<button class="btn wide danger" type="button" id="card-remove">${esc(hooks.removeLabel || 'Remove from collection')}</button>` : ''}
   `;
   const priceNow = () => ({ lo: price.lo, hi: price.hi, label: chosen ? [`${chosen.set}`, versionLabel(chosen)].join(' · ') : 'any version' });
+  $('card-holo')?.addEventListener('click', () => openHolo([{ name: info?.name || s.name, rarity: chosen.rarity || versionLabel(chosen), image: chosen.image, price: chosen.trend }]));
   $('card-watch').addEventListener('click', () => {
     const on = toggleWatch(s, priceNow());
     toast(on ? 'Added to your watchlist (Market tab)' : 'Removed from your watchlist');

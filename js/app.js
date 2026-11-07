@@ -14,6 +14,7 @@ import { portfolio, changeOf, mid, pctText } from './depot.js';
 import { versionImage } from './prices.js';
 import { createMasters } from './masters.js';
 import { createDecks } from './decks.js';
+import { openHolo, closeHolo } from './holo.js';
 import { loadWatch, loadWish, removeWatch, belowTarget } from './lists.js';
 import {
   loadCollection, saveCollection, newId, loadPack, savePack, putSample, updateSample, allSamples, countSamples,
@@ -157,6 +158,7 @@ async function addScanned(c, notify = true) {
 }
 
 const scanHooks = {
+  own: true,
   addLabel: (s) => (s.added ? 'Saved ✓ – save again' : 'Add to collection'),
   onAdd: async (s) => { await addScanned(s); scanner.renderList(); },
   removeLabel: 'Not a card – remove from this scan',
@@ -168,6 +170,7 @@ const scanHooks = {
 };
 
 const collHooks = {
+  own: true,
   onChange: async (s) => {
     s.price = await quickPrice(api, s);
     upsertEntry(entryFromSubject(s, { id: s.collId }));
@@ -216,6 +219,10 @@ function renderCollection() {
   $('coll-sub').textContent = list.length
     ? `${list.length} card${list.length > 1 ? 's' : ''}${open ? ` · ${open} without exact version (shown as a range)` : ''}`
     : '';
+  // Showcase: the most valuable cards with a known version, big, to swipe through
+  const show = [...list].filter((e) => e.price?.exact && e.price?.image).sort((a, b) => (b.price.lo ?? 0) - (a.price.lo ?? 0)).slice(0, 20);
+  $('showcase').hidden = !show.length;
+  $('showcase').onclick = () => openHolo(show.map((e) => ({ name: e.name, rarity: e.price.rarity, image: e.price.image, price: e.price.lo })));
   // Top 5
   $('coll-top-wrap').hidden = pf.top.length < 2;
   $('coll-top').innerHTML = pf.top.map((e, i) => `
@@ -437,6 +444,7 @@ $('pack-off').addEventListener('click', () => { setPack(null); history.back(); }
 
 // Android back button / browser back closes the open sheet.
 window.addEventListener('popstate', () => {
+  if (!$('holo').hidden) { closeHolo(); return; }
   if (!$('card-page').hidden) {
     closeCardPage(); masters.refresh(); decks.refresh();
     if (!$('view-collection').hidden && collTab === 'wish') renderWish();

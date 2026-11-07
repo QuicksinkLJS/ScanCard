@@ -275,3 +275,54 @@ textarea.field.area { min-height: 92px; resize: vertical; font-family: inherit; 
 .rows li.deal > button { box-shadow: inset 3px 0 0 #4fd08a; padding-left: 12px; }
 .dealtag { color: #4fd08a; font-weight: 700; }
 #coll-tabs button, #market-tabs button { font-size: 13.5px; padding: 0 4px; }
+
+/* ---------- Holo view ---------- */
+.holo { position: fixed; inset: 0; z-index: 40; background: radial-gradient(ellipse at 50% 30%, #241d3d 0%, #0b0a10 70%);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 20px; touch-action: none; }
+.holo-close { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 10px); right: 12px; }
+#holo-stage { width: min(78vw, 400px); aspect-ratio: 59 / 86; perspective: 900px; }
+.holo-card { --rx: 0deg; --ry: 0deg; --mx: 50%; --my: 50%; --pos: 50%; --hyp: 0;
+  position: relative; width: 100%; height: 100%; border-radius: 4.5% / 3.1%; overflow: hidden;
+  transform: rotateX(var(--rx)) rotateY(var(--ry)); transform-style: preserve-3d; transition: transform .08s linear;
+  box-shadow: 0 30px 60px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.06); background: #1b1b22; }
+.holo-card img { width: 100%; height: 100%; object-fit: cover; display: block; user-select: none; pointer-events: none; }
+.holo-card > div { position: absolute; pointer-events: none; mix-blend-mode: color-dodge; opacity: 0; }
+/* areas of a Yu-Gi-Oh card */
+.holo-card .h-name { left: 6.5%; top: 4.3%; width: 76%; height: 6.4%; border-radius: 2px; }
+.holo-card .h-art { left: 12.2%; top: 18.3%; width: 75.6%; height: 48.5%; }
+.holo-card .h-full { inset: 0; }
+.holo-card .h-glare { inset: 0; mix-blend-mode: overlay; opacity: calc(.2 + var(--hyp) * .4);
+  background: radial-gradient(circle at var(--mx) var(--my), rgba(255,255,255,.7) 0%, rgba(255,255,255,.12) 28%, rgba(0,0,0,.22) 85%); }
+.k-common .h-glare, .k-plain .h-glare { opacity: calc(.1 + var(--hyp) * .2); }
+/* neutral shimmer */
+.k-plain .h-full { opacity: .5; mix-blend-mode: soft-light; background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,.4) var(--pos), transparent 70%) 0 0 / 100% 100%; }
+/* Rare / Secret: silver name */
+.k-rare .h-name, .k-secret .h-name { opacity: .55; mix-blend-mode: overlay;
+  background: linear-gradient(100deg, #777 0%, #eee calc(var(--pos) - 10%), #fff var(--pos), #999 calc(var(--pos) + 14%), #666 100%); }
+/* Super / Ultra: holo artwork */
+.k-super .h-art, .k-ultra .h-art { opacity: calc(.18 + var(--hyp) * .3); mix-blend-mode: color-dodge;
+  background: linear-gradient(110deg, #ff4f9a, #ffe14f, #4fffb0, #4fc8ff, #b44fff, #ff4f9a) var(--pos) var(--pos) / 300% 300%; }
+/* Ultra: gold name */
+.k-ultra .h-name, .k-relief .h-name { opacity: .6; mix-blend-mode: overlay;
+  background: linear-gradient(100deg, #8a6416 0%, #f7d774 calc(var(--pos) - 12%), #fff3c0 var(--pos), #c99a2e calc(var(--pos) + 14%), #7a5a12 100%); }
+/* Secret: diagonal rainbow sparkle over the artwork */
+.k-secret .h-art { opacity: calc(.2 + var(--hyp) * .35); mix-blend-mode: color-dodge;
+  background:
+    repeating-linear-gradient(135deg, transparent 0 4px, rgba(255,255,255,.35) 4px 5px),
+    linear-gradient(135deg, #ff3c8e, #ffd23c, #3cff9e, #3cc8ff, #b43cff, #ff3c8e) var(--pos) var(--pos) / 250% 250%;
+  background-blend-mode: overlay; }
+/* Ultimate: relief */
+.k-relief .h-full { opacity: .35; mix-blend-mode: overlay;
+  background: repeating-linear-gradient(45deg, rgba(255,255,255,.18) 0 1px, rgba(0,0,0,.18) 1px 3px),
+    linear-gradient(calc(90deg + var(--ry) * 4), rgba(255,236,170,.5), rgba(0,0,0,.3)); }
+/* Starlight / Quarter Century / Prismatic: rainbow over the whole card */
+.k-rainbow .h-full { opacity: calc(.12 + var(--hyp) * .28); mix-blend-mode: color-dodge;
+  background:
+    radial-gradient(circle, rgba(255,255,255,.5) 0 .6px, transparent 1.2px) 0 0 / 5px 5px,
+    radial-gradient(circle, rgba(255,255,255,.35) 0 .6px, transparent 1.2px) 2.5px 2.5px / 5px 5px,
+    linear-gradient(120deg, #ff3c8e, #ffd23c, #3cff9e, #3cc8ff, #b43cff, #ff3c8e, #ffd23c) var(--pos) var(--pos) / 300% 300%; }
+.k-ghost .h-full { opacity: .35; mix-blend-mode: screen; background: radial-gradient(circle at var(--mx) var(--my), rgba(220,240,255,.7), rgba(150,180,220,.1) 60%); }
+.holo-info { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; }
+.holo-info b { font-size: 18px; }
+.holo-info span { font-size: 14px; }
+.holo-btn { display: inline-flex; align-items: center; gap: 6px; }
