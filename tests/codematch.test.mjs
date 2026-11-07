@@ -34,4 +34,6 @@ test('base and language helpers', () => {
   assert.equal(baseOf('LOB-001'), 'LOB-001');
   assert.equal(languageFromText('xx DUNE-JP012 yy').code, 'JP');
   assert.equal(languageFromText('no code'), null);
+  assert.equal(languageFromText('YACI1-1P026 (e').code, 'JP');
+  assert.equal(languageFromText('SRL-GODo'), null);
 });

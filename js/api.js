@@ -111,9 +111,9 @@ export function createApi({ fetchFn = globalThis.fetch?.bind(globalThis), base =
     }
     const rows = (await buckets.get(b))[k];
     if (!rows) return [];
-    return rows.map(([set, year, rarities, codes, products], i) => ({
+    return rows.map(([set, year, rarities, codes, products, date], i) => ({
       key: `${i}`,
-      set, year, rarities, codes,
+      set, year, rarities, codes, date: date || (year ? `${year}-01-01` : null),
       products: products.map(([id, trend, avg30, low, avg1, avg7]) => ({ id, trend, avg30, low, avg1, avg7 })),
     }));
   }
@@ -122,7 +122,9 @@ export function createApi({ fetchFn = globalThis.fetch?.bind(globalThis), base =
   let setsPromise = null;
   function sets() {
     if (!setsPromise) {
-      setsPromise = getJson(`${base}/sets.json`).then((rows) => rows.map(([prefix, name, year, count]) => ({ prefix, name, year, count })));
+      setsPromise = getJson(`${base}/sets.json`).then((rows) => rows.map(([prefix, name, date, count, names]) => ({
+        prefix, name, date, year: date ? Number(date.slice(0, 4)) : null, count, names,
+      })));
       setsPromise.catch(() => { setsPromise = null; });
     }
     return setsPromise;
@@ -130,6 +132,10 @@ export function createApi({ fetchFn = globalThis.fetch?.bind(globalThis), base =
 
   // Card names (normalised) printed in a set, for pack mode.
   async function setCardNames(prefix, setName) {
+    if (prefix.startsWith('#')) { // Cardmarket-only set: names come with the set list
+      const row = (await sets()).find((x) => x.prefix === prefix);
+      return new Set(row?.names || []);
+    }
     const pack = await setFile(prefix);
     const out = new Set();
     for (const [nameIdx, versionIdxs] of Object.values(pack.cards)) {

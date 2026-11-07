@@ -46,6 +46,9 @@ jobs:
             gunzip -c tools/input/price_guide_3.json.gz > work/price_guide_3.json
             gunzip -c tools/input/products_singles_3.json.gz > work/products_singles_3.json
           fi
+          # sealed products: only used for expansion names (optional)
+          curl -fsSL "$base/productList/products_nonsingles_3.json" -o work/products_nonsingles_3.json \
+            || gunzip -c tools/input/products_nonsingles_3.json.gz > work/products_nonsingles_3.json || true
 
       - name: Download set data (YGOJSON, YGOPRODeck)
         run: |
@@ -62,6 +65,7 @@ jobs:
           [ -s work/cardinfo.json ] && [ -s work/cardsets.json ] && extra="$extra --ygoprodeck-sets work/cardsets.json"
           python tools/build_data.py \
             --products work/products_singles_3.json --prices work/price_guide_3.json \
+            --nonsingles work/products_nonsingles_3.json \
             --ygojson-sets work/ygojson/sets.json --ygojson-cards work/ygojson/cards.json \
             $extra --out data/ygo
 

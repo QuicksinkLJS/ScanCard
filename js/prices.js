@@ -16,7 +16,7 @@ export function versionOptions(rows) {
         return;
       }
       byId.set(key, {
-        key, set: r.set, year: r.year, rarities: r.rarities, codes: [...r.codes],
+        key, set: r.set, year: r.year, date: r.date, rarities: r.rarities, codes: [...r.codes],
         variant: r.products.length > 1 ? i + 1 : 0, variants: r.products.length, ...p,
       });
     });
@@ -29,8 +29,8 @@ export function versionOptions(rows) {
 // Codes shown first: English, other European languages, then Asian prints.
 const CODE_ORDER = ['EN', 'E', '', 'DE', 'G', 'FR', 'F', 'IT', 'I', 'SP', 'S', 'PT', 'P', 'AE', 'KR', 'K', 'JP'];
 
-// How likely is each option the card in hand? Printed code > pack set > the rest (cheap mass prints first).
-// ctx: {code: {code, base}, pack: {prefix, name}}
+// How likely is each option the card in hand? Printed code > pack set > language; the rest newest release first.
+// ctx: {code: {code, base}, pack: {prefix, name}, lang: 'JP' | 'DE' | ..., vkey}
 export function rankOptions(opts, ctx = {}) {
   const score = (o) => {
     let s = 0;
@@ -42,11 +42,14 @@ export function rankOptions(opts, ctx = {}) {
       if (ctx.pack.name && o.set === ctx.pack.name) s += 40;
       else if (o.codes.some((c) => c.startsWith(`${ctx.pack.prefix}-`))) s += 30;
     }
+    // Japanese card: the OCG versions on Cardmarket fit better than the European ones
+    if (ctx.lang && ['JP', 'JA'].includes(ctx.lang) && /\(OCG\)/.test(o.set)) s += 20;
     return s;
   };
   return opts
     .map((o) => ({ ...o, likely: score(o) }))
-    .sort((a, b) => ((b.key === ctx.vkey) - (a.key === ctx.vkey)) || (b.likely - a.likely) || ((a.trend ?? 1e9) - (b.trend ?? 1e9)));
+    .sort((a, b) => ((b.key === ctx.vkey) - (a.key === ctx.vkey)) || (b.likely - a.likely)
+      || (b.date || '').localeCompare(a.date || '') || ((a.trend ?? 1e9) - (b.trend ?? 1e9)));
 }
 
 // The options that fit the evidence best (all with the top score), or [] if there is no evidence.

@@ -3,11 +3,11 @@ import assert from 'node:assert/strict';
 import { versionOptions, rankOptions, bestOptions, priceOf, oddValues, optionCode } from '../js/prices.js';
 
 const rows = [
-  { set: '2025 Mega-Pack Tin', year: 2025, rarities: ['Ultra Rare'], codes: ['MP25-EN265', 'MP25-DE265'],
+  { set: '2025 Mega-Pack Tin', year: 2025, date: '2025-09-04', rarities: ['Ultra Rare'], codes: ['MP25-EN265', 'MP25-DE265'],
     products: [{ id: 846169, trend: 0.14, avg30: 0.21, low: 0.02, avg1: 0.05, avg7: 0.14 }] },
-  { set: 'Supreme Darkness', year: 2025, rarities: ['Ultra Rare', 'Quarter Century Secret Rare'], codes: ['SUDA-KR014', 'SUDA-DE014'],
+  { set: 'Supreme Darkness', year: 2025, date: '2025-01-23', rarities: ['Ultra Rare', 'Quarter Century Secret Rare'], codes: ['SUDA-KR014', 'SUDA-DE014'],
     products: [{ id: 806048, trend: 0.34 }, { id: 806154, trend: 12.12, avg1: 14, avg7: 12.21, avg30: 12.93 }] },
-  { set: 'Supreme Darkness', year: 2025, rarities: [], codes: ['SUDA-EN014'], products: [{ id: 806048, trend: 0.34 }] },
+  { set: 'Supreme Darkness', year: 2025, date: '2025-01-23', rarities: [], codes: ['SUDA-EN014'], products: [{ id: 806048, trend: 0.34 }] },
 ];
 
 test('one option per Cardmarket product, codes merged, English first', () => {
@@ -26,9 +26,18 @@ test('printed code ranks its versions first; price range of the likely ones', ()
   assert.equal(optionCode(best[0], 'DE'), 'SUDA-DE014');
 });
 
-test('no evidence: cheapest first, nothing marked likely; chosen version on top', () => {
+test('OCG versions first for a Japanese card', () => {
+  const ocg = [...rows, { set: 'Original Artwork Collection (OCG)', year: 2026, date: '2026-09-28', rarities: [], codes: [],
+    products: [{ id: 913868, trend: 0.07 }, { id: 913869, trend: 1.14 }] }];
+  const ranked = rankOptions(versionOptions(ocg), { lang: 'JP' });
+  assert.deepEqual(bestOptions(ranked).map((o) => o.key), ['913868', '913869']);
+  assert.equal(rankOptions(versionOptions(ocg), { lang: 'DE' })[0].set, 'Original Artwork Collection (OCG)'); // newest first, not preferred
+  assert.deepEqual(bestOptions(rankOptions(versionOptions(ocg), { lang: 'DE' })), []);
+});
+
+test('no evidence: newest release first, nothing marked likely; chosen version on top', () => {
   const ranked = rankOptions(versionOptions(rows), {});
-  assert.equal(ranked[0].key, '846169');
+  assert.equal(ranked[0].key, '846169'); // Mega-Pack Tin, Sept 2025
   assert.deepEqual(bestOptions(ranked), []);
   assert.equal(rankOptions(versionOptions(rows), { vkey: '806154' })[0].key, '806154');
 });

@@ -148,7 +148,7 @@ export function createDetector({ base = 'models/ygo', size = 1024, onStatus = ()
       return clipped / (b.w * b.h);
     };
     // also drop boxes that cover nearly the whole photo (close-up of one card: read as one card instead)
-    return nms(boxes).filter((b) => inside(b) > 0.9 && (b.w * b.h) / (W * H) < 0.6);
+    return nms(boxes).filter((b) => inside(b) > 0.9 && (b.w * b.h) / (W * H) < 0.85);
   }
 
   return { ready, find };

@@ -45,7 +45,7 @@ function setPack(p) {
   pack = p;
   savePack(p);
   const chip = $('pack-chip');
-  chip.textContent = !p ? 'Pack mode: off' : p.auto ? 'Pack mode: detect' : `Pack: ${p.prefix}`;
+  chip.textContent = !p ? 'Pack mode: off' : p.auto ? 'Pack mode: detect' : `Pack: ${p.prefix.startsWith('#') ? (p.name || '').slice(0, 22) : p.prefix}`;
   chip.classList.toggle('pack-on', !!p);
 }
 setPack(pack);
@@ -311,7 +311,7 @@ async function renderPackList() {
   const q = $('pack-search').value.trim().toLowerCase();
   const rows = allSets.filter((s) => !q || s.name.toLowerCase().includes(q) || s.prefix.toLowerCase().startsWith(q)).slice(0, 40);
   $('pack-list').innerHTML = rows.map((s, i) => `
-    <li><button type="button" data-i="${i}"><span class="what"><b>${esc(s.name)}</b><small>${esc(s.prefix)}${s.year ? ` · ${s.year}` : ''} · ${s.count} cards</small></span>
+    <li><button type="button" data-i="${i}"><span class="what"><b>${esc(s.name)}</b><small>${esc(s.prefix.startsWith('#') ? 'Cardmarket' : s.prefix)}${s.date ? ` · ${esc(s.date.slice(0, 7))}` : ''} · ${s.count} cards</small></span>
     ${pack?.prefix === s.prefix && pack?.name === s.name ? '<span class="eur">✓</span>' : ''}</button></li>`).join('');
   $('pack-list').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
     const s = rows[Number(b.dataset.i)];

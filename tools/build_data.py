@@ -71,7 +71,7 @@ def printings_from_ygojson(sets_path, cards_path):
             for loc_key in content.get("locales") or []:
                 loc = locales.get(loc_key) or {}
                 prefix = loc.get("prefix")
-                if not prefix or loc_key in ("jp", "sc", "tc"):  # OCG/Chinese not covered by Cardmarket singles yet
+                if not prefix or loc_key in ("sc", "tc"):  # Chinese prints are not on Cardmarket
                     continue
                 d = to_date(loc.get("date")) or fallback
                 for c in content.get("cards") or []:
@@ -92,6 +92,28 @@ def printings_from_ygoprodeck(cardinfo_path, cardsets_path=None):
 
 # ---------- matching ----------
 
+SEALED_WORDS = r"(booster box|booster|display|case|tuckbox|bundle|box|blister|pack of \d+|set)"
+
+
+def expansion_names(nonsingles_path):
+    """Cardmarket's catalog has no expansion names, but its sealed products do:
+    'Original Artwork Collection (OCG) Booster Box' -> expansion 'Original Artwork Collection (OCG)'."""
+    if not nonsingles_path or not os.path.exists(nonsingles_path):
+        return {}
+    cands = collections.defaultdict(collections.Counter)
+    for p in json.load(open(nonsingles_path, encoding="utf-8"))["products"]:
+        n = p["name"].strip()
+        for _ in range(4):
+            n2 = re.sub(r"\s*\((?!OCG\)|TCG\))[^)]*\)\s*$", "", n)  # "(24 Booster)" etc., but keep "(OCG)"
+            n2 = re.sub(rf"\s+{SEALED_WORDS}\s*$", "", n2, flags=re.I)
+            if n2 == n:
+                break
+            n = n2
+        if n:
+            cands[p["idExpansion"]][n] += 1
+    return {e: min(c.items(), key=lambda kv: (-kv[1], len(kv[0])))[0] for e, c in cands.items()}
+
+
 def load_cardmarket(products_path, prices_path):
     products = json.load(open(products_path, encoding="utf-8"))["products"]
     pg = json.load(open(prices_path, encoding="utf-8"))
@@ -109,7 +131,8 @@ def load_cardmarket(products_path, prices_path):
             exp_dates[e].append(d)
     # an expansion's date = when most of its products were added
     exp_date = {e: sorted(ds)[len(ds) // 2] for e, ds in exp_dates.items()}
-    return exp_names, exp_products, exp_date, prices, pg.get("createdAt")
+    meta = {p["idProduct"]: (p["name"], p["idExpansion"], to_date(p.get("dateAdded"))) for p in products}
+    return exp_names, exp_products, exp_date, prices, pg.get("createdAt"), meta
 
 
 def choose_expansion(cands, exp_date, release):
@@ -128,7 +151,7 @@ def choose_expansion(cands, exp_date, release):
 
 
 def build(printings, cm, min_score=0.5, keep=0.85):
-    exp_names, exp_products, exp_date, prices, _ = cm
+    exp_names, exp_products, exp_date, prices = cm[:4]
     name_exps = collections.defaultdict(set)
     for e, names in exp_names.items():
         for n in names:
@@ -169,7 +192,8 @@ def build(printings, cm, min_score=0.5, keep=0.85):
                 if any(v["e"] == exp for v in out[code]):
                     continue
                 out[code].append({
-                    "s": set_name, "y": d.year if d else None, "r": c["r"], "e": exp, "n": c["n"],
+                    "s": set_name, "y": d.year if d else None, "d": d.isoformat() if d else None,
+                    "r": c["r"], "e": exp, "n": c["n"],
                     "p": [[pid] + [prices.get(pid, {}).get(k) for k in ("trend", "avg30", "low", "avg1", "avg7")]
                           for pid in pids],
                 })
@@ -227,6 +251,7 @@ def main():
     ap.add_argument("--ygojson-cards")
     ap.add_argument("--ygoprodeck-cards")
     ap.add_argument("--ygoprodeck-sets")
+    ap.add_argument("--nonsingles", help="Cardmarket products_nonsingles_3.json (expansion names)")
     ap.add_argument("--out", default="data/ygo")
     a = ap.parse_args()
 
@@ -243,6 +268,32 @@ def main():
                 printings.append(row)
 
     data, stats = build(printings, cm)
+
+    # Cardmarket products no printed code was matched to (e.g. new OCG-only sets the card databases
+    # don't know yet) are still real versions with prices: add them under a pseudo code "#<exp>:<name>".
+    exp_name = expansion_names(a.nonsingles)
+    exp_date, prices, meta = cm[2], cm[3], cm[5]
+    used = {p[0] for vs in data.values() for v in vs for p in v["p"]}
+    for vs in data.values():  # show OCG expansions as such
+        for v in vs:
+            n = exp_name.get(v["e"], "")
+            if "(OCG)" in n:
+                v["s"] = n
+    orphans = collections.defaultdict(list)
+    for pid, (name, exp, added) in meta.items():
+        if pid not in used and pid in prices:
+            orphans[(exp, norm(name))].append(pid)
+    for (exp, k), pids in orphans.items():
+        name, _, _ = meta[pids[0]]
+        d = exp_date.get(exp)
+        d = d if d and d > LEGACY else None
+        data[f"#{exp}:{k}"] = [{
+            "s": exp_name.get(exp) or f"Cardmarket set #{exp}", "y": d.year if d else None,
+            "d": d.isoformat() if d else None, "r": [], "e": exp, "n": name,
+            "p": [[pid] + [prices.get(pid, {}).get(f) for f in ("trend", "avg30", "low", "avg1", "avg7")] for pid in sorted(pids)],
+        }]
+    stats["cardmarket_only_versions"] = len(orphans)
+    stats["expansions_named"] = len(exp_name)
 
     banlist = {}
     if a.ygoprodeck_cards:
@@ -299,10 +350,11 @@ def main():
             key = (v["s"], v["e"], tuple(p[0] for p in v["p"]))
             row = detail[k].get(key)
             if row is None:
-                row = detail[k][key] = [v["s"], v["y"], list(v["r"]), [], v["p"]]
+                row = detail[k][key] = [v["s"], v["y"], list(v["r"]), [], v["p"], v.get("d")]
             elif row[1] is None:
-                row[1] = v["y"]
-            row[3].append(code)
+                row[1], row[5] = v["y"], v.get("d")
+            if not code.startswith("#"):
+                row[3].append(code)
             for r in v["r"]:
                 if r not in row[2]:
                     row[2].append(r)
@@ -312,7 +364,7 @@ def main():
         for row in rows.values():
             row[3].sort(key=lambda c: (not re.search(r"-EN\d", c), c))
             out_rows.append(row)
-        out_rows.sort(key=lambda r: (-(r[1] or 0), r[0]))
+        out_rows.sort(key=lambda r: (r[5] or "0000"), reverse=True)  # newest release first
         buckets[bucket_of(k)][k] = out_rows
     cards_dir = os.path.join(out_dir, "cards")
     os.makedirs(cards_dir, exist_ok=True)
@@ -321,17 +373,26 @@ def main():
     for b, entries in buckets.items():
         with open(os.path.join(cards_dir, f"{b}.json"), "w", encoding="utf-8") as f:
             json.dump(entries, f, ensure_ascii=False, separators=(",", ":"))
-    # Set list for pack mode: one row per (prefix, set name)
-    set_rows = collections.defaultdict(lambda: {"names": set(), "year": None})
+    # Set list for pack mode: one row per (prefix, set name), newest release first.
+    # Cardmarket-only sets have the prefix "#<expansion>" and carry their card names (no set file for them).
+    set_rows = collections.defaultdict(lambda: {"names": set(), "date": None})
     for code, versions in data.items():
-        prefix = code.split("-")[0]
+        prefix = code.split(":")[0] if code.startswith("#") else code.split("-")[0]
         for v in versions:
             r = set_rows[(prefix, v["s"])]
             r["names"].add(norm(v["n"]))
-            if v["y"] and (r["year"] is None or v["y"] < r["year"]):
-                r["year"] = v["y"]
-    sets_out = sorted(([p, s, r["year"], len(r["names"])] for (p, s), r in set_rows.items() if len(r["names"]) >= 5),
-                      key=lambda x: (-(x[2] or 0), x[1]))
+            d = v.get("d") or (f"{v['y']}-01-01" if v["y"] else None)
+            if d and (r["date"] is None or d < r["date"]):
+                r["date"] = d
+    sets_out = []
+    for (p, sname), r in set_rows.items():
+        if len(r["names"]) < 5:
+            continue
+        row = [p, sname, r["date"], len(r["names"])]
+        if p.startswith("#"):
+            row.append(sorted(r["names"]))
+        sets_out.append(row)
+    sets_out.sort(key=lambda x: (x[2] or "0000", x[1]), reverse=True)
     with open(os.path.join(out_dir, "sets.json"), "w", encoding="utf-8") as f:
         json.dump(sets_out, f, ensure_ascii=False, separators=(",", ":"))
     # Tops and flops for cards worth at least 2 EUR, in two flavours:

@@ -54,10 +54,15 @@ export function codeTokens(text) {
 }
 
 // Language of the card from the OCR text alone (useful even when the code itself doesn't match).
+// OCR misreads of the language part: "1P"/"IP"/"JF" for JP, "KP"/"K R" for KR ...
+const LANG_FIX = { '1P': 'JP', IP: 'JP', JF: 'JP', LP: 'JP', JR: 'JP', KP: 'KR', XR: 'KR', EM: 'EN', FN: 'EN', OE: 'DE', BE: 'DE' };
+
 export function languageFromText(text) {
-  const t = normalizeOcrText(text);
-  const m = t.match(/[A-Z0-9]{2,5}\s?-\s?(JP|JA|KR|AE|EN|DE|FR|IT|SP|PT)[0-9OQDILTZSBG]{3}/);
-  return m ? LANGUAGES[m[1]] : null;
+  const t = normalizeOcrText(text).replace(/\s+/g, '');
+  const m = t.match(/[A-Z0-9]{2,6}-([A-Z1]{2})[0-9OQDILTZSBG]{3}/);
+  if (!m) return null;
+  const code = LANG_FIX[m[1]] || m[1];
+  return LANGUAGES[code] && code.length === 2 ? LANGUAGES[code] : null;
 }
 
 // Best base code for this card, or null.

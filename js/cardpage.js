@@ -61,7 +61,7 @@ async function loadCard() {
   } else if (s.ocrText) {
     s.code = null;
   }
-  cur.ranked = rankOptions(versionOptions(rows), { code: s.code, pack: s.pack, vkey: s.vkey });
+  cur.ranked = rankOptions(versionOptions(rows), { code: s.code, pack: s.pack, vkey: s.vkey, lang: (s.code?.language || s.language)?.code });
   if (s.vkey && !cur.ranked.some((o) => o.key === s.vkey)) s.vkey = null;
   if (!s.vkey) {
     const best = bestOptions(cur.ranked);
@@ -97,7 +97,7 @@ function render() {
     const cell = (k, label) => `<div class="${odd.has(k) ? 'odd' : ''}"><small>${label}</small><b>${eur(chosen[k])}</b></div>`;
     priceBox = `
       <div class="pricebox ${tier}">
-        <p class="what">${esc(chosen.set)}${chosen.year ? ` (${chosen.year})` : ''} · ${esc(optionCode(chosen, lang?.code))}${chosen.variants > 1 ? ` · version ${chosen.variant} of ${chosen.variants}` : ''}</p>
+        <p class="what">${esc([`${chosen.set}${chosen.year ? ` (${chosen.year})` : ''}`, optionCode(chosen, lang?.code), chosen.variants > 1 ? `version ${chosen.variant} of ${chosen.variants}` : ''].filter(Boolean).join(' · '))}</p>
         <p class="big">${eur(chosen.trend)}</p>
         <p class="what">Cardmarket trend price · offers from ${eur(chosen.low)}</p>
         <div class="pgrid">${cell('avg1', 'Yesterday')}${cell('avg7', '7 days')}${cell('avg30', '30 days')}${cell('trend', 'Trend')}</div>
@@ -107,7 +107,7 @@ function render() {
     const n = best.length || ranked.length;
     priceBox = `
       <div class="pricebox ${tier}">
-        <p class="what">${best.length ? `${n} version${n > 1 ? 's' : ''} fit${n > 1 ? '' : 's'} the set code` : `${n} versions on Cardmarket`}</p>
+        <p class="what">${best.length ? `${n} version${n > 1 ? 's' : ''} fit${n > 1 ? '' : 's'} ${s.code ? 'the set code' : s.pack ? 'the pack' : 'the card\'s language'}` : `${n} versions on Cardmarket`}</p>
         <p class="big">${range(price.lo, price.hi)}</p>
         <p class="what">Pick your version below for the exact price.</p>
       </div>`;
@@ -118,7 +118,9 @@ function render() {
   const notes = [];
   if (s.code) notes.push(`Set code read on the card: <b>${esc(s.code.code)}</b>${s.code.distance ? ` (read as ${esc(s.code.read)})` : ''}.`);
   else if (s.ocrText != null) notes.push('Set code not readable on the photo – choose the version yourself.');
-  if (lang && !lang.supported) notes.push(`${esc(lang.name)} print. Cardmarket sells almost only European prints, so the prices are those of the European print of the same card – check before buying or selling.`);
+  const hasOcg = ranked.some((o) => /\(OCG\)/.test(o.set));
+  if (lang && ['JP', 'JA'].includes(lang.code) && hasOcg) notes.push('Japanese print: the OCG versions on Cardmarket are listed first.');
+  else if (lang && !lang.supported) notes.push(`${esc(lang.name)} print. Cardmarket has no separate listing for it, so the prices are those of the European print of the same card – check before buying or selling.`);
   if (s.pack) notes.push(`Pack mode: ${esc(s.pack.name || s.pack.prefix)}.`);
 
   const list = current.showAll ? ranked : ranked.slice(0, 8);
@@ -126,7 +128,7 @@ function render() {
     <li class="${o.key === s.vkey ? 'on' : ''}"><button type="button" data-key="${esc(o.key)}">
       <span class="radio"></span>
       <span class="what">${esc(o.set)}${o.year ? ` (${o.year})` : ''}${o.likely ? '<span class="likely">LIKELY</span>' : ''}
-        <small>${esc(optionCode(o, lang?.code))}${o.rarities.length ? ` · ${esc(o.rarities.join(' / '))}` : ''}${o.variants > 1 ? ` · version ${o.variant} of ${o.variants}` : ''}</small></span>
+        <small>${esc([optionCode(o, lang?.code), o.rarities.join(' / '), o.variants > 1 ? `version ${o.variant} of ${o.variants}` : ''].filter(Boolean).join(' · '))}</small></span>
       <span class="eur">${eur(o.trend)}</span>
     </button></li>`).join('');
 
@@ -203,7 +205,7 @@ export async function searchNames(q, ul, onPick, limit = 8) {
 // Price of a subject without opening the page (used for lists): {lo, hi, exact, setName, code}
 export async function quickPrice(theApi, s) {
   const rows = await theApi.cardDetail(s.name).catch(() => []);
-  const ranked = rankOptions(versionOptions(rows), { code: s.code, pack: s.pack });
+  const ranked = rankOptions(versionOptions(rows), { code: s.code, pack: s.pack, lang: (s.code?.language || s.language)?.code });
   if (s.vkey && !ranked.some((o) => o.key === s.vkey)) s.vkey = null;
   if (!s.vkey) {
     const best = bestOptions(ranked);
@@ -212,7 +214,7 @@ export async function quickPrice(theApi, s) {
   const { chosen, best, price } = summarise(ranked, s.vkey);
   const lang = s.code?.language || s.language;
   const label = chosen
-    ? `${chosen.set}${chosen.year ? ` (${chosen.year})` : ''} · ${optionCode(chosen, lang?.code)}`
+    ? [`${chosen.set}${chosen.year ? ` (${chosen.year})` : ''}`, optionCode(chosen, lang?.code)].filter(Boolean).join(' · ')
     : best?.length ? `${best[0].set} · ${best.length} versions` : (ranked.length ? `${ranked.length} version${ranked.length > 1 ? 's' : ''}` : 'no price found');
   return { ...price, label, exact: !!chosen };
 }
