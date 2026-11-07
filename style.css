@@ -442,3 +442,26 @@ textarea.field.area { min-height: 92px; resize: vertical; font-family: inherit; 
 .ver-filter { margin: 0 0 10px; }
 .warn-dot { color: var(--mid); }
 .eur small.warn-dot { display: block; }
+
+/* Masterset binder */
+.binder { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 12px; margin: 8px -4px 4px; padding: 4px; scrollbar-width: none; }
+.binder::-webkit-scrollbar { display: none; }
+.bpage { flex: 0 0 100%; scroll-snap-align: center; display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; padding: 12px; border-radius: 16px;
+  background: linear-gradient(160deg, #1d1a2b, #121119); box-shadow: inset 0 0 0 1px rgba(255,255,255,.06), 0 10px 30px rgba(0,0,0,.35); }
+.pocket { position: relative; aspect-ratio: 59 / 86; border-radius: 5px; overflow: hidden; padding: 0; border: 1px solid rgba(255,255,255,.09);
+  background: rgba(255,255,255,.035); cursor: pointer; -webkit-touch-callout: none; user-select: none; }
+.pocket.empty { border-style: dashed; opacity: .4; cursor: default; }
+.pocket img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+.pocket.miss img { filter: grayscale(1) brightness(.7); opacity: .28; }
+.pocket .pname { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 4px; font-size: 10px; color: var(--muted); text-align: center; }
+.pocket.have { box-shadow: 0 4px 14px rgba(0,0,0,.5); }
+.pocket.have::after { content: ''; position: absolute; inset: 0; pointer-events: none; mix-blend-mode: color-dodge; opacity: .0;
+  background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,.55) 45%, rgba(160,200,255,.4) 52%, transparent 66%) 0 0 / 300% 100%; animation: pshine 5s ease-in-out infinite; }
+.pocket.have:not(.k-common):not(.k-plain)::after { opacity: .55; }
+.pocket.have.k-rainbow::after, .pocket.have.k-secret::after { background-image: linear-gradient(115deg, transparent 30%, #ff6aa8 40%, #ffd86a 46%, #6affc0 52%, #6ad2ff 58%, transparent 68%); opacity: .45; }
+@keyframes pshine { 0% { background-position: 100% 0; } 60%, 100% { background-position: -50% 0; } }
+.pocket .pcount { position: absolute; right: 3px; bottom: 3px; font-size: 10px; font-weight: 700; background: rgba(0,0,0,.65); border-radius: 6px; padding: 1px 5px; }
+.bpager { text-align: center; margin: 4px 0 8px; }
+.mlist li.off { opacity: .45; }
+.mprog .link { padding: 4px 0 0; }
+@media (prefers-reduced-motion: reduce) { .pocket.have::after { animation: none; } }

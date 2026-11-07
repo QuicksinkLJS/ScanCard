@@ -3,6 +3,7 @@
 import { t, lang } from './i18n.js';
 
 const W = 1080;
+const font = (w, px) => `${w} ${px}px Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif`;
 const LOCALE = () => (lang === 'de' ? 'de-DE' : 'en-GB');
 
 function roundRect(ctx, x, y, w, h, r) {
@@ -38,7 +39,6 @@ export function pullsImage(cards, info = {}) {
   const c = document.createElement('canvas');
   c.width = W; c.height = H;
   const ctx = c.getContext('2d');
-  const font = (w, px) => `${w} ${px}px Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif`;
 
   // background
   const g = ctx.createLinearGradient(0, 0, W, H);
@@ -102,6 +102,59 @@ export async function sharePulls(cards, info) {
   const file = new File([blob], `cardscan-pulls-${new Date().toISOString().slice(0, 10)}.png`, { type: 'image/png' });
   if (navigator.canShare?.({ files: [file] })) {
     try { await navigator.share({ files: [file], title: t('My pulls') }); return 'shared'; } catch (e) { if (e.name === 'AbortError') return 'cancelled'; }
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = file.name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  return 'downloaded';
+}
+
+// Masterset progress picture: "YAC1: 120/346", a bar and one dot per entry (owned bright, missing dim).
+export function progressImage({ name, code, have, total, cells }) {
+  const pad = 64, H = 1350;
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const ctx = c.getContext('2d');
+  const g = ctx.createLinearGradient(0, 0, W, H);
+  g.addColorStop(0, '#221a3d'); g.addColorStop(1, '#0c0b12');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = 'rgba(255,255,255,.65)'; ctx.font = font(600, 34);
+  ctx.fillText(t('Masterset'), pad, 110);
+  ctx.fillStyle = '#fff'; ctx.font = font(800, 54);
+  ctx.fillText(fit(ctx, name, W - 2 * pad), pad, 180);
+  const big = `${code ? `${code}: ` : ''}${have}/${total}`;
+  let size = 150;
+  do { ctx.font = font(800, size); size -= 6; } while (size > 60 && ctx.measureText(big).width > W - 2 * pad);
+  ctx.fillText(big, pad, 360);
+  const bw = W - 2 * pad, by = 410;
+  roundRect(ctx, pad, by, bw, 34, 17); ctx.fillStyle = 'rgba(255,255,255,.1)'; ctx.fill();
+  const bar = ctx.createLinearGradient(pad, 0, pad + bw, 0);
+  bar.addColorStop(0, '#a893ff'); bar.addColorStop(0.5, '#ffd86a'); bar.addColorStop(1, '#6affc0');
+  if (have) { roundRect(ctx, pad, by, Math.max(34, bw * have / total), 34, 17); ctx.fillStyle = bar; ctx.fill(); }
+  ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.font = font(700, 40);
+  ctx.fillText(`${total ? Math.floor((have / total) * 100) : 0} %`, pad, by + 100);
+  const top = 580, area = H - top - 120;
+  const cols = Math.max(10, Math.ceil(Math.sqrt(cells.length * bw / area)));
+  const step = bw / cols;
+  const r = Math.min(step * 0.36, 18);
+  cells.forEach((on, i) => {
+    const x = pad + (i % cols) * step + step / 2, y = top + Math.floor(i / cols) * step + step / 2;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fillStyle = on ? '#ffd86a' : 'rgba(255,255,255,.12)';
+    ctx.fill();
+  });
+  ctx.fillStyle = 'rgba(255,255,255,.4)'; ctx.font = font(600, 26);
+  ctx.fillText(t('CardScan · Masterset tracker'), pad, H - 50);
+  return c;
+}
+
+export async function shareCanvas(canvas, filename, title) {
+  const blob = await new Promise((r) => canvas.toBlob(r, 'image/png'));
+  const file = new File([blob], filename, { type: 'image/png' });
+  if (navigator.canShare?.({ files: [file] })) {
+    try { await navigator.share({ files: [file], title }); return 'shared'; } catch (e) { if (e.name === 'AbortError') return 'cancelled'; }
   }
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);

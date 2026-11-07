@@ -6,6 +6,8 @@ import { cardmarketUrl, versionImage, rarityRank, fairTrend } from './prices.js'
 import { syncBody } from './cardpage.js';
 import { loadCollection, saveCollection } from './store.js';
 import { progress } from './mastercalc.js';
+import { holoKind } from './holo.js';
+import { progressImage, shareCanvas } from './share.js';
 
 const TRACK_KEY = 'cardscan-masters-v1';
 const OWN_KEY = 'cardscan-owned-v1';
@@ -39,7 +41,8 @@ export function createMasters({ api, openCard, onCollectionChange = () => {} }) 
     const { all } = ownedCounts();
     const rows = await Promise.all(tracked.map(async (t) => {
       const entries = await api.setEntries(t.exp).catch(() => []);
-      return { t, p: progress(entries, all, t.target || 1) };
+      const hid = new Set(t.hidden || []);
+      return { t, p: progress(entries.filter((e) => !hid.has(e.key)), all, t.target || 1) };
     }));
     ul.innerHTML = rows.map(({ t, p }) => `
       <li><button type="button" data-exp="${t.exp}">
@@ -84,49 +87,130 @@ export function createMasters({ api, openCard, onCollectionChange = () => {} }) 
     $('set-title').textContent = t.name;
     $('set-body').innerHTML = '<p class="note">Loading…</p>';
     const entries = await api.setEntries(exp).catch(() => []);
-    cur = { ...t, entries, filter: cur?.exp === exp ? cur.filter : 'missing', rarity: cur?.exp === exp ? cur.rarity : '' };
+    cur = { ...t, entries, filter: cur?.exp === exp ? cur.filter : 'missing', rarity: cur?.exp === exp ? cur.rarity : '', view: cur?.exp === exp ? cur.view : 'list', showHidden: false };
     renderSet();
   }
 
+  const saveHidden = (keys) => {
+    cur.hidden = keys;
+    saveTracked(loadTracked().map((x) => (x.exp === cur.exp ? { ...x, hidden: keys } : x)));
+  };
+  // Long press on an entry: leave it out of this set (e.g. collect only the manga-style artworks).
+  function toggleHidden(key) {
+    const before = [...(cur.hidden || [])];
+    const on = before.includes(key);
+    saveHidden(on ? before.filter((k) => k !== key) : [...before, key]);
+    navigator.vibrate?.(25);
+    renderSet();
+    const e = cur.entries.find((x) => x.key === key);
+    toast(on ? `Counts again: ${e?.name || ''}` : `Left out of this set: ${e?.name || ''}`, 5000, { label: 'Undo', run: () => { saveHidden(before); renderSet(); } });
+  }
+  function bindLongPress(root, sel, onLong) {
+    root.querySelectorAll(sel).forEach((el) => {
+      let timer = null, fired = false, start = null;
+      el.addEventListener('pointerdown', (ev) => {
+        fired = false; start = [ev.clientX, ev.clientY];
+        timer = setTimeout(() => { fired = true; onLong(el.dataset.key); }, 550);
+      });
+      const stop = () => clearTimeout(timer);
+      el.addEventListener('pointerup', stop);
+      el.addEventListener('pointercancel', stop);
+      el.addEventListener('pointermove', (ev) => { if (start && Math.hypot(ev.clientX - start[0], ev.clientY - start[1]) > 10) stop(); });
+      el.addEventListener('contextmenu', (ev) => ev.preventDefault());
+      el.addEventListener('click', (ev) => { if (fired) { ev.stopImmediatePropagation(); ev.preventDefault(); } }, true);
+    });
+  }
+
+  function setCode(entries) {
+    const n = {};
+    for (const e of entries) { const p = (e.code || '').split('-')[0]; if (p) n[p] = (n[p] || 0) + 1; }
+    return Object.entries(n).sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+  }
+
   function renderSet() {
-    const { entries, target } = cur;
+    const { target } = cur;
+    const hidden = new Set(cur.hidden || []);
+    const entries = cur.entries.filter((e) => !hidden.has(e.key));
     const { all, fromColl } = ownedCounts();
     const p = progress(entries, all, target);
     const rarities = [...new Set(entries.map((e) => e.rarity || ''))].sort((a, b) => rarityRank(a) - rarityRank(b));
-    let list = entries.filter((e) => !cur.rarity || (e.rarity || '') === cur.rarity);
     const have = (e) => Math.min(all[e.key] || 0, target);
-    if (cur.filter === 'missing') list = list.filter((e) => have(e) < target);
-    if (cur.filter === 'have') list = list.filter((e) => have(e) > 0);
+    const byRarity = (e) => !cur.rarity || (e.rarity || '') === cur.rarity;
+    let list = (cur.showHidden ? cur.entries : entries).filter(byRarity);
+    if (cur.view === 'list') {
+      if (cur.filter === 'missing') list = list.filter((e) => have(e) < target || hidden.has(e.key));
+      if (cur.filter === 'have') list = list.filter((e) => have(e) > 0);
+    }
+    const binderList = entries.filter(byRarity);
+    const pages = [];
+    for (let i = 0; i < binderList.length; i += 9) pages.push(binderList.slice(i, i + 9));
+    const pocket = (e) => {
+      const h = have(e) > 0;
+      const kind = holoKind(e.rarity);
+      return `<button type="button" class="pocket ${h ? 'have' : 'miss'} k-${kind}" data-key="${e.key}" title="${esc(e.name)}">
+        ${e.image ? `<img loading="lazy" src="${esc(versionImage(e, 'preview'))}" alt="" draggable="false" onerror="this.remove()">` : `<span class="pname">${esc(e.name)}</span>`}
+        ${h && target > 1 ? `<span class="pcount">${have(e)}/${target}</span>` : ''}</button>`;
+    };
     $('set-body').innerHTML = `
       <div class="mprog">
         <p class="big">${p.have}<span class="muted">/${p.total}</span></p>
         <span class="pbar big"><span style="width:${p.total ? (p.have / p.total) * 100 : 0}%"></span></span>
         <p class="small">${p.have === p.total ? 'Complete! 🎉' : `Missing ${p.total - p.have} · approx. <b>${eur(p.missingValue)}</b> on Cardmarket${p.unpriced ? ` <span class="muted">(${p.unpriced} without price)</span>` : ''}`}</p>
+        <button type="button" class="link" id="set-share">Share progress</button>
       </div>
       <div class="seg small" role="tablist">
-        ${['missing', 'have', 'all'].map((f) => `<button type="button" data-f="${f}" class="${cur.filter === f ? 'on' : ''}">${{ missing: 'Missing', have: 'Have', all: 'All' }[f]}</button>`).join('')}
+        <button type="button" data-v="list" class="${cur.view === 'list' ? 'on' : ''}">List</button>
+        <button type="button" data-v="binder" class="${cur.view === 'binder' ? 'on' : ''}">Binder</button>
       </div>
+      ${cur.view === 'list' ? `<div class="seg small" role="tablist">
+        ${['missing', 'have', 'all'].map((f) => `<button type="button" data-f="${f}" class="${cur.filter === f ? 'on' : ''}">${{ missing: 'Missing', have: 'Have', all: 'All' }[f]}</button>`).join('')}
+      </div>` : ''}
       <div class="chips">
         <button type="button" class="chip ${!cur.rarity ? 'on' : ''}" data-r="">All rarities</button>
         ${rarities.map((r) => `<button type="button" class="chip ${cur.rarity === r ? 'on' : ''}" data-r="${esc(r)}">${esc(r || 'Rarity unknown')}</button>`).join('')}
+        ${hidden.size ? `<button type="button" class="chip ${cur.showHidden ? 'on' : ''}" id="set-hidden">Left out ${hidden.size}</button>` : ''}
       </div>
-      <p class="muted small">Tap ○ to tick a card you have (any language counts). Cards in your collection with this exact version are ticked automatically.</p>
+      ${cur.view === 'binder' ? `
+      <p class="muted small">Swipe through the pages. Tap a card for details, hold it to leave it out of this set.</p>
+      <div class="binder" id="binder">${pages.map((pg, i) => `<div class="bpage" data-page="${i}">${pg.map(pocket).join('')}${'<span class="pocket empty"></span>'.repeat(9 - pg.length)}</div>`).join('') || '<p class="muted small">Nothing here.</p>'}</div>
+      <p class="small muted bpager" id="bpager">${pages.length ? `Page 1 / ${pages.length}` : ''}</p>` : `
+      <p class="muted small">Tap ○ to tick a card you have (any language counts). Cards in your collection with this exact version are ticked automatically. Hold a card to leave it out of this set.</p>
       <ul class="rows mlist">${list.map((e) => {
         const h = have(e), auto = Math.min(fromColl[e.key] || 0, target);
-        return `<li class="${h >= target ? 'have' : ''}">
+        const off = hidden.has(e.key);
+        return `<li class="${h >= target ? 'have' : ''} ${off ? 'off' : ''}" data-key="${e.key}">
           <div class="row">
-            <button type="button" class="tick" data-key="${e.key}" aria-label="I have this">${h >= target ? '✓' : target > 1 ? `${h}/${target}` : '○'}</button>
+            <button type="button" class="tick" data-key="${e.key}" aria-label="I have this" ${off ? 'disabled' : ''}>${h >= target ? '✓' : target > 1 ? `${h}/${target}` : '○'}</button>
             ${e.image ? `<img class="vimg" loading="lazy" src="${esc(versionImage(e, 'preview'))}" alt="" onerror="this.remove()">` : ''}
-            <button type="button" class="what plain" data-open="${e.key}"><b>${esc(e.name)}</b><small>${esc([e.code, e.label || 'Rarity unknown'].filter(Boolean).join(' · '))}${auto ? ' · in collection' : ''}</small></button>
+            <button type="button" class="what plain" data-open="${e.key}" data-key="${e.key}"><b>${esc(e.name)}</b><small>${esc([e.code, e.label || 'Rarity unknown'].filter(Boolean).join(' · '))}${auto ? ' · in collection' : ''}${off ? ' · left out' : ''}</small></button>
             <a class="eur" href="${esc(cardmarketUrl(e, e.name))}" target="_blank" rel="noopener">${eur(e.trend)}<small>${fairTrend(e).odd ? '⚠ unusual · ' : ''}Cardmarket ↗</small></a>
           </div></li>`;
-      }).join('') || '<li><div class="row muted small">Nothing here.</div></li>'}</ul>
+      }).join('') || '<li><div class="row muted small">Nothing here.</div></li>'}</ul>`}
       <div class="actions">
         <button type="button" class="btn" id="set-target">Collect ×${target === 1 ? 2 : 1} instead</button>
         <button type="button" class="btn danger" id="set-untrack">Stop tracking</button>
       </div>`;
     const body = $('set-body');
     body.querySelectorAll('[data-f]').forEach((b) => b.addEventListener('click', () => { cur.filter = b.dataset.f; renderSet(); }));
+    body.querySelectorAll('[data-v]').forEach((b) => b.addEventListener('click', () => { cur.view = b.dataset.v; renderSet(); }));
+    $('set-hidden')?.addEventListener('click', () => { cur.showHidden = !cur.showHidden; if (cur.showHidden) { cur.view = 'list'; cur.filter = 'all'; } renderSet(); });
+    bindLongPress(body, '[data-open], .pocket[data-key]', toggleHidden);
+    body.querySelectorAll('.pocket[data-key]').forEach((b) => b.addEventListener('click', () => {
+      const e = cur.entries.find((x) => x.key === b.dataset.key);
+      if (e) openCard({ name: e.name, vkey: e.key });
+    }));
+    const binder = $('binder');
+    binder?.addEventListener('scroll', () => {
+      const i = Math.round(binder.scrollLeft / binder.clientWidth);
+      $('bpager').textContent = `Page ${i + 1} / ${binder.children.length}`;
+    }, { passive: true });
+    $('set-share').addEventListener('click', async () => {
+      const cells = [];
+      for (const e of entries) for (let k = 0; k < target; k++) cells.push(have(e) > k);
+      const canvas = progressImage({ name: cur.name, code: setCode(entries), have: p.have, total: p.total, cells });
+      const r = await shareCanvas(canvas, `cardscan-masterset-${cur.exp}.png`, cur.name);
+      if (r === 'downloaded') toast('Picture saved');
+    });
     body.querySelectorAll('[data-r]').forEach((b) => b.addEventListener('click', () => { cur.rarity = b.dataset.r; renderSet(); }));
     body.querySelectorAll('.tick').forEach((b) => b.addEventListener('click', async () => {
       const k = b.dataset.key;
