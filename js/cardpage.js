@@ -11,7 +11,7 @@
 import { $, esc, eur, range, toast } from './util.js';
 import { cardmarketSearchUrl, normName } from './parse.js';
 import { matchCode } from './codematch.js';
-import { openHolo } from './holo.js';
+import { openHolo, holoCardHTML, holoKind, attachTilt } from './holo.js';
 import { findWatch, toggleWatch, findWish, setWish, removeWish } from './lists.js';
 import { versionOptions, rankOptions, bestOptions, priceOf, tierOfPrice, oddValues, optionCode, versionLabel, cardmarketUrl, versionImage } from './prices.js';
 
@@ -24,7 +24,19 @@ export function initCardPage(theApi) {
   $('card-back').addEventListener('click', () => history.back());
 }
 
+let holoCleanup = null, lastHolo = null;
+
+// The picture for the big tilting card: the official one once the version is known, else your photo.
+function holoOf(s, chosen, own) {
+  if (chosen?.image) return { src: versionImage(chosen, 'show'), kind: holoKind(chosen.rarity || versionLabel(chosen)), shine: own, official: true };
+  if (!own) return null;
+  if (s.canvas && !s.bigPic) { try { s.bigPic = s.canvas.toDataURL('image/jpeg', 0.9); } catch { /* tainted */ } }
+  const src = s.bigPic || s.thumb;
+  return src ? { src, kind: 'plain', shine: true, official: false } : null;
+}
+
 export function closeCardPage() {
+  holoCleanup?.(); holoCleanup = null; lastHolo = null;
   $('card-page').hidden = true;
   current = null;
   syncBody();
@@ -139,20 +151,25 @@ function render() {
   const alts = (s.top || []).filter((a) => normName(a.name) !== normName(s.name)).slice(0, 5);
   const sub = s.top ? (s.confident === false ? '<span class="unsure">Not sure</span> – check the name, or pick the right card below' : 'Recognised from the artwork') : '';
 
+  holoCleanup?.(); holoCleanup = null;
+  const holo = holoOf(s, chosen, !!hooks.own);
+  const prev = lastHolo && lastHolo.subject === s ? lastHolo.src : '';
+  lastHolo = holo ? { subject: s, src: holo.src } : null;
   $('card-bar-title').textContent = s.name;
   $('card-body').innerHTML = `
+    ${holo ? `<div class="card-holo" id="card-holo">${holoCardHTML({ ...holo, alt: s.name, prev })}</div>
+      <p class="small muted card-holo-hint">${holo.official ? (hooks.own ? 'Tilt your phone · tap for full screen' : 'Official picture · tap for full screen') : 'Your photo – pick your version below for the official picture'}</p>` : ''}
     <div class="card-head">
-      ${s.thumb ? `<img src="${s.thumb}" alt="">` : ''}
+      ${s.thumb && !holo ? `<img src="${s.thumb}" alt="">` : ''}
       <div>
         <p class="name">${esc(info?.name || s.name)}</p>
         <p class="small muted">${sub}</p>
         <div class="badges">${lang ? `<span class="badge">${esc(lang.name)}</span>` : ''}${banBadges(info)}</div>
       </div>
     </div>
+    ${priceBox}
     ${s.thumb && chosen?.image ? `<div class="compare"><figure><img src="${s.thumb}" alt=""><figcaption>Your photo</figcaption></figure>
       <figure><img src="${esc(versionImage(chosen, 'show'))}" alt="" onerror="this.closest('figure').remove()"><figcaption>${esc(versionLabel(chosen))} (official)</figcaption></figure></div>` : ''}
-    ${hooks.own && chosen?.image ? `<button type="button" class="btn wide holo-btn" id="card-holo">✨ View your card</button>` : ''}
-    ${priceBox}
     ${notes.map((n) => `<p class="note">${n}</p>`).join('')}
     ${ranked.length ? `<h2>Which version do you have?</h2><ul class="versions">${versions}</ul>` : ''}
     ${ranked.length > 8 && !current.showAll ? `<button type="button" class="link more-btn" id="show-all">Show all ${ranked.length} versions</button>` : ''}
@@ -176,7 +193,11 @@ function render() {
     ${hooks.onRemove ? `<button class="btn wide danger" type="button" id="card-remove">${esc(hooks.removeLabel || 'Remove from collection')}</button>` : ''}
   `;
   const priceNow = () => ({ lo: price.lo, hi: price.hi, label: chosen ? [`${chosen.set}`, versionLabel(chosen)].join(' · ') : 'any version' });
-  $('card-holo')?.addEventListener('click', () => openHolo([{ name: info?.name || s.name, rarity: chosen.rarity || versionLabel(chosen), image: chosen.image, price: chosen.trend }]));
+  if (holo) {
+    holoCleanup = attachTilt($('card-holo'), {
+      onTap: () => openHolo([{ name: info?.name || s.name, rarity: chosen ? (chosen.rarity || versionLabel(chosen)) : '', src: holo.src, kind: holo.kind, shine: holo.shine, price: chosen?.trend }]),
+    });
+  }
   $('card-watch').addEventListener('click', () => {
     const on = toggleWatch(s, priceNow());
     toast(on ? 'Added to your watchlist (Market tab)' : 'Removed from your watchlist');

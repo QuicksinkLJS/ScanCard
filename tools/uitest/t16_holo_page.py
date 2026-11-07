@@ -1,0 +1,31 @@
+# Big tilting card on the card page (own card: shine; searched card: tilt only), tap = full screen.
+import sys; sys.path.insert(0, __import__('os').path.dirname(__file__))
+from harness import *
+with sync_playwright() as p:
+    b, page = open_app(p)
+    open_card(page, 'Snake-Eyes Diabellstar')
+    print('searched card, version open: holo shown =', page.locator('#card-holo').count())
+    page.click('#card-body .versions button >> nth=2'); page.wait_for_timeout(300)
+    print('searched card, version picked: shiny =', page.locator('#card-holo .holo-card.shiny').count(), '| kind', page.get_attribute('#card-holo .holo-card', 'class'))
+    page.click('#card-add'); page.wait_for_timeout(400); page.go_back(); page.wait_for_timeout(200)
+    page.click('nav.tabs button[data-view=collection]'); page.wait_for_timeout(600)
+    page.click('#coll-list button >> nth=0'); page.wait_for_selector('#card-holo .holo-card')
+    page.wait_for_timeout(500)
+    print('own card: class', page.get_attribute('#card-holo .holo-card', 'class'), '|', page.inner_text('.card-holo-hint'))
+    box = page.locator('#card-holo').bounding_box()
+    print('holo size', round(box['width']), 'x', round(box['height']))
+    for i, (fx, fy) in enumerate([(0.15, 0.2), (0.85, 0.7)]):
+        page.mouse.move(box['x'] + box['width'] * fx, box['y'] + box['height'] * fy); page.mouse.down()
+        page.mouse.move(box['x'] + box['width'] * fx + 2, box['y'] + box['height'] * fy + 2); page.wait_for_timeout(250)
+        page.screenshot(path=f'/home/claude/shots/t16_tilt{i}.png'); page.mouse.up()
+    print('tilt vars', page.evaluate("getComputedStyle(document.querySelector('#card-holo .holo-card')).getPropertyValue('--ry')"))
+    page.wait_for_timeout(300)
+    page.click('#card-holo'); page.wait_for_timeout(600)
+    print('fullscreen open', page.is_visible('#holo'), '|', page.inner_text('#holo-info').replace('\n', ' | '))
+    page.screenshot(path='/home/claude/shots/t16_full.png')
+    page.go_back(); page.wait_for_timeout(300)
+    print('back on card page', page.is_visible('#card-page'), 'holo hidden', page.is_hidden('#holo'))
+    # pick another version: soft change
+    page.click('#card-body .versions li:not(.on) button >> nth=0'); page.wait_for_timeout(100)
+    print('fade layer', page.locator('#card-holo .h-prev').count())
+    b.close()
