@@ -352,6 +352,18 @@ def main():
     stats["cardmarket_only_versions"] = len(orphans)
     stats["expansions_named"] = len(exp_name)
 
+    # Passcode -> card name for deck import (.ydk / ydke://). Alternate artworks have their own passcodes.
+    if a.ygoprodeck_cards:
+        pcs = {}
+        for card in json.load(open(a.ygoprodeck_cards, encoding="utf-8"))["data"]:
+            ids = {card.get("id")} | {im.get("id") for im in card.get("card_images") or []}
+            for i in ids:
+                if i:
+                    pcs[str(i)] = card["name"]
+        stats["passcodes"] = len(pcs)
+    else:
+        pcs = None
+
     banlist = {}
     if a.ygoprodeck_cards:
         for card in json.load(open(a.ygoprodeck_cards, encoding="utf-8"))["data"]:
@@ -569,6 +581,10 @@ def main():
         with open(os.path.join(out_dir, "boosters.json"), "w", encoding="utf-8") as f:
             json.dump(boosters, f, ensure_ascii=False, separators=(",", ":"))
         stats["sets_with_booster_price"] = len(boosters)
+
+    if pcs:
+        with open(os.path.join(out_dir, "passcodes.json"), "w", encoding="utf-8") as f:
+            json.dump(pcs, f, ensure_ascii=False, separators=(",", ":"))
 
     index = {"version": 2, "game": "yugioh", "built": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ"),
              "prices": cm[4], "sets": sorted(groups)}

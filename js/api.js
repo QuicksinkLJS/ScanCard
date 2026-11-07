@@ -191,5 +191,11 @@ export function createApi({ fetchFn = globalThis.fetch?.bind(globalThis), base =
     return setEntriesCache.get(exp);
   }
 
-  return { expansions, setEntries, boosterPrice, lookup, knowsPrefix, index, nameInfo, movers, cardDetail, sets, setCardNames, allNames };
+  let pcPromise = null;
+  function passcodes() {
+    if (!pcPromise) { pcPromise = getJson(`${base}/passcodes.json`); pcPromise.catch(() => { pcPromise = null; }); }
+    return pcPromise;
+  }
+
+  return { passcodes, expansions, setEntries, boosterPrice, lookup, knowsPrefix, index, nameInfo, movers, cardDetail, sets, setCardNames, allNames };
 }

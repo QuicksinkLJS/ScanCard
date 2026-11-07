@@ -63,6 +63,18 @@
       <div class="seg" role="tablist" id="coll-tabs">
         <button type="button" class="on" data-ctab="cards">Cards</button>
         <button type="button" data-ctab="masters">Mastersets</button>
+        <button type="button" data-ctab="decks">Decks</button>
+      </div>
+      <div id="decks" hidden>
+        <ul id="decks-list" class="rows"></ul>
+        <p id="decks-empty" class="empty">Import a deck and see which cards you already have and what the rest costs.</p>
+        <h2>Import a deck</h2>
+        <textarea id="deck-input" class="field area" rows="4" placeholder="Paste a ydke:// link, a .ydk file's text or a list like “3x Ash Blossom &amp; Joyous Spring”" spellcheck="false"></textarea>
+        <div class="actions">
+          <label class="btn" for="deck-file">Open .ydk file</label>
+          <input id="deck-file" type="file" accept=".ydk,text/plain" hidden>
+          <button id="deck-import" class="btn primary" type="button">Import</button>
+        </div>
       </div>
       <div id="masters" hidden>
         <ul id="masters-list" class="rows"></ul>
@@ -153,6 +165,15 @@
       <span id="set-title" class="muted small"></span>
     </div>
     <div id="set-body" class="sheet-body"></div>
+  </section>
+
+  <!-- ================= DECK PAGE ================= -->
+  <section id="deck-page" class="sheet" hidden>
+    <div class="sheet-bar">
+      <button id="deck-back" class="link" type="button">‹ Back</button>
+      <span id="deck-title" class="muted small"></span>
+    </div>
+    <div id="deck-body" class="sheet-body"></div>
   </section>
 
   <!-- ================= CARD PAGE ================= -->

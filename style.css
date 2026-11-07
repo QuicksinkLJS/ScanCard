@@ -255,3 +255,17 @@ details.fold .rows { margin: 0 0 6px; }
 .mlist .plain { background: none; border: 0; color: inherit; font: inherit; text-align: left; padding: 0; min-width: 0; flex: 1; }
 .mlist a.eur { color: var(--text); text-decoration: none; }
 .mlist a.eur small { color: var(--accent); }
+
+/* Decks */
+textarea.field.area { min-height: 92px; resize: vertical; font-family: inherit; }
+.dlist .row { gap: 10px; }
+.dlist .cnt { flex: none; min-width: 40px; text-align: center; padding: 4px 6px; border-radius: 8px; border: 1px solid var(--border); font-size: 13px; font-weight: 700; color: var(--muted); }
+.dlist .cnt.ok { background: var(--accent-soft); border-color: var(--accent); color: var(--text); }
+.dlist .plain { background: none; border: 0; color: inherit; font: inherit; text-align: left; padding: 0; min-width: 0; flex: 1; }
+.dlist .what b, .dlist .what small { white-space: normal; }
+.dlist a.eur { color: var(--text); text-decoration: none; }
+.dlist li.have .what b { color: var(--muted); }
+.prefs { display: flex; flex-direction: column; gap: 8px; margin: 6px 0 10px; font-size: 14px; }
+.prefs label { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.prefs .check { justify-content: flex-start; }
+.field.small-field { width: auto; min-width: 150px; padding: 8px 10px; margin: 0; }
