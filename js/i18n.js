@@ -109,7 +109,8 @@ Object.assign(DE, {
   'Remove from collection': 'Aus der Sammlung entfernen', "Don't count for this set": 'Für dieses Set nicht zählen',
   'This tick comes from a card in your collection.': 'Dieser Haken kommt von einer Karte in deiner Sammlung.',
   'Removed from your collection': 'Aus der Sammlung entfernt', 'This card': 'Diese Karte',
-  'choose rarity': 'Seltenheit wählen', 'List': 'Liste', 'Binder': 'Binder', 'Share progress': 'Fortschritt teilen',
+  'choose rarity': 'Seltenheit wählen', 'On your wishlist': 'Auf der Wunschliste', 'Wishlist hit': 'Wunschliste: Treffer', 'Back online': 'Wieder online',
+  "You're offline – scanning still works, prices are from your last visit.": 'Du bist offline – Scannen klappt trotzdem, die Preise sind vom letzten Besuch.', 'List': 'Liste', 'Binder': 'Binder', 'Share progress': 'Fortschritt teilen',
   'Swipe through the pages. Tap a card for details, hold it to leave it out of this set.': 'Wische durch die Seiten. Tippe eine Karte für Details an, halte sie gedrückt, um sie aus diesem Set herauszunehmen.',
   'Tap ○ to tick a card you have (any language counts). Cards in your collection with this exact version are ticked automatically. Hold a card to leave it out of this set.': 'Tippe ○, um eine Karte abzuhaken (jede Sprache zählt). Karten aus deiner Sammlung mit genau dieser Version werden automatisch abgehakt. Halte eine Karte gedrückt, um sie aus diesem Set herauszunehmen.',
   'Masterset': 'Masterset', 'CardScan · Masterset tracker': 'CardScan · Masterset-Tracker', 'left out': 'herausgenommen', '⚠ unusual': '⚠ ungewöhnlich', '⚠ unusual · Cardmarket ↗': '⚠ ungewöhnlich · Cardmarket ↗', 'Set code or set name, e.g. MP19': 'Set-Code oder Set-Name, z. B. MP19', 'No version matches.': 'Keine Version passt.', 'BETA channel': 'BETA-Kanal',
@@ -124,6 +125,8 @@ Object.assign(DE, {
 
 // [pattern, German] for texts with numbers or names in them
 const P = [
+  [/^(.+): missing$/, '$1: fehlt'],
+  [/^(.+): maybe missing$/, '$1: fehlt evtl.'],
   [/^Page (\d+) \/ (\d+)$/, 'Seite $1 / $2'],
   [/^Left out (\d+)$/, 'Herausgenommen $1'],
   [/^Left out of this set: (.*)$/, 'Aus dem Set herausgenommen: $1'],

@@ -11,6 +11,9 @@ import { sharePulls } from './share.js';
 import { pileOf, PILES } from './sortpile.js';
 import { versionImage } from './prices.js';
 import { openReveal } from './reveal.js';
+import { loadWish } from './lists.js';
+import { loadTracked, ownedCounts } from './masters.js';
+import { normName } from './parse.js';
 
 const SHOW_MAX = 1600; // longest side of the photo shown on screen
 
@@ -233,8 +236,9 @@ export function createScanner({ api, recognizer, detector, getOcr, getPack, setP
     svg.querySelectorAll('g').forEach((g) => g.addEventListener('click', () => open(Number(g.dataset.n))));
   }
 
-  function renderList() {
+  function renderList(fromAlerts = false) {
     renderMarks();
+    if (!fromAlerts && cards.length) computeAlerts();
     const sorted = [...cards].sort((a, b) => (b.price?.hi ?? -1) - (a.price?.hi ?? -1));
     $('found').innerHTML = sorted.map((c) => {
       const codeLine = {
@@ -244,7 +248,7 @@ export function createScanner({ api, recognizer, detector, getOcr, getPack, setP
       return `<li><button type="button" data-n="${c.n}">
         <span class="badge-num ${tierOf(c)}">${c.n}</span>
         <img class="thumb" src="${c.thumb}" alt="">
-        <span class="what"><b>${esc(c.name)}</b><small>${piles ? `<span class="pile p-${pileOf(c.price)}">${PILES[pileOf(c.price)].label}</span> ` : ''}${c.confident ? '' : '<span class="unsure">check</span> '}${esc(sub)}</small></span>
+        <span class="what"><b>${esc(c.name)}</b><small>${(c.alerts || []).map((a) => `<span class="alarm a-${a.kind}">${a.kind === 'wish' ? '♥' : '★'} ${esc(a.text)}</span> `).join('')}${piles ? `<span class="pile p-${pileOf(c.price)}">${PILES[pileOf(c.price)].label}</span> ` : ''}${c.confident ? '' : '<span class="unsure">check</span> '}${esc(sub)}</small></span>
         <span class="eur">${range(c.price?.lo, c.price?.hi)}${c.added ? '<small>added ✓</small>' : ''}</span>
       </button>${!c.confident && c.top?.length > 1 ? `<div class="dym"><small>Did you mean…?</small><div class="dym-row">${c.top.slice(0, 3).map((t, k) => `
         <button type="button" class="dym-c" data-n="${c.n}" data-name="${esc(t.name)}"><img data-pic="${esc(t.name)}" alt=""><span>${esc(t.name)}</span>${k === 0 ? '<em>current guess</em>' : ''}</button>`).join('')}</div></div>` : ''}</li>`;
@@ -321,6 +325,44 @@ export function createScanner({ api, recognizer, detector, getOcr, getPack, setP
     }
     for (const c of cards) if (celebrated.has(c.sampleId)) $('found').querySelector(`button[data-n="${c.n}"]`)?.classList.add('hit-glow');
     if (buzz && getPack()) navigator.vibrate?.([60, 40, 120]);
+  }
+
+  // Price alarm: scanned cards you are looking for – on the wishlist, or missing in a tracked masterset.
+  let alertRun = 0;
+  async function computeAlerts() {
+    const my = ++alertRun;
+    const wishes = loadWish();
+    const tracked = loadTracked();
+    const { all } = tracked.length ? ownedCounts() : { all: {} };
+    const sets = await Promise.all(tracked.map(async (t) => {
+      const entries = await api.setEntries(t.exp).catch(() => []);
+      const n = {};
+      for (const e of entries) { const p = (e.code || '').split('-')[0]; if (p) n[p] = (n[p] || 0) + 1; }
+      const short = t.name.replace(/\s*\((OCG|TCG)\)\s*$/, '');
+      const code = Object.entries(n).sort((a, b) => b[1] - a[1])[0]?.[0] || (short.length > 20 ? `${short.slice(0, 18).trim()}…` : short);
+      return { t, entries, code };
+    }));
+    if (my !== alertRun) return;
+    let changed = false;
+    for (const c of cards) {
+      const out = [];
+      const w = wishes.find((x) => normName(x.name) === normName(c.name));
+      if (w) out.push({ kind: 'wish', text: c.price?.lo != null && c.price.lo <= w.target ? 'Wishlist hit' : 'On your wishlist' });
+      for (const { t, entries, code } of sets) {
+        const hid = new Set(t.hidden || []);
+        const target = t.target || 1;
+        const miss = (e) => !hid.has(e.key) && (all[e.key] || 0) < target;
+        if (c.vkey) {
+          const e = entries.find((x) => x.key === String(c.vkey));
+          if (e && miss(e)) out.push({ kind: 'master', text: `${code}: missing` });
+        } else if (entries.some((e) => normName(e.name) === normName(c.name) && miss(e))) {
+          out.push({ kind: 'master', text: `${code}: maybe missing` });
+        }
+      }
+      const key = JSON.stringify(out);
+      if (key !== JSON.stringify(c.alerts || [])) { c.alerts = out; changed = true; }
+    }
+    if (changed) { renderList(true); if (cards.some((c) => c.alerts?.length)) navigator.vibrate?.([30, 60, 30]); }
   }
 
   // "Did you mean …?": small official pictures of the candidates; one tap fixes the card.

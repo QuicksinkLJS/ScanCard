@@ -518,6 +518,16 @@ function showView(name) {
 }
 document.querySelectorAll('.tabs button').forEach((b) => b.addEventListener('click', () => showView(b.dataset.view)));
 
+// Offline: a band on top – scanning works without network, prices are those of the last visit.
+const offBand = document.createElement('div');
+offBand.className = 'offline-band';
+offBand.textContent = "You're offline – scanning still works, prices are from your last visit.";
+document.querySelector('main').prepend(offBand);
+const onNet = () => { offBand.hidden = navigator.onLine !== false; };
+window.addEventListener('online', () => { onNet(); toast('Back online'); });
+window.addEventListener('offline', onNet);
+onNet();
+
 // Start loading the recogniser in the background so the first scan is quick.
 setTimeout(() => recognizer.ready().then(() => {
   if (/first time|Starting/.test($('status').textContent)) setStatus('');

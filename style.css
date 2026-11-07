@@ -465,3 +465,9 @@ textarea.field.area { min-height: 92px; resize: vertical; font-family: inherit; 
 .mlist li.off { opacity: .45; }
 .mprog .link { padding: 4px 0 0; }
 @media (prefers-reduced-motion: reduce) { .pocket.have::after { animation: none; } }
+.alarm { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; margin: 0 2px 2px 0; }
+.alarm.a-wish { background: rgba(255, 92, 140, .16); color: #ff8fb0; border: 1px solid rgba(255,92,140,.4); }
+.alarm.a-master { background: rgba(247, 215, 116, .14); color: #f7d774; border: 1px solid rgba(247,215,116,.4); }
+/* Offline band */
+.offline-band { position: sticky; top: 0; z-index: 30; margin: 0 -16px 8px; padding: 8px 16px; font-size: 13px; text-align: center;
+  background: #3a2a0c; color: #ffd99a; border-bottom: 1px solid rgba(255,176,46,.35); }
