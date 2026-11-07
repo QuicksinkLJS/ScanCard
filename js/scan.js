@@ -7,6 +7,7 @@ import { prepare } from './ocr.js';
 import { matchCode, languageFromText } from './codematch.js';
 import { valueTier } from './parse.js';
 import { quickPrice } from './cardpage.js';
+import { sharePulls } from './share.js';
 
 const SHOW_MAX = 1600; // longest side of the photo shown on screen
 
@@ -229,6 +230,7 @@ export function createScanner({ api, recognizer, detector, getOcr, getPack, setP
       ? `${cards.length} card${cards.length > 1 ? 's' : ''}${unsure ? ` · ${unsure} to check` : ''} · tap a card for details`
       : '';
     $('add-all').hidden = !cards.length || cards.every((c) => c.added);
+    $('share-pulls').hidden = !cards.length;
     renderBalance(lo, hi);
     celebrate();
   }
@@ -306,6 +308,15 @@ export function createScanner({ api, recognizer, detector, getOcr, getPack, setP
   }
 
   $('add-all').addEventListener('click', () => onAddAll(cards.filter((c) => !c.added)));
+  $('share-pulls').addEventListener('click', async () => {
+    if (!cards.length) return;
+    const pack = getPack();
+    const bal = $('pack-balance');
+    const pct = !bal.hidden ? bal.querySelector('.bal-pct')?.textContent.split(' … ')[0].replace(/\s/g, ' ') : '';
+    const day = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    const r = await sharePulls(cards, { title: 'My pulls', sub: pack?.name ? `${pack.name} · ${day}` : day, balance: pct || '' });
+    if (r === 'downloaded') toast('Picture saved');
+  });
 
   return { scanPhoto, scanCard, refresh, renderList, clear, remove, cards: () => cards };
 }
