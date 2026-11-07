@@ -27,6 +27,7 @@ import { loadDecks } from './decks.js';
 import { copyText } from './copy.js';
 import { valueSeries } from './depot.js';
 import { bindTiltScan, tiltOnBack } from './tiltui.js';
+import { bindHologram, hologramOnBack } from './hologram.js';
 import { loadWatch, loadWish, removeWatch, belowTarget, migrateLists, removeWishId, restoreWish } from './lists.js';
 import {
   loadCollection, saveCollection, newId, loadPack, savePack, putSample, updateSample, allSamples, countSamples,
@@ -419,6 +420,7 @@ async function refreshCollectionPrices() {
 const masters = createMasters({ api, openCard: (s) => openCardPage(s, plainHooks), onCollectionChange: () => renderCollection() });
 const decks = createDecks({ api, openCard: (s) => openCardPage(s, plainHooks) });
 bindTiltScan();
+bindHologram({ detector });
 const friends = createFriends({ api, openCard: (s) => openCardPage(s, plainHooks), loadDecks });
 friends.fromLink();
 window.addEventListener('hashchange', () => friends.fromLink());
@@ -674,6 +676,7 @@ $('pack-off').addEventListener('click', () => { setPack(null); history.back(); }
 
 // Android back button / browser back closes the open sheet.
 window.addEventListener('popstate', () => {
+  if (hologramOnBack()) return;
   if (tiltOnBack()) return;
   if (!$('holo').hidden) { closeHolo(); return; }
   if (!$('card-page').hidden) {

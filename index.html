@@ -337,6 +337,35 @@
     <div id="holo-info" class="holo-info"></div>
   </div>
 
+  <!-- ================= HOLOGRAM ================= -->
+  <div id="hg" class="hg" hidden>
+    <video id="hg-video" class="hg-video" playsinline muted></video>
+    <div class="hg-floor" aria-hidden="true"></div>
+    <div id="hg-touch" class="hg-touch"></div>
+    <div class="hg-seek" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    <div class="hg-world" aria-hidden="true">
+      <div id="hg-base" class="hg-base"><img id="hg-base-img" alt="" draggable="false"></div>
+      <div id="hg-lock" class="hg-lock"><i></i><i></i><i></i><i></i></div>
+      <div id="hg-beam" class="hg-beam"></div>
+      <div id="hg-motes" class="hg-motes"><i style="--l:49%;--d:3.03s;--s:2.8px"></i><i style="--l:14%;--d:0.23s;--s:3.1px"></i><i style="--l:54%;--d:1.86s;--s:3.8px"></i><i style="--l:35%;--d:0.12s;--s:2.9px"></i><i style="--l:16%;--d:0.77s;--s:3.1px"></i><i style="--l:15%;--d:2.65s;--s:2.2px"></i><i style="--l:36%;--d:2.02s;--s:3.2px"></i><i style="--l:15%;--d:1.85s;--s:2.8px"></i><i style="--l:36%;--d:0.15s;--s:3.7px"></i><i style="--l:45%;--d:1.34s;--s:3.1px"></i></div>
+      <div id="hg-holo" class="hg-holo">
+        <div class="hg-float"><div class="hg-tilt"><div class="hg-rise">
+          <p id="hg-name" class="hg-name"></p>
+          <p id="hg-sub" class="hg-sub"></p>
+          <div id="hg-art" class="hg-art"><img id="hg-img" alt="" draggable="false"><i class="hg-scan"></i></div>
+        </div></div></div>
+      </div>
+    </div>
+    <div class="hg-bar">
+      <p id="hg-status" class="hg-status" aria-live="polite"></p>
+      <div class="hg-btns">
+        <button id="hg-close" class="btn" type="button">Close</button>
+        <button id="hg-again" class="btn" type="button" hidden>Place again</button>
+        <button id="hg-nocam" class="btn" type="button">Without camera</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="toast" hidden></div>
   <button id="update" class="update" type="button" hidden>New version – tap to update</button>
 

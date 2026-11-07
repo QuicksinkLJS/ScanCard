@@ -15,6 +15,7 @@ import { openHolo, holoCardHTML, holoKind, attachTilt } from './holo.js';
 import { findWatch, toggleWatch, findWish, toggleWish, restoreWish, restoreWatch, setWatchTarget, updateWish } from './lists.js';
 import { CONDS, LANGS, hasFirstEdition, copyText, langOf } from './copy.js';
 import { openTiltScan } from './tiltui.js';
+import { openHologram } from './hologram.js';
 import { tiltRank } from './tilt.js';
 import { rarityQuery, fairTrend, filterOptions, versionOptions, rankOptions, bestOptions, priceOf, tierOfPrice, oddValues, optionCode, versionLabel, cardmarketUrl, versionImage, historyOf } from './prices.js';
 
@@ -234,7 +235,8 @@ function render() {
   $('card-bar-title').textContent = s.name;
   $('card-body').innerHTML = `
     ${holo ? `<div class="card-holo" id="card-holo">${holoCardHTML({ ...holo, alt: s.name, prev })}</div>
-      <p class="small muted card-holo-hint">${holo.official ? (hooks.own ? 'Tilt your phone · tap for full screen' : 'Official picture · tap for full screen') : 'Your photo – pick your version below for the official picture'}</p>` : ''}
+      <p class="small muted card-holo-hint">${holo.official ? (hooks.own ? 'Tilt your phone · tap for full screen' : 'Official picture · tap for full screen') : 'Your photo – pick your version below for the official picture'}</p>
+      <button type="button" class="btn hg-open" id="hg-open">◈ Hologram</button>` : ''}
     <div class="card-head">
       ${s.thumb && !holo ? `<img src="${s.thumb}" alt="">` : ''}
       <div>
@@ -279,6 +281,7 @@ function render() {
       onTap: () => openHolo([{ name: info?.name || s.name, rarity: chosen ? (chosen.rarity || versionLabel(chosen)) : '', src: holo.src, kind: holo.kind, shine: holo.shine, price: chosen?.trend }]),
     });
   }
+  $('hg-open')?.addEventListener('click', () => openHologram({ src: holo.src, name: info?.name || s.name, rarity: chosen ? (chosen.rarity || versionLabel(chosen)) : '', price: chosen?.trend }));
   $('card-watch').addEventListener('click', () => {
     const before = findWatch(s);
     const on = toggleWatch(s, priceNow());

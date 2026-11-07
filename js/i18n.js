@@ -184,6 +184,13 @@ Object.assign(DE, {
   'Not sure. Try again under one bright lamp (or with the light on), tilting a bit more.': 'Nicht sicher. Versuch es nochmal unter einer hellen Lampe (oder mit Licht) und kipp etwas stärker.',
   'Artwork colour': 'Bild-Farbe', 'Glitter': 'Glitzer', 'Name shine': 'Name-Glanz', 'Whole card': 'Ganze Karte',
   'Show matching versions': 'Passende Versionen zeigen',
+  // hologram (stage 1)
+  '◈ Hologram': '◈ Hologramm', 'Place again': 'Neu platzieren', 'Without camera': 'Ohne Kamera',
+  'Lay the card on the table and point the camera at it': 'Leg die Karte auf den Tisch und richte die Kamera darauf',
+  'Not found yet – hold the phone above the card, or tap the card on the screen': 'Noch nicht gefunden – halt das Handy über die Karte oder tipp die Karte auf dem Bildschirm an',
+  'The card finder could not be loaded – tap the card on the screen': 'Der Kartenfinder ließ sich nicht laden – tipp die Karte auf dem Bildschirm an',
+  'Turn your phone slowly – the hologram stays above the card': 'Dreh dein Handy langsam – das Hologramm bleibt über der Karte',
+  'No camera – here is the hologram on a virtual table': 'Keine Kamera – hier ist das Hologramm auf einem virtuellen Tisch',
   'Prototype: the guess only orders the versions, nothing is changed without you.': 'Prototyp: Der Tipp sortiert nur die Versionen, ohne dich wird nichts geändert.',
 });
 
