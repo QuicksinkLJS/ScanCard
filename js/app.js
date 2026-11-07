@@ -17,6 +17,7 @@ import { versionImage, rarityRank } from './prices.js';
 import { createMasters } from './masters.js';
 import { createDecks } from './decks.js';
 import { openHolo, closeHolo, holoKind, holoCardHTML } from './holo.js';
+import { fanHTML } from './fan.js';
 import { loadWatch, loadWish, removeWatch, belowTarget } from './lists.js';
 import {
   loadCollection, saveCollection, newId, loadPack, savePack, putSample, updateSample, allSamples, countSamples,
@@ -286,12 +287,22 @@ function renderCollection() {
   const show = [...list].filter((e) => e.price?.exact && e.price?.image).sort((a, b) => (b.price.lo ?? 0) - (a.price.lo ?? 0)).slice(0, 20);
   $('showcase').hidden = !show.length;
   $('showcase').onclick = () => openHolo(show.map((e) => ({ name: e.name, rarity: e.price.rarity, image: e.price.image, price: e.price.lo })));
+  // Opening: the most valuable cards as a fanned hand (replayed only when they change)
+  const fanCards = pf.top.filter((e) => pictureOf(e, 'show'));
+  const fanKey = fanCards.map((e) => `${e.id}:${pictureOf(e, 'show')}:${holoKindOf(e)}`).join('|');
+  const fanEl = $('coll-fan');
+  if (fanEl._key !== fanKey) {
+    fanEl._key = fanKey;
+    fanEl.innerHTML = fanCards.length >= 2 ? fanHTML(fanCards.map((e) => ({ src: pictureOf(e, 'show'), kind: holoKindOf(e), name: e.name }))) : '';
+    fanEl.querySelectorAll('.fan-card').forEach((b) => b.addEventListener('click', () => openHolo(
+      fanCards.map((e) => ({ name: e.name, rarity: e.price?.exact ? e.price.rarity : '', src: pictureOf(e, 'show'), kind: holoKindOf(e), price: e.price?.lo })), Number(b.dataset.i))));
+  }
   // Top 5
   $('coll-top-wrap').hidden = pf.top.length < 2;
   $('coll-top').innerHTML = pf.top.map((e, i) => `
     <button type="button" class="topcard" data-id="${esc(e.id)}">
       <span class="rank">${i + 1}</span>
-      ${pictureOf(e, 'show') ? `<span class="topholo">${holoCardHTML({ src: pictureOf(e, 'show'), kind: holoKindOf(e), alt: e.name })}</span>` : '<span class="noimg"></span>'}
+      ${pictureOf(e, 'show') ? `<span class="topholo">${holoCardHTML({ src: pictureOf(e, 'show'), kind: holoKindOf(e), alt: e.name, shine: false })}</span>` : '<span class="noimg"></span>'}
       <b>${esc(e.name)}</b><span class="eur">${range(e.price?.lo, e.price?.hi)}</span>${chg(changeOf(e))}
     </button>`).join('');
   $('coll-top').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => openEntry(b.dataset.id)));

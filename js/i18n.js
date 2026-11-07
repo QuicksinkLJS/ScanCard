@@ -105,7 +105,9 @@ const DE = {
 
 // 7 Nov: undo, masterset choice, holo, rarity, reveal, beta features
 Object.assign(DE, {
-  'Big moment': 'Big Moment', 'On': 'An', 'Off': 'Aus',
+  'Big moment': 'Big Moment', '🂠 Draw test hand': '🂠 Testhand ziehen', '🂠 New test hand': '🂠 Neue Testhand', 'Draw again': 'Neu ziehen',
+  '+1 card': '+1 Karte', 'Test hand': 'Testhand', 'No main deck': 'Kein Main Deck', 'Deck value (max rarity)': 'Deckwert (höchste Seltenheit)',
+  'Deck value (cheapest versions)': 'Deckwert (günstigste Versionen)', 'On': 'An', 'Off': 'Aus',
   'A card worth €50 or more flies in full screen when you scan it.': 'Eine Karte ab €50 fliegt beim Scannen groß ins Bild.',
   'Undo': 'Rückgängig', 'Undone': 'Rückgängig gemacht', 'Ticked': 'Abgehakt', 'Tick removed': 'Haken entfernt',
   'Remove from collection': 'Aus der Sammlung entfernen', "Don't count for this set": 'Für dieses Set nicht zählen',
@@ -127,6 +129,7 @@ Object.assign(DE, {
 
 // [pattern, German] for texts with numbers or names in them
 const P = [
+  [/^(\d+) of (\d+)$/, '$1 von $2'],
   [/^(.+): missing$/, '$1: fehlt'],
   [/^(.+): maybe missing$/, '$1: fehlt evtl.'],
   [/^Page (\d+) \/ (\d+)$/, 'Seite $1 / $2'],

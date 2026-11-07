@@ -533,3 +533,17 @@ textarea.field.area { min-height: 92px; resize: vertical; font-family: inherit; 
 .tframe.r-rare { position: relative; overflow: hidden; border-radius: 6px; }
 @keyframes t-sweep { 0%, 35% { transform: translateX(-120%); } 75%, 100% { transform: translateX(120%); } }
 @media (prefers-reduced-motion: reduce) { .tframe::after { animation: none; display: none; } }
+
+/* Fanned hand (collection opening, deck, test hand) */
+.fan { position: relative; height: 232px; margin: 6px 0 2px; perspective: 900px; overflow: visible; }
+.fan-card { position: absolute; left: 50%; bottom: 40px; width: 104px; aspect-ratio: 59 / 86; margin-left: -52px; padding: 0; border: 0; background: none; cursor: pointer;
+  transform-origin: 50% 160%; z-index: var(--z); transform: translateX(var(--x)) translateY(var(--y)) rotate(var(--r));
+  animation: fan-in .75s cubic-bezier(.2,1.15,.4,1) var(--d) both; }
+.fan-card .holo-card { border-radius: 6px; box-shadow: 0 10px 24px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.08); }
+.fan-card:active { transform: translateX(var(--x)) translateY(calc(var(--y) - 14px)) rotate(var(--r)); }
+@keyframes fan-in { from { transform: translateY(70px) rotate(0deg) scale(.8); opacity: 0; } }
+.hand-fan { height: 215px; }
+.hand-fan .fan-card { width: 92px; margin-left: -46px; bottom: 44px; }
+.hand-names { margin: 0 0 8px; padding-left: 20px; columns: 2; }
+.deck-sum { text-align: center; margin-top: 0; }
+@media (prefers-reduced-motion: reduce) { .fan-card { animation: none; } }

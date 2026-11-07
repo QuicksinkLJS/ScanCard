@@ -1,8 +1,10 @@
 // Decks: import a deck, see which cards you have (any version or language counts) and what the rest costs.
 
-import { $, esc, eur, toast } from './util.js';
+import { $, esc, eur, toast, countTo } from './util.js';
+import { fanHTML, drawHand } from './fan.js';
+import { holoKind } from './holo.js';
 import { normName } from './parse.js';
-import { versionOptions, cardmarketUrl, versionLabel } from './prices.js';
+import { versionOptions, cardmarketUrl, versionLabel, versionImage } from './prices.js';
 import { syncBody } from './cardpage.js';
 import { loadCollection, newId } from './store.js';
 import { parseDeck, resolveDeck, allocate, pickVersion, wantsLines } from './deck.js';
@@ -70,7 +72,7 @@ export function createDecks({ api, openCard }) {
     page.scrollTop = 0;
     $('deck-title').textContent = d.name;
     $('deck-body').innerHTML = '<p class="note">Loading prices…</p>';
-    cur = { deck: d, info: new Map() };
+    cur = { deck: d, info: new Map(), hand: null };
     const names = [...new Set(['main', 'extra', 'side'].flatMap((p) => d.cards[p].map((r) => r.name)))];
     const [exps] = await Promise.all([
       api.expansions().catch(() => []),
@@ -102,7 +104,24 @@ export function createDecks({ api, openCard }) {
           ${r.pick ? `<a class="eur" href="${esc(prefs.mode === 'max' ? cardmarketUrl(r.pick, r.name) : cardmarketUrl({ expansion: null }, r.name))}" target="_blank" rel="noopener">${eur(r.pick.trend)}${r.missing ? `<small>× ${r.missing}</small>` : '<small>↗</small>'}</a>` : ''}
         </div></li>`).join('')}</ul>` : '');
     const sel = (id, list, v) => `<select id="${id}" class="field small-field">${list.map(([k, l]) => `<option value="${k}" ${k === v ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
+    // value and the most valuable cards (picture of the picked version, or any official one)
+    const all = [...parts.main, ...parts.extra, ...parts.side];
+    const deckValue = all.reduce((v, r) => v + (r.pick?.trend || 0) * r.need, 0);
+    const picOf = (name, pick) => {
+      const o = pick?.image ? pick : (info.get(name) || []).find((x) => x.image);
+      return o ? { src: versionImage(o, 'show'), kind: holoKind(o.rarity || (o.rarities?.length === 1 ? o.rarities[0] : '')) } : null;
+    };
+    cur.picOf = picOf;
+    const best = all.filter((r) => r.pick?.trend != null).sort((x, y) => y.pick.trend - x.pick.trend)
+      .map((r) => ({ ...picOf(r.name, r.pick), name: r.name })).filter((x) => x.src).slice(0, 5);
     $('deck-body').innerHTML = `
+      ${best.length >= 2 ? fanHTML(best, { cls: 'deck-fan' }) : ''}
+      <div class="summary deck-sum">
+        <p class="muted small">Deck value (${prefs.mode === 'max' ? 'max rarity' : 'cheapest versions'})</p>
+        <p class="result-total" id="deck-value">€0.00</p>
+      </div>
+      <div class="actions"><button type="button" class="btn" id="deck-draw">🂠 Draw test hand</button></div>
+      <div id="deck-hand"></div>
       <div class="mprog">
         <p class="big">${a.have}<span class="muted">/${a.need}</span></p>
         <span class="pbar big"><span style="width:${a.need ? (a.have / a.need) * 100 : 0}%"></span></span>
@@ -125,6 +144,10 @@ export function createDecks({ api, openCard }) {
       <p class="muted small" id="deck-wants-note"></p>
       <button type="button" class="btn wide danger" id="deck-delete">Delete deck</button>`;
     const body = $('deck-body');
+    countTo($('deck-value'), deckValue, deckValue, 900);
+    body.querySelectorAll('.deck-fan .fan-card').forEach((b) => b.addEventListener('click', () => openCard({ name: best[Number(b.dataset.i)].name })));
+    $('deck-draw').addEventListener('click', () => drawTest(parts.main));
+    if (cur.hand) showHand();
     $('deck-prefs').addEventListener('toggle', (e) => { cur.prefsOpen = e.target.open; });
     const setPref = (patch) => {
       const decks = loadDecks().map((x) => (x.id === deck.id ? { ...x, prefs: { ...prefs, ...patch, touched: true } } : x));
@@ -153,6 +176,39 @@ export function createDecks({ api, openCard }) {
       saveDecks(loadDecks().filter((x) => x.id !== deck.id));
       history.back();
     });
+  }
+
+  // Test hand: 5 random cards of the main deck (copies count), draw again or one more.
+  function drawTest(main) {
+    const pool = main.map((r) => ({ name: r.name, need: r.need }));
+    if (!pool.length) { toast('No main deck'); return; }
+    cur.handPool = pool;
+    cur.hand = drawHand(pool, 5);
+    showHand();
+  }
+  function showHand() {
+    const el = $('deck-hand');
+    const total = cur.handPool.reduce((s, r) => s + r.need, 0);
+    el.innerHTML = `
+      <h2>Test hand <span class="muted small">${cur.hand.length} of ${total}</span></h2>
+      ${fanHTML(cur.hand.map((name) => ({ ...(cur.picOf(name) || { src: '', kind: 'plain' }), name })), { cls: 'hand-fan' })}
+      <ol class="hand-names small muted">${cur.hand.map((n) => `<li>${esc(n)}</li>`).join('')}</ol>
+      <div class="actions">
+        <button type="button" class="btn" id="hand-again">Draw again</button>
+        <button type="button" class="btn" id="hand-more" ${cur.hand.length >= Math.min(total, 10) ? 'disabled' : ''}>+1 card</button>
+      </div>`;
+    $('deck-draw').textContent = '🂠 New test hand';
+    $('hand-again').addEventListener('click', () => { cur.hand = drawHand(cur.handPool, 5); showHand(); });
+    $('hand-more').addEventListener('click', () => {
+      // one more from what is left in the deck
+      const left = {};
+      for (const r of cur.handPool) left[r.name] = r.need;
+      for (const n of cur.hand) left[n]--;
+      const rest = Object.entries(left).filter(([, k]) => k > 0).map(([name, need]) => ({ name, need }));
+      const [next] = drawHand(rest, 1);
+      if (next) { cur.hand = [...cur.hand, next]; showHand(); }
+    });
+    el.querySelectorAll('.fan-card').forEach((b) => b.addEventListener('click', () => openCard({ name: cur.hand[Number(b.dataset.i)] })));
   }
 
   function closeDeck() { $('deck-page').hidden = true; syncBody(); renderList(); }

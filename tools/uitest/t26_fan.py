@@ -1,0 +1,31 @@
+# Collection opening as a fanned hand; deck: fan of the most valuable cards, deck value, test hand.
+import sys, base64, struct; sys.path.insert(0, __import__('os').path.dirname(__file__))
+from harness import *
+b64 = lambda ids: base64.b64encode(struct.pack('<%dI' % len(ids), *ids)).decode()
+url = f"ydke://{b64([14558127]*3 + [46986414]*2 + [89631139]*3 + [38033121]*2)}!{b64([44508094])}!!"
+with sync_playwright() as p:
+    b, page = open_app(p)
+    for name in ['Blue-Eyes White Dragon', 'Dark Magician', 'Ash Blossom & Joyous Spring']:
+        open_card(page, name)
+        page.click('#card-body .versions button >> nth=1'); page.wait_for_timeout(200)
+        page.click('#card-add'); page.wait_for_timeout(300); page.go_back(); page.wait_for_timeout(200)
+    page.click('nav.tabs button[data-view=collection]'); page.wait_for_timeout(1500)
+    print('collection fan cards:', page.locator('#coll-fan .fan-card').count(), '| total:', page.inner_text('#coll-total'))
+    page.screenshot(path='/home/claude/shots/t26_coll.png')
+    page.click('#coll-fan .fan-card >> nth=0'); page.wait_for_timeout(400)
+    print('showcase from fan:', page.is_visible('#holo'), page.inner_text('#holo-info').replace('\n', ' | '))
+    page.go_back(); page.wait_for_timeout(300)
+    page.click('[data-ctab=decks]')
+    page.fill('#deck-input', url); page.click('#deck-import')
+    page.wait_for_selector('#deck-body .dlist', timeout=30000); page.wait_for_timeout(1200)
+    print('deck fan:', page.locator('#deck-body .deck-fan .fan-card').count(), '| value:', page.inner_text('#deck-value'), page.inner_text('.deck-sum p.muted'))
+    page.click('#deck-draw'); page.wait_for_timeout(900)
+    print('hand:', page.locator('.hand-fan .fan-card').count(), page.locator('.hand-names li').all_inner_texts())
+    page.locator('#deck-hand').scroll_into_view_if_needed(); page.screenshot(path='/home/claude/shots/t26_hand.png')
+    page.click('#hand-more'); page.wait_for_timeout(300)
+    print('after +1:', page.locator('.hand-fan .fan-card').count(), page.inner_text('#deck-hand h2'))
+    page.click('#hand-again'); page.wait_for_timeout(300)
+    print('again:', page.locator('.hand-fan .fan-card').count())
+    page.evaluate("document.getElementById('deck-page').scrollTop = 0"); page.wait_for_timeout(300)
+    page.screenshot(path='/home/claude/shots/t26_deck.png')
+    b.close()
