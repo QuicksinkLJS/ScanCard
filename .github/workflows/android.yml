@@ -1,0 +1,78 @@
+name: Android app
+
+# Builds CardScan.apk (a Capacitor shell that opens the live app) and publishes it as the latest release.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["android-app/**", ".github/workflows/android.yml"]
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Create the Android project
+        working-directory: android-app
+        run: |
+          npm init -y >/dev/null
+          npm i @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7
+          npx cap add android
+          npx cap sync android
+
+      - name: Camera permission, icons, signing
+        working-directory: android-app/android
+        run: |
+          m=app/src/main/AndroidManifest.xml
+          sed -i 's#<application#<uses-permission android:name="android.permission.CAMERA" />\n    <uses-feature android:name="android.hardware.camera" android:required="false" />\n\n    <application#' $m
+          grep -n "CAMERA" $m
+          # app icon (legacy icons from android-app/res; drop the adaptive default)
+          rm -rf app/src/main/res/mipmap-anydpi-v26
+          rm -f app/src/main/res/mipmap-*/ic_launcher_foreground.png
+          cp -r ../res/. app/src/main/res/
+          # same test key every build, so a new APK installs over the old one
+          cat >> app/build.gradle <<'GRADLE'
+
+          android {
+              signingConfigs {
+                  cardscan {
+                      storeFile file("../../cardscan-test.keystore")
+                      storePassword "cardscan"
+                      keyAlias "cardscan"
+                      keyPassword "cardscan"
+                  }
+              }
+              buildTypes {
+                  debug { signingConfig signingConfigs.cardscan }
+                  release { signingConfig signingConfigs.cardscan; minifyEnabled false }
+              }
+          }
+          GRADLE
+
+      - name: Build
+        working-directory: android-app/android
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease
+          cp app/build/outputs/apk/release/app-release.apk ../../CardScan.apk
+          ls -la ../../CardScan.apk
+
+      - name: Publish as latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="android-$(date -u +%Y%m%d-%H%M)"
+          gh release create "$tag" CardScan.apk --repo "${{ github.repository }}" --latest \
+            --title "CardScan Android app ($(date -u +%Y-%m-%d))" \
+            --notes "Install: open this page on the phone, download CardScan.apk, allow installing from this source. The app opens the live CardScan, prices update daily."

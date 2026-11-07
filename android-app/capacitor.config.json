@@ -1,0 +1,15 @@
+{
+  "appId": "io.github.quicksinkljs.cardscan",
+  "appName": "CardScan",
+  "webDir": "www",
+  "backgroundColor": "#0d0d11",
+  "server": {
+    "url": "https://quicksinkljs.github.io/ScanCard/",
+    "androidScheme": "https",
+    "errorPath": "offline.html"
+  },
+  "android": {
+    "appendUserAgent": "CardScanApp",
+    "backgroundColor": "#0d0d11"
+  }
+}
