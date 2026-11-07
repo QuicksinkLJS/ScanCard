@@ -1,7 +1,7 @@
 // The boss: tabs, camera, and what happens when a button is pressed.
 
 import { startI18n, lang, setLang } from './i18n.js';
-import { $, esc, eur, range, toast, countTo, loadImage, canvasBlob, blobToDataURL, thumbOf } from './util.js';
+import { $, esc, eur, range, toast, countTo, loadImage, canvasBlob, blobToDataURL, thumbOf, choose } from './util.js';
 import { parseManualCode, valueTier, normName } from './parse.js';
 import { baseOf } from './codematch.js';
 import { createApi } from './api.js';
@@ -19,6 +19,7 @@ import { createMasters } from './masters.js';
 import { createDecks } from './decks.js';
 import { openHolo, closeHolo, holoKind, holoCardHTML } from './holo.js';
 import { fanHTML } from './fan.js';
+import { makeBackup, readBackup, restoreBackup, collectionCsv, sellCsv, saveFile } from './backup.js';
 import { createFriends } from './friendsui.js';
 import { loadDecks } from './decks.js';
 import { copyText } from './copy.js';
@@ -585,6 +586,44 @@ $('clear-coll').addEventListener('click', () => {
   if (!window.confirm('Remove all cards from your collection? Training examples stay.')) return;
   saveCollection([]);
   renderCollection();
+});
+
+// ---------- backup & export ----------
+const today = () => new Date().toISOString().slice(0, 10);
+$('bk-save').addEventListener('click', async () => {
+  const b = makeBackup();
+  const r = await saveFile(JSON.stringify(b), `cardscan-backup-${today()}.json`, 'application/json');
+  if (r !== 'cancelled') { try { localStorage.setItem('cardscan-lastbackup', String(Date.now())); } catch { /* ignore */ } toast(r === 'shared' ? 'Backup ready – keep it somewhere safe' : 'Backup saved'); }
+});
+$('bk-file').addEventListener('change', async (ev) => {
+  const file = ev.target.files[0];
+  ev.target.value = '';
+  if (!file) return;
+  let b;
+  try { b = readBackup(await file.text()); } catch { toast('That is not a CardScan backup'); return; }
+  const date = new Date(b.date).toLocaleDateString(lang === 'de' ? 'de-DE' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  const v = await choose('Restore backup?', [{ label: 'Replace everything', value: 'yes', danger: true }],
+    `Backup from ${date} with ${b.cards} cards. Everything on this phone is replaced by it.`);
+  if (v !== 'yes') return;
+  const before = restoreBackup(b);
+  toast('Backup restored', 6000, { label: 'Undo', run: () => { restoreBackup(before); location.reload(); } });
+  setTimeout(() => location.reload(), 6200);
+});
+$('bk-csv').addEventListener('click', async () => {
+  const list = loadCollection();
+  if (!list.length) { toast('Your collection is empty'); return; }
+  await saveFile(collectionCsv(list), `cardscan-collection-${today()}.csv`, 'text/csv');
+});
+$('bk-sell').addEventListener('click', async () => {
+  const list = loadCollection();
+  if (!list.length) { toast('Your collection is empty'); return; }
+  const which = await choose('Sell list', [{ label: 'Only doubles (keep one of each)', value: 'doubles' }, { label: 'All cards', value: 'all' }],
+    'Cards without a chosen version are left out – pick the version on the card page first.');
+  if (!which) return;
+  const r = sellCsv(list, { onlyDoubles: which === 'doubles' });
+  if (!r.rows) { toast(which === 'doubles' ? 'No doubles with a known version' : 'No cards with a known version yet'); return; }
+  await saveFile(r.text, `cardscan-sell-${today()}.csv`, 'text/csv');
+  if (r.skipped) toast(`${r.skipped} card${r.skipped > 1 ? 's' : ''} without a version left out`);
 });
 
 async function renderMore() {

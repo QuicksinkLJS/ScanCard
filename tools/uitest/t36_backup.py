@@ -1,0 +1,27 @@
+# Backup (save, clear, restore with undo), collection CSV and sell list – files caught as downloads.
+import sys; sys.path.insert(0, __import__('os').path.dirname(__file__))
+from harness import *
+with sync_playwright() as p:
+    b, page = open_app(p)
+    for name in ['Blue-Eyes White Dragon', 'Dark Magician', 'Dark Magician']:
+        open_card(page, name); page.click('#card-body .versions button >> nth=1'); page.wait_for_timeout(200)
+        page.click('#card-add'); page.wait_for_timeout(300); page.go_back(); page.wait_for_timeout(200)
+    page.click('nav.tabs button[data-view=more]'); page.wait_for_timeout(300)
+    with page.expect_download() as d: page.click('#bk-save')
+    path = d.value.path(); text = open(path).read()
+    print('backup file:', d.value.suggested_filename, len(text), 'bytes')
+    with page.expect_download() as d2: page.click('#bk-csv')
+    print('csv:', open(d2.value.path(), encoding='utf-8-sig').read().splitlines()[:2])
+    page.click('#bk-sell'); page.wait_for_timeout(300)
+    with page.expect_download() as d3: page.click('.choose button >> text=Only doubles')
+    print('sell (doubles):', open(d3.value.path(), encoding='utf-8-sig').read().splitlines())
+    page.evaluate("localStorage.setItem('cardscan-collection-v1', '[]')"); page.reload(); page.wait_for_timeout(800)
+    page.click('nav.tabs button[data-view=more]'); page.wait_for_timeout(300)
+    page.set_input_files('#bk-file', path); page.wait_for_timeout(500)
+    print('dialog:', page.inner_text('.choose').replace('\n', ' | ')[:200])
+    page.click('.choose button >> text=Replace everything'); page.wait_for_timeout(500)
+    print('restored cards:', page.evaluate("JSON.parse(localStorage.getItem('cardscan-collection-v1')).length"), '| toast:', page.inner_text('#toast'))
+    page.wait_for_timeout(7000)
+    page.click('nav.tabs button[data-view=collection]'); page.wait_for_timeout(800)
+    print('after reload, collection rows:', page.locator('#coll-list li').count())
+    b.close()

@@ -195,6 +195,19 @@
       <p class="muted small">Every card you add or correct is kept on this phone as a training example (picture + right answer). Nothing is uploaded.</p>
       <button id="export" class="btn wide" type="button">Export training data</button>
 
+      <h2>Backup &amp; export</h2>
+      <p class="muted small">Your collection, wishlist, decks, sets and friends are only on this phone. Save a backup now and then – for a new phone, or if the browser data gets cleared.</p>
+      <div class="actions">
+        <button id="bk-save" class="btn primary" type="button">Save backup</button>
+        <label class="btn" for="bk-file">Restore backup</label>
+        <input id="bk-file" type="file" accept=".json,application/json" hidden>
+      </div>
+      <div class="actions">
+        <button id="bk-csv" class="btn" type="button">Collection as CSV</button>
+        <button id="bk-sell" class="btn" type="button">Sell list (Cardmarket IDs)</button>
+      </div>
+      <p class="muted small">The sell list has one row per version with its Cardmarket product id, quantity, language and condition – the format seller tools like TCG PowerTools import.</p>
+
       <h2>Data</h2>
       <p class="muted small" id="data-info"></p>
       <button id="clear-coll" class="btn wide danger" type="button">Clear collection</button>

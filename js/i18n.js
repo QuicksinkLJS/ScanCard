@@ -133,6 +133,14 @@ Object.assign(DE, {
   'Ask for trade': 'Tausch anfragen', 'Singles': 'Einzelkarten', 'No cards yet.': 'Noch keine Karten.', 'Nothing on the wishlist.': 'Nichts auf der Wunschliste.', 'No decks.': 'Keine Decks.',
   'No mastersets tracked.': 'Keine Mastersets.', 'you have it': 'hast du', 'prices of today': 'Preise von heute',
   'Nothing from your wishlist – add cards you want with ♡.': 'Nichts von deiner Wunschliste – markiere Karten, die du willst, mit ♡.', 'None of your cards are on their wishlist.': 'Keine deiner Karten steht auf seiner Wunschliste.',
+  'Backup & export': 'Sicherung & Export', 'Save backup': 'Sicherung speichern', 'Restore backup': 'Sicherung wiederherstellen', 'Collection as CSV': 'Sammlung als CSV',
+  'Sell list (Cardmarket IDs)': 'Verkaufsliste (Cardmarket-IDs)', 'Restore backup?': 'Sicherung wiederherstellen?', 'Replace everything': 'Alles ersetzen', 'Backup restored': 'Sicherung wiederhergestellt',
+  'Backup ready – keep it somewhere safe': 'Sicherung fertig – bewahr sie gut auf', 'Backup saved': 'Sicherung gespeichert', 'That is not a CardScan backup': 'Das ist keine CardScan-Sicherung',
+  'Your collection is empty': 'Deine Sammlung ist leer', 'Sell list': 'Verkaufsliste', 'Only doubles (keep one of each)': 'Nur Doppelte (je eine behalten)', 'All cards': 'Alle Karten',
+  'No doubles with a known version': 'Keine Doppelten mit bekannter Version', 'No cards with a known version yet': 'Noch keine Karten mit bekannter Version',
+  'Cards without a chosen version are left out – pick the version on the card page first.': 'Karten ohne gewählte Version fehlen – wähle die Version zuerst auf der Kartenseite.',
+  'Your collection, wishlist, decks, sets and friends are only on this phone. Save a backup now and then – for a new phone, or if the browser data gets cleared.': 'Sammlung, Wunschliste, Decks, Sets und Freunde liegen nur auf diesem Handy. Speichere ab und zu eine Sicherung – für ein neues Handy oder falls die Browserdaten gelöscht werden.',
+  'The sell list has one row per version with its Cardmarket product id, quantity, language and condition – the format seller tools like TCG PowerTools import.': 'Die Verkaufsliste hat je Version eine Zeile mit Cardmarket-Produkt-ID, Menge, Sprache und Zustand – das Format, das Verkäufer-Tools wie TCG PowerTools einlesen.',
   'Big moment': 'Big Moment', 'Value · approx. last 30 days': 'Wert · ca. letzte 30 Tage', '30-day avg.': 'Ø 30 Tage', '7-day avg.': 'Ø 7 Tage',
   'yesterday': 'gestern', 'today': 'heute', '🂠 Draw test hand': '🂠 Testhand ziehen', '🂠 New test hand': '🂠 Neue Testhand', 'Draw again': 'Neu ziehen',
   '+1 card': '+1 Karte', 'Test hand': 'Testhand', 'No main deck': 'Kein Main Deck', 'Deck value (max rarity)': 'Deckwert (höchste Seltenheit)',
@@ -158,6 +166,8 @@ Object.assign(DE, {
 
 // [pattern, German] for texts with numbers or names in them
 const P = [
+  [/^Backup from (.+) with (\d+) cards\. Everything on this phone is replaced by it\.$/, 'Sicherung vom $1 mit $2 Karten. Alles auf diesem Handy wird dadurch ersetzt.'],
+  [/^(\d+) cards? without a version left out$/, '$1 Karte(n) ohne Version ausgelassen'],
   [/^(\d+) cards? · (one code|(\d+) codes in turn – let your friend hold the camera on it)$/, (m, n, x, k) => `${n} Karten · ${k ? `${k} Codes nacheinander – dein Freund hält die Kamera drauf` : 'ein Code'}`],
   [/^Code (\d+) of (\d+)$/, 'Code $1 von $2'],
   [/^Got (\d+) of (\d+) codes – keep holding$/, '$1 von $2 Codes – weiter draufhalten'],
