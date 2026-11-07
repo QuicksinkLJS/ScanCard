@@ -101,3 +101,16 @@ export async function createOcr(Tesseract, { onProgress, workerOptions = {} } = 
     },
   };
 }
+
+// One line of text (the name bar) in a given Tesseract language ('eng', 'jpn', 'kor'); the Japanese and Korean
+// data (about 2 MB) is only downloaded when such a card is read.
+export async function createLineReader(Tesseract, lang = 'eng', { workerOptions = {} } = {}) {
+  const worker = await Tesseract.createWorker(lang, 1, workerOptions);
+  await worker.setParameters({ tessedit_pageseg_mode: '6' });
+  return {
+    async read(canvas) {
+      const { data } = await worker.recognize(canvas);
+      return data.text || '';
+    },
+  };
+}

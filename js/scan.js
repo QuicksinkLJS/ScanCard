@@ -14,13 +14,14 @@ import { openReveal } from './reveal.js';
 import { loadWish } from './lists.js';
 import { loadTracked, ownedCounts } from './masters.js';
 import { normName } from './parse.js';
+import { TEXT_LANG, TESS_LANG, NAME_BAR, TEXT_BOX, matchLines, matchAmong, decide } from './readtext.js';
 import { holoCardHTML, holoKind } from './holo.js';
 
 const SHOW_MAX = 1600; // longest side of the photo shown on screen
 
 export function bigMomentOn() { try { return localStorage.getItem('cardscan-bigmoment') !== 'off'; } catch { return true; } }
 
-export function createScanner({ api, recognizer, detector, getOcr, getPack, setPack, onOpen, onAddAll, setStatus, onCorrect = () => {} }) {
+export function createScanner({ api, recognizer, detector, getOcr, getLineOcr = null, textIndex = null, getPack, setPack, onOpen, onAddAll, setStatus, onCorrect = () => {} }) {
   let scanId = 0;
   let cards = [];   // the cards of the current photo
   let photoSize = null;
@@ -197,6 +198,79 @@ export function createScanner({ api, recognizer, detector, getOcr, getPack, setP
       renderList();
     }
     if (id === scanId) autoPack();
+    if (id === scanId) await readNames(id);
+  }
+
+  // ---------- names (and effect texts): read the card's text, compare with every card in that language ----------
+  // Unsure cards first. A clear reading corrects the picture's guess (Ghost Rares, alternative artworks, glare);
+  // a reading that matches confirms it. Unknown language: English, Japanese, Korean in turn.
+  async function readNames(id) {
+    if (!getLineOcr || !textIndex) return;
+    const order = cards.filter((c) => !c.confident && !c.corrected && !c.readBy).sort((a, b) => (b.price?.hi ?? 0) - (a.price?.hi ?? 0));
+    for (const c of order) {
+      if (id !== scanId) return;
+      try {
+        const hit = await readCardText(c, id);
+        if (id !== scanId) return;
+        if (hit) await applyReading(c, hit);
+      } catch (e) { console.warn('name reading failed', e); }
+    }
+  }
+
+  // Two levels: the text picks among the picture's candidates (a broken reading is enough there), or – only when
+  // it is very clear – names a card the picture did not think of. A wrong correction is worse than none.
+  function judgeReading(text, index, among, strict) {
+    const local = decide(matchAmong(text, index, among), strict ? { min: 0.5, margin: 0.1 } : { min: 0.45, margin: 0.08 });
+    if (local) return local;
+    return decide(matchLines(text, index), strict ? { min: 0.88, margin: 0.15 } : { min: 0.85, margin: 0.12 });
+  }
+
+  async function readCardText(c, id) {
+    const known = TEXT_LANG[c.language?.code];
+    const langs = known ? [known] : ['en', 'jp', 'kr'];
+    const among = (c.top || []).map((t) => t.name);
+    let bestLang = null, bestScore = 0;
+    for (const lang of langs) {
+      const reader = await getLineOcr(TESS_LANG[lang]);
+      if (id !== scanId) return null;
+      const index = await textIndex(lang, 'text');
+      for (const opts of [{ region: NAME_BAR }, { region: NAME_BAR, binarize: true }]) {
+        const text = await reader.read(prepare(c.canvas, { ...opts, maxSide: 1800 }));
+        if (id !== scanId) return null;
+        c.nameText = text.trim();
+        const d = judgeReading(text, index, among, false);
+        if (d) return { ...d, by: 'name', lang };
+        const s = matchLines(text, index)[0]?.score || 0;
+        if (s > bestScore) { bestScore = s; bestLang = lang; }
+      }
+    }
+    // no name: the start of the effect text, in the language that read most like a card name
+    const lang = bestLang || langs[0];
+    const reader = await getLineOcr(TESS_LANG[lang]);
+    const text = await reader.read(prepare(c.canvas, { region: TEXT_BOX, maxSide: 2000 }));
+    if (id !== scanId) return null;
+    const d = judgeReading(text, await textIndex(lang, 'effect'), among, true);
+    return d ? { ...d, by: 'effect', lang } : null;
+  }
+
+  async function applyReading(c, hit) {
+    c.readBy = hit.by;
+    if (hit.name === c.name) {
+      if (!c.confident) { c.confident = true; renderList(true); }
+      return;
+    }
+    // the text says another card: it wins over an unsure picture, and over a sure one only with a very clear reading
+    const before = c.name;
+    c.top = [{ name: hit.name, score: hit.score }, ...(c.top || []).filter((t) => t.name !== hit.name)];
+    c.name = hit.name; c.confident = true; c.vkey = null; c.readFrom = before;
+    const info = await api.nameInfo(c.name).catch(() => null);
+    if (c.ocrText != null) {
+      c.code = matchCode(c.ocrText, info?.bases);
+      c.language = c.code?.language || c.language;
+      c.codeStatus = c.code ? 'done' : 'none';
+    }
+    c.price = await quickPrice(api, c);
+    renderList();
   }
 
   // Pack mode "detect": two cards from the same set decide it.
@@ -269,7 +343,7 @@ export function createScanner({ api, recognizer, detector, getOcr, getPack, setP
       return `<li><button type="button" data-n="${c.n}">
         <span class="badge-num ${tierOf(c)}">${c.n}</span>
         <img class="thumb" src="${c.thumb}" alt="">
-        <span class="what"><b>${esc(c.name)}</b><small>${(c.alerts || []).map((a) => `<span class="alarm a-${a.kind}">${a.kind === 'wish' ? '♥' : '★'} ${esc(a.text)}</span> `).join('')}${piles ? `<span class="pile p-${pileOf(c.price)}">${PILES[pileOf(c.price)].label}</span> ` : ''}${c.confident ? '' : '<span class="unsure">check</span> '}${esc(sub)}</small></span>
+        <span class="what"><b>${esc(c.name)}</b><small>${(c.alerts || []).map((a) => `<span class="alarm a-${a.kind}">${a.kind === 'wish' ? '♥' : '★'} ${esc(a.text)}</span> `).join('')}${piles ? `<span class="pile p-${pileOf(c.price)}">${PILES[pileOf(c.price)].label}</span> ` : ''}${c.confident ? '' : '<span class="unsure">check</span> '}${c.readBy ? `<span class="readby" title="${esc(c.readFrom ? `Picture said ${c.readFrom}` : '')}">${c.readBy === 'effect' ? 'read from the text' : 'read from the name'}</span> ` : ''}${esc(sub)}</small></span>
         <span class="eur">${range(c.price?.lo, c.price?.hi)}${c.added ? '<small>added ✓</small>' : ''}</span>
       </button>${!c.confident && c.top?.length > 1 ? `<div class="dym"><small>Did you mean…?</small><div class="dym-row">${c.top.slice(0, 3).map((t, k) => `
         <button type="button" class="dym-c" data-n="${c.n}" data-name="${esc(t.name)}"><img data-pic="${esc(t.name)}" alt=""><span>${esc(t.name)}</span>${k === 0 ? '<em>current guess</em>' : ''}</button>`).join('')}</div></div>` : ''}</li>`;

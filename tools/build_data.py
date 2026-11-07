@@ -103,6 +103,39 @@ def slug(s):
     return re.sub(r"[^A-Za-z0-9]+", "-", s).strip("-")
 
 
+# ---------- card texts for reading a card by its name or effect ----------
+TEXT_LANGS = {"en": "en", "de": "de", "fr": "fr", "it": "it", "es": "sp", "pt": "pt", "ja": "jp", "ko": "kr"}
+
+
+def write_texts(cards_path, out_dir, known):
+    """Per printed language (codes as in set codes: en de fr it sp pt jp kr), for reading a card by its text:
+    data/ygo/text-<lang>.json   {"en": [English names], "n": [[name in that language, i]]}  (small, loaded first)
+    data/ygo/effect-<lang>.json {"en": [English names], "e": [[start of the effect text, i]]} (only if the name fails)
+    Only cards with prices."""
+    cards = json.load(open(cards_path, encoding="utf-8"))
+    for src, code in TEXT_LANGS.items():
+        en_names, idx, n_rows, e_rows = [], {}, [], []
+        for c in cards:
+            t = c.get("text") or {}
+            en = (t.get("en") or {}).get("name")
+            loc = t.get(src) or {}
+            if not en or en not in known or not loc.get("name"):
+                continue
+            if en not in idx:
+                idx[en] = len(en_names)
+                en_names.append(en)
+            i = idx[en]
+            n_rows.append([loc["name"], i])
+            eff = re.sub(r"\s+", " ", loc.get("effect") or loc.get("pendulumEffect") or "").strip()
+            if len(eff) >= 20:
+                e_rows.append([eff[:160], i])
+        with open(os.path.join(out_dir, f"text-{code}.json"), "w", encoding="utf-8") as f:
+            json.dump({"en": en_names, "n": n_rows}, f, ensure_ascii=False, separators=(",", ":"))
+        with open(os.path.join(out_dir, f"effect-{code}.json"), "w", encoding="utf-8") as f:
+            json.dump({"en": en_names, "e": e_rows}, f, ensure_ascii=False, separators=(",", ":"))
+        print(f"text-{code}: {len(n_rows)} names, {len(e_rows)} effects")
+
+
 # ---------- card database adapters ----------
 # Each yields printings: (set_name, release_date, code, card_name, rarity)
 
@@ -410,6 +443,8 @@ def main():
                         sorted(bases.get(k, ())), banlist.get(k)]
     with open(os.path.join(out_dir, "names.json"), "w", encoding="utf-8") as f:
         json.dump(names_out, f, ensure_ascii=False, separators=(",", ":"))
+    if a.ygojson_cards:
+        write_texts(a.ygojson_cards, out_dir, {v[0] for v in names_out.values()})
     # Every printing per card name, for the card page: data/ygo/cards/<first two letters>.json
     #   {norm(name): [[set, year, [rarities], [codes], [product...], date, expansion], ...]}
     #   product = [pid, trend, avg30, low, avg1, avg7, label, rarity, code, image, cardmarket path]

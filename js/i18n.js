@@ -119,6 +119,7 @@ Object.assign(DE, {
   'Singles': 'Einzelkarten', '♡ Missing cards to the wishlist': '♡ Fehlende Karten auf die Wunschliste', 'All missing cards are already on your wishlist': 'Alle fehlenden Karten sind schon auf deiner Wunschliste',
   '✓ in your collection': '✓ in deiner Sammlung', 'complete ✓': 'komplett ✓',
   'Set code, set or rarity, e.g. MP19 or QCSR': 'Set-Code, Set oder Seltenheit, z. B. MP19 oder QCSR',
+  'read from the name': 'per Name erkannt', 'read from the text': 'per Kartentext erkannt',
   'Big moment': 'Big Moment', 'Value · approx. last 30 days': 'Wert · ca. letzte 30 Tage', '30-day avg.': 'Ø 30 Tage', '7-day avg.': 'Ø 7 Tage',
   'yesterday': 'gestern', 'today': 'heute', '🂠 Draw test hand': '🂠 Testhand ziehen', '🂠 New test hand': '🂠 Neue Testhand', 'Draw again': 'Neu ziehen',
   '+1 card': '+1 Karte', 'Test hand': 'Testhand', 'No main deck': 'Kein Main Deck', 'Deck value (max rarity)': 'Deckwert (höchste Seltenheit)',

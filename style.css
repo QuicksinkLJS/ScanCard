@@ -615,3 +615,6 @@ textarea.field.area { min-height: 92px; resize: vertical; font-family: inherit; 
 /* Safety net: nothing may make a page wider than the screen (no sideways swiping) */
 html, body { overflow-x: clip; }
 .view, .sheet-body { max-width: 100%; overflow-x: clip; }
+
+/* scan list: card identified from its printed name / effect text */
+.readby { color: var(--accent); font-weight: 600; }

@@ -5,7 +5,8 @@ import { $, esc, eur, range, toast, countTo, loadImage, canvasBlob, blobToDataUR
 import { parseManualCode, valueTier, normName } from './parse.js';
 import { baseOf } from './codematch.js';
 import { createApi } from './api.js';
-import { createOcr } from './ocr.js';
+import { createOcr, createLineReader } from './ocr.js';
+import { createTextIndex } from './readtext.js';
 import { createRecognizer } from './recognize.js';
 import { loadLearned, learned, learn } from './learn.js';
 import { createDetector } from './detect.js';
@@ -68,6 +69,19 @@ function getOcr() {
   return ocrPromise;
 }
 
+// Reading names: one line reader per OCR language, made when first needed
+const lineReaders = new Map();
+function getLineOcr(lang) {
+  if (!lineReaders.has(lang)) {
+    if (!window.Tesseract) return Promise.reject(new Error('Text scanner not loaded'));
+    const p = createLineReader(window.Tesseract, lang);
+    p.catch(() => lineReaders.delete(lang));
+    lineReaders.set(lang, p);
+  }
+  return lineReaders.get(lang);
+}
+const textIndex = createTextIndex('data/ygo');
+
 // ---------- pack mode ----------
 let pack = loadPack();
 function setPack(p) {
@@ -82,7 +96,7 @@ setPack(pack);
 // ---------- scanning ----------
 let mode = 'multi';
 const scanner = createScanner({
-  api, recognizer, detector, getOcr, setStatus,
+  api, recognizer, detector, getOcr, getLineOcr, textIndex, setStatus,
   getPack: () => pack,
   setPack,
   onOpen: (c) => openCardPage(c, scanHooks),
