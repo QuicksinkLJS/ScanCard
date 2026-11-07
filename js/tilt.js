@@ -259,7 +259,7 @@ export function analyzeTilt(frames, { motions: given = null } = {}) {
 const T_ART_COLOUR = 0.14;   // artwork changes colour = holo/foil artwork
 const T_GLITTER = 0.55;      // fine detail comes and goes = glitter (secret, starlight, QCSR)
 const T_NAME_SHEEN = 0.097;  // name letters flash (silver or gold)
-const T_GOLD = 0.14;         // name letters change colour = gold
+const T_GOLD = 0.12;         // name letters change colour = gold
 const T_WHOLE_TEXT = 0.085;  // even the text box and the frame shine = starlight / QCSR
 const T_WHOLE_FRAME = 0.06;
 

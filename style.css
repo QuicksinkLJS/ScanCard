@@ -648,3 +648,22 @@ html, body { overflow-x: clip; }
 /* Box tally (pack mode) */
 .box-tally { margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.08); }
 .box-tally .actions { margin-top: 6px; }
+
+/* ---------- tilt scan (prototype) ---------- */
+.tilt-btn { width: 100%; margin: 2px 0 10px; }
+.tilt-btn.on { border-color: var(--accent); }
+.foil-match { background: linear-gradient(90deg, #ffd86b, #ff7ad9, #7ad7ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.proto-tag { font-size: 10px; font-weight: 700; letter-spacing: .06em; padding: 1px 5px; border-radius: 4px; border: 1px solid currentColor; margin-left: 4px; }
+.tilt-name { font-weight: 650; margin: 2px 0 10px; text-align: center; }
+.tilt-stage { position: relative; width: 100%; max-height: 58vh; aspect-ratio: 16 / 9; margin: 0 auto; border-radius: 16px; overflow: hidden; background: #000; }
+.tilt-stage video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; }
+.tilt-guide { position: absolute; border: 2px solid rgba(255, 255, 255, .9); border-radius: 4.5% / 3.2%; box-shadow: 0 0 0 100vmax rgba(0, 0, 0, .45); pointer-events: none; }
+.tilt-prog { height: 4px; border-radius: 2px; background: var(--border); margin: 10px 0 6px; overflow: hidden; }
+.tilt-prog i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ffd86b, #ff7ad9, #7ad7ff); transition: width .1s linear; }
+.tilt-status { text-align: center; min-height: 2.6em; margin: 4px 0 8px; }
+.tilt-map { display: block; width: min(42%, 170px); margin: 6px auto 10px; border-radius: 8px; }
+.tilt-guess { font-size: 20px; text-align: center; margin: 4px 0 2px; }
+#tilt-result > .small { text-align: center; }
+.tilt-bars { display: grid; gap: 6px; margin: 12px 0; }
+.tilt-bar { display: grid; grid-template-columns: 7.5em 1fr; align-items: center; gap: 8px; font-size: 13px; }
+.tilt-bar i { display: block; height: 8px; border-radius: 4px; background: linear-gradient(90deg, #ffd86b, #ff7ad9, #7ad7ff) 0 0 / calc(var(--v) * 100%) 100% no-repeat, var(--border); }

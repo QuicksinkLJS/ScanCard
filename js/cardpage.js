@@ -14,7 +14,9 @@ import { matchCode } from './codematch.js';
 import { openHolo, holoCardHTML, holoKind, attachTilt } from './holo.js';
 import { findWatch, toggleWatch, findWish, toggleWish, restoreWish, restoreWatch, setWatchTarget, updateWish } from './lists.js';
 import { CONDS, LANGS, hasFirstEdition, copyText, langOf } from './copy.js';
-import { fairTrend, filterOptions, versionOptions, rankOptions, bestOptions, priceOf, tierOfPrice, oddValues, optionCode, versionLabel, cardmarketUrl, versionImage, historyOf } from './prices.js';
+import { openTiltScan } from './tiltui.js';
+import { tiltRank } from './tilt.js';
+import { rarityQuery, fairTrend, filterOptions, versionOptions, rankOptions, bestOptions, priceOf, tierOfPrice, oddValues, optionCode, versionLabel, cardmarketUrl, versionImage, historyOf } from './prices.js';
 
 let api = null;
 let current = null; // {subject, hooks, info, ranked, showAll}
@@ -203,15 +205,22 @@ function render() {
   else if (lang && !lang.supported) notes.push(`${esc(lang.name)} print. Cardmarket has no separate listing for it, so the prices are those of the European print of the same card – check before buying or selling.`);
   if (s.pack) notes.push(`Pack mode: ${esc(s.pack.name || s.pack.prefix)}.`);
 
+  // tilt scan: versions with the guessed rarity first
+  const tilted = tiltRank(ranked, current.tilt, rarityQuery);
+  const rarityCount = new Set(ranked.flatMap((o) => [o.rarity, ...(o.rarities || [])]).filter(Boolean)).size;
+  if (current.tilt) {
+    const [first, ...rest] = current.tilt.list;
+    notes.push(`<span>✨ Tilt scan: looks like</span> <b>${esc(first.label)}</b>${rest.length ? ` <span class="muted">or ${esc(rest.slice(0, 2).map((g) => g.label).join(', '))}</span>` : ''}<br><span class="small">Matching versions are listed first. Prototype – please check.</span>`);
+  }
   const versionsHTML = (opts) => opts.map((o) => `
     <li class="${o.key === s.vkey ? 'on' : ''}"><button type="button" data-key="${esc(o.key)}">
       <span class="radio"></span>
       ${o.image ? `<img class="vimg" loading="lazy" src="${esc(versionImage(o, 'preview'))}" alt="" onerror="this.remove()">` : ''}
-      <span class="what">${esc(o.set)}${o.year ? ` (${o.year})` : ''}${o.likely ? '<span class="likely">LIKELY</span>' : ''}
+      <span class="what">${esc(o.set)}${o.year ? ` (${o.year})` : ''}${o.likely ? '<span class="likely">LIKELY</span>' : ''}${o.tiltMatch ? '<span class="likely foil-match">✨ FOIL</span>' : ''}
         <small>${esc([optionCode(o, lang?.code), versionLabel(o)].filter(Boolean).join(' · '))}${!o.label && o.variants > 1 && o.rarities.length ? `<span class="muted"> (one of: ${esc(o.rarities.join(', '))})</span>` : ''}</small></span>
       <span class="eur">${eur(o.trend)}${fairTrend(o).odd ? '<small class="warn-dot">⚠ unusual</small>' : ''}</span>
     </button></li>`).join('') || '<li><div class="row muted small">No version matches.</div></li>';
-  const filtered = filterOptions(ranked, current.vq);
+  const filtered = filterOptions(tilted, current.vq);
   const list = current.showAll || current.vq ? filtered : filtered.slice(0, 8);
   const versions = versionsHTML(list);
 
@@ -239,6 +248,7 @@ function render() {
       <figure><img src="${esc(versionImage(chosen, 'show'))}" alt="" onerror="this.closest('figure').remove()"><figcaption>${esc(versionLabel(chosen))} (official)</figcaption></figure></div>` : ''}
     ${notes.map((n) => `<p class="note">${n}</p>`).join('')}
     ${ranked.length ? `<h2>Which version do you have?</h2>
+      ${rarityCount > 1 ? `<button type="button" class="btn tilt-btn ${current.tilt ? 'on' : ''}" id="tilt-btn">✨ ${current.tilt ? 'Tilt scan again' : 'Tilt scan: find the rarity by the shine'}</button>` : ''}
       ${ranked.length > 4 ? `<input id="ver-filter" class="field ver-filter" type="search" placeholder="Set code, set or rarity, e.g. MP19 or QCSR" autocomplete="off" spellcheck="false" value="${esc(current.vq || '')}">` : ''}
       <ul class="versions">${versions}</ul>` : ''}
     ${ranked.length > 8 && !current.showAll && !current.vq ? `<button type="button" class="link more-btn" id="show-all">Show all ${ranked.length} versions</button>` : ''}
@@ -303,12 +313,28 @@ function render() {
   bindVersions();
   $('ver-filter')?.addEventListener('input', (e) => {
     current.vq = e.target.value;
-    const f = filterOptions(ranked, current.vq);
+    const f = filterOptions(tilted, current.vq);
     $('card-body').querySelector('.versions').innerHTML = versionsHTML(current.vq || current.showAll ? f : f.slice(0, 8));
     $('show-all')?.toggleAttribute('hidden', !!current.vq);
     bindVersions();
   });
   $('show-all')?.addEventListener('click', () => { current.showAll = true; render(); });
+  $('tilt-btn')?.addEventListener('click', () => {
+    const cur = current;
+    openTiltScan({
+      name: info?.name || s.name,
+      onResult: (guess) => {
+        if (cur !== current) return;
+        cur.tilt = guess;
+        // a clear result pre-selects the first version with exactly that rarity, when none was chosen yet
+        const test = rarityQuery(guess.list[0]?.q);
+        const top = guess.clear && test && cur.ranked.find((o) => o.rarity && test.test(o.rarity.toLowerCase()));
+        if (!s.vkey && top) { s.vkey = top.key; cur.hooks.onChange?.(s, cur); }
+        render();
+        $('card-body').querySelector('.versions')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      },
+    });
+  });
   $('card-body').querySelectorAll('.alt').forEach((b) => b.addEventListener('click', () => rename(b.dataset.name)));
   $('card-add')?.addEventListener('click', () => { hooks.onAdd(s, current); render(); });
   $('card-remove')?.addEventListener('click', () => { hooks.onRemove(s); history.back(); });
@@ -323,6 +349,7 @@ async function rename(name) {
   s.confident = true;
   s.corrected = true;
   current.showAll = false;
+  current.tilt = null;
   $('card-body').innerHTML = '<p class="note">Loading prices…</p>';
   await loadCard();
   current?.hooks.onChange?.(s, current);

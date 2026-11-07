@@ -166,10 +166,30 @@ Object.assign(DE, {
   'Tilt your phone · tap for full screen': 'Handy kippen · tippen für Vollbild',
   'Official picture · tap for full screen': 'Offizielles Bild · tippen für Vollbild',
   'Your photo – pick your version below for the official picture': 'Dein Foto – wähle unten deine Version für das offizielle Bild',
+  // tilt scan
+  'Tilt scan': 'Kipp-Scan', 'PROTOTYPE': 'PROTOTYP', 'Start': 'Start', 'Again': 'Nochmal', '💡 Light': '💡 Licht',
+  '✨ Tilt scan: find the rarity by the shine': '✨ Kipp-Scan: Seltenheit am Glanz erkennen', '✨ Tilt scan again': '✨ Kipp-Scan nochmal',
+  '✨ FOIL': '✨ FOIL', '✨ Tilt scan: looks like': '✨ Kipp-Scan: sieht aus wie',
+  'Matching versions are listed first. Prototype – please check.': 'Passende Versionen stehen oben. Prototyp – bitte prüfen.',
+  'Opening the camera…': 'Kamera wird geöffnet…', 'The camera could not be opened. Allow camera access and try again.': 'Die Kamera ließ sich nicht öffnen. Erlaube den Kamerazugriff und versuch es nochmal.',
+  'Hold the card inside the frame – out of its sleeve, under one lamp. Press Start and tilt it slowly.': 'Halte die Karte in den Rahmen – ohne Hülle, unter einer Lampe. Drück Start und kipp sie langsam.',
+  'Tilt left ←': 'Nach links kippen ←', 'Tilt right →': 'Nach rechts kippen →', 'Tilt towards you ↓': 'Zu dir kippen ↓', 'Tilt away ↑': 'Von dir weg kippen ↑',
+  'slowly, keep the card in the frame': 'langsam, Karte im Rahmen lassen', 'Looking at the shine…': 'Glanz wird ausgewertet…',
+  'The card moved too much or left the frame. Keep it inside the frame and tilt it slowly – just the angle, not the place.': 'Die Karte hat sich zu sehr bewegt oder war nicht im Rahmen. Halte sie im Rahmen und kipp sie langsam – nur den Winkel ändern, nicht die Stelle.',
+  'Looks like': 'Sieht aus wie', 'Maybe': 'Vielleicht',
+  'the whole card shines': 'die ganze Karte glänzt', 'artwork glitters, name shines silver': 'Bild glitzert, Name glänzt silbern',
+  'artwork shines, name shines gold': 'Bild glänzt, Name glänzt golden', 'artwork and name shine': 'Bild und Name glänzen',
+  'only the artwork shines, with glitter': 'nur das Bild glänzt, mit Glitzer', 'only the artwork shines': 'nur das Bild glänzt',
+  'only the name shines': 'nur der Name glänzt', 'nothing shines': 'nichts glänzt',
+  'Not sure. Try again under one bright lamp (or with the light on), tilting a bit more.': 'Nicht sicher. Versuch es nochmal unter einer hellen Lampe (oder mit Licht) und kipp etwas stärker.',
+  'Artwork colour': 'Bild-Farbe', 'Glitter': 'Glitzer', 'Name shine': 'Name-Glanz', 'Whole card': 'Ganze Karte',
+  'Show matching versions': 'Passende Versionen zeigen',
+  'Prototype: the guess only orders the versions, nothing is changed without you.': 'Prototyp: Der Tipp sortiert nur die Versionen, ohne dich wird nichts geändert.',
 });
 
 // [pattern, German] for texts with numbers or names in them
 const P = [
+  [/^or (.+ Rare.*)$/, 'oder $1'],
   [/^Counted: (\d+) packs? · box so far (\d+) packs$/, 'Gezählt: $1 Pack(s) · Box bisher $2 Packs'],
   [/^📒 (.+) · pick version$/, '📒 $1 · Version wählen'],
   [/^Backup from (.+) with (\d+) cards\. Everything on this phone is replaced by it\.$/, 'Sicherung vom $1 mit $2 Karten. Alles auf diesem Handy wird dadurch ersetzt.'],

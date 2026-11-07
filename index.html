@@ -296,6 +296,27 @@
       <ul id="pack-list" class="rows compact"></ul>
     </div>
   </section>
+  <section id="tilt-page" class="sheet" hidden>
+    <div class="sheet-bar">
+      <button id="tilt-back" class="link" type="button">‹ Back</button>
+      <span class="muted small">Tilt scan <span class="proto-tag">PROTOTYPE</span></span>
+    </div>
+    <div class="sheet-body">
+      <p id="tilt-name" class="tilt-name"></p>
+      <div id="tilt-stage" class="tilt-stage">
+        <video id="tilt-video" playsinline muted></video>
+        <div id="tilt-guide" class="tilt-guide"></div>
+      </div>
+      <div class="tilt-prog"><i id="tilt-prog"></i></div>
+      <p id="tilt-status" class="tilt-status"></p>
+      <canvas id="tilt-map" class="tilt-map" hidden></canvas>
+      <div id="tilt-result"></div>
+      <div class="actions">
+        <button id="tilt-light" class="btn" type="button" hidden>💡 Light</button>
+        <button id="tilt-go" class="btn primary" type="button" disabled>Start</button>
+      </div>
+    </div>
+  </section>
 
   <!-- ================= CAMERA ================= -->
   <div id="cam" class="cam" hidden>
