@@ -199,3 +199,26 @@ body.cam-open { overflow: hidden; }
 .update { position: fixed; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top, 0px) + 10px); z-index: 60;
   padding: 10px 16px; border-radius: 999px; border: 0; font: inherit; font-size: 14px; font-weight: 600;
   background: var(--accent); color: var(--accent-ink); box-shadow: 0 6px 20px rgba(0,0,0,.4); }
+
+/* Pack balance */
+.balance { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 10px 0 4px; padding: 12px 14px;
+  border-radius: 14px; border: 1px solid var(--border); background: var(--surface); }
+.balance .bal-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.balance .bal-pct { font-size: 24px; font-weight: 800; letter-spacing: -.01em; }
+.balance.win { border-color: rgba(64, 201, 120, .6); background: rgba(64, 201, 120, .10); }
+.balance.win .bal-pct { color: #4fd08a; }
+.balance.loss .bal-pct { color: #ff7b7b; }
+.balance.maybe .bal-pct { color: #f2b45a; }
+.balance .bal-note { flex-basis: 100%; margin: 0; }
+.stepper { display: flex; align-items: center; gap: 10px; }
+.stepper button { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--border); background: transparent; color: inherit; font-size: 20px; line-height: 1; }
+.stepper b { min-width: 1.4em; text-align: center; }
+
+/* A hit (> €10): shine once, then a soft glow */
+.rows button.hit { animation: hit-pop .9s ease-out 1; }
+.rows button.hit-glow { box-shadow: inset 0 0 0 1.5px rgba(255, 196, 77, .75); border-radius: 12px;
+  background: linear-gradient(110deg, transparent 20%, rgba(255, 214, 120, .16) 45%, transparent 70%) 0 0 / 250% 100%;
+  animation: hit-shine 2.6s linear infinite; }
+@keyframes hit-pop { 0% { transform: scale(1); } 30% { transform: scale(1.04); } 100% { transform: scale(1); } }
+@keyframes hit-shine { from { background-position: 150% 0; } to { background-position: -100% 0; } }
+@media (prefers-reduced-motion: reduce) { .rows button.hit, .rows button.hit-glow { animation: none; } }

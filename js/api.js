@@ -156,5 +156,19 @@ export function createApi({ fetchFn = globalThis.fetch?.bind(globalThis), base =
     return Object.values(await namesPromise).map((e) => e[0]);
   }
 
-  return { lookup, knowsPrefix, index, nameInfo, movers, cardDetail, sets, setCardNames, allNames };
+  // {set name: [booster trend, box trend, booster product id]} for the pack balance
+  let boostersPromise = null;
+  function boosters() {
+    if (!boostersPromise) {
+      boostersPromise = getJson(`${base}/boosters.json`);
+      boostersPromise.catch(() => { boostersPromise = null; });
+    }
+    return boostersPromise;
+  }
+  async function boosterPrice(setName) {
+    const b = (await boosters().catch(() => ({})))[setName];
+    return b ? { booster: b[0], box: b[1], id: b[2] } : null;
+  }
+
+  return { boosterPrice, lookup, knowsPrefix, index, nameInfo, movers, cardDetail, sets, setCardNames, allNames };
 }

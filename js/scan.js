@@ -14,10 +14,13 @@ export function createScanner({ api, recognizer, detector, getOcr, getPack, setP
   let scanId = 0;
   let cards = [];   // the cards of the current photo
   let photoSize = null;
+  let packs = 1;          // packs in this photo (pack balance)
+  const celebrated = new Set();
 
   // ---------- entry points ----------
   async function scanPhoto(image, mode) {
     const id = ++scanId;
+    packs = 1;
     showPhoto(image);
     cards = [];
     renderList();
@@ -226,6 +229,56 @@ export function createScanner({ api, recognizer, detector, getOcr, getPack, setP
       ? `${cards.length} card${cards.length > 1 ? 's' : ''}${unsure ? ` · ${unsure} to check` : ''} · tap a card for details`
       : '';
     $('add-all').hidden = !cards.length || cards.every((c) => c.added);
+    renderBalance(lo, hi);
+    celebrate();
+  }
+
+  // Pack mode: what the pulled cards are worth against what the packs cost.
+  let balanceId = 0;
+  async function renderBalance(lo, hi) {
+    const el = $('pack-balance');
+    const pack = getPack();
+    const my = ++balanceId;
+    if (!cards.length || !pack?.name) { el.hidden = true; return; }
+    const bp = await api.boosterPrice(pack.name).catch(() => null);
+    if (my !== balanceId) return;
+    if (!bp) { el.hidden = true; return; }
+    const cost = bp.booster * packs;
+    const pct = (v) => Math.round((v - cost) / cost * 100);
+    const exact = Math.abs(hi - lo) < 0.005;
+    const p = pct(lo), q = pct(hi);
+    const fmt = (x) => `${x >= 0 ? '+' : ''}${x} %`;
+    el.hidden = false;
+    el.className = `balance ${p >= 0 ? 'win' : q >= 0 ? 'maybe' : 'loss'}`;
+    el.innerHTML = `
+      <div class="bal-main">
+        <span class="bal-pct">${exact ? fmt(p) : `${fmt(p)} … ${fmt(q)}`}</span>
+        <span class="small">pulled ${range(lo, hi)} · ${packs} pack${packs > 1 ? 's' : ''} ${eurS(cost)}</span>
+      </div>
+      <div class="stepper" aria-label="Packs in this photo">
+        <button type="button" data-d="-1" aria-label="One pack less">−</button><b>${packs}</b><button type="button" data-d="1" aria-label="One pack more">+</button>
+      </div>
+      <p class="small muted bal-note">Booster ${eurS(bp.booster)}${bp.box ? ` · box ${eurS(bp.box)}` : ''} on Cardmarket (${esc(pack.name)})</p>`;
+    el.querySelectorAll('[data-d]').forEach((b) => b.addEventListener('click', () => {
+      packs = Math.max(1, Math.min(99, packs + Number(b.dataset.d)));
+      renderBalance(lo, hi);
+    }));
+  }
+  const eurS = (v) => (v == null ? '–' : `€${v.toFixed(2)}`);
+
+  // A hit worth more than €10: let the row shine, buzz once.
+  function celebrate() {
+    let buzz = false;
+    for (const c of cards) {
+      const v = c.price?.lo ?? 0;
+      if (v < 10 || celebrated.has(c.sampleId)) continue;
+      celebrated.add(c.sampleId);
+      buzz = true;
+      const row = $('found').querySelector(`button[data-n="${c.n}"]`);
+      row?.classList.add('hit');
+    }
+    for (const c of cards) if (celebrated.has(c.sampleId)) $('found').querySelector(`button[data-n="${c.n}"]`)?.classList.add('hit-glow');
+    if (buzz && getPack()) navigator.vibrate?.([60, 40, 120]);
   }
 
   function open(n) {

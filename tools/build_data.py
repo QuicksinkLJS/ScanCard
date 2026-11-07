@@ -509,6 +509,33 @@ def main():
     with open(os.path.join(out_dir, "movers.json"), "w", encoding="utf-8") as f:
         json.dump({"date": cm[4], "short": top("short", "avg1", "avg7"), "stable": top("stable", "trend", "avg30")},
                   f, ensure_ascii=False, separators=(",", ":"))
+    # Booster and box price per set, for the pack balance: {set name: [booster trend, box trend, booster id]}
+    if a.nonsingles and os.path.exists(a.nonsingles):
+        booster, box = {}, {}
+        for p in json.load(open(a.nonsingles, encoding="utf-8"))["products"]:
+            t = prices.get(p["idProduct"], {}).get("trend")
+            if not t:
+                continue
+            n, e = p["name"], p["idExpansion"]
+            if p.get("categoryName") == "Yugioh Booster" and re.search(r"booster$", n, re.I):
+                if e not in booster or len(n) < len(booster[e][2]):
+                    booster[e] = (t, p["idProduct"], n)
+            elif p.get("categoryName") == "Yugioh Display" and re.search(r"booster box$", n, re.I):
+                if e not in box or len(n) < len(box[e][1]):
+                    box[e] = (t, n)
+        set_exp = collections.defaultdict(collections.Counter)
+        for vs in data.values():
+            for v in vs:
+                set_exp[v["s"]][v["e"]] += 1
+        boosters = {}
+        for sname, c in set_exp.items():
+            e = c.most_common(1)[0][0]
+            if e in booster:
+                boosters[sname] = [booster[e][0], box.get(e, (None,))[0], booster[e][1]]
+        with open(os.path.join(out_dir, "boosters.json"), "w", encoding="utf-8") as f:
+            json.dump(boosters, f, ensure_ascii=False, separators=(",", ":"))
+        stats["sets_with_booster_price"] = len(boosters)
+
     index = {"version": 2, "game": "yugioh", "built": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ"),
              "prices": cm[4], "sets": sorted(groups)}
     with open(os.path.join(out_dir, "index.json"), "w", encoding="utf-8") as f:
