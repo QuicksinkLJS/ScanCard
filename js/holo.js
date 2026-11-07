@@ -1,10 +1,9 @@
 // Holo cards: a card picture that tilts with the phone (or the finger) and, for your own cards,
 // shines the way its rarity does. Used big on the card page, full screen, and in the showcase.
 //
-// The shine is not stuck on at fixed TCG positions (that never fitted YAC1, Pendulum or Link cards):
-// it covers the whole card with soft edges, and its strength follows the picture itself – a second,
-// brightened copy of the picture is multiplied in, so bright foil areas shine and dark ones stay calm.
-// (A CSS mask with the CardTrader picture is not possible – no CORS – but a second <img> is.)
+// The shine sits where the foil is on a real card (artwork window, name bar, whole card – soft edges), and is
+// laid on the picture with color-dodge: bright parts of the artwork light up in the foil's colours, dark parts
+// stay calm – like real foil. Each rarity has its own pattern (rainbow, fine lines, glitter, prism, relief).
 
 import { $, esc, eur } from './util.js';
 import { versionImage } from './prices.js';
@@ -28,24 +27,26 @@ export function holoKind(rarity) {
   return 'plain';
 }
 
-// Where on the card each rarity shines, and how: [area, effect]. Areas have soft edges (CSS masks).
-//   Rare: only the name in silver · Super: rainbow artwork · Ultra: foil artwork + gold name
-//   Secret: fine diagonal lines with rainbow glitter in the artwork + silver name · Ultimate: raised matte gold everywhere, no rainbow
-//   Ghost: pale silvery ghost picture · Starlight: the whole card glitters · QCSR: secret pattern + glitter over everything
-//   Collector's: fine prism texture · Prismatic: coarse prism texture
+// Where on the card each rarity shines, and how: [area, effect]. Areas have soft edges (CSS masks) and follow
+// the real card layout (artwork window, name bar, whole card).
+//   Rare: silver name · Super: rainbow foil artwork · Ultra: rainbow foil artwork + gold name
+//   Secret: fine diagonal lines with rainbow + sparkle in the artwork, silver name · Ultimate: raised matte gold
+//   on artwork, name and frame, no rainbow · Ghost: pale silvery ghost picture · Starlight: the whole card glitters
+//   QCSR: secret lines + glitter over the whole card · Collector's: fine prism texture · Prismatic: coarse prism texture
 const LOOK = {
   rare: [['name', 'silver']],
   super: [['art', 'rainbow']],
-  ultra: [['art', 'foil'], ['name', 'gold']],
+  ultra: [['art', 'rainbow'], ['name', 'gold']],
   secret: [['art', 'secret'], ['name', 'silver']],
-  relief: [['all', 'relief']],
+  relief: [['all', 'relief'], ['name', 'gold']],
   ghost: [['art', 'ghost'], ['name', 'silver']],
-  starlight: [['all', 'glitter']],
+  starlight: [['all', 'glitter'], ['all', 'rainbow-soft']],
   qcsr: [['all', 'secret'], ['all', 'glitter']],
-  rainbow: [['all', 'glitter']],
-  collector: [['art', 'prism-fine'], ['name', 'silver'], ['all', 'glitter-soft']],
+  rainbow: [['all', 'glitter'], ['all', 'rainbow-soft']],
+  collector: [['art', 'prism-fine'], ['all', 'glitter-soft'], ['name', 'silver']],
   prismatic: [['art', 'prism-coarse'], ['name', 'silver']],
 };
+const NEEDS_PICTURE = new Set(['relief', 'ghost']);
 
 // src: picture URL; kind: holoKind(); shine: false = tilt only (cards that are not yours)
 // prev: picture shown before (fades out, for a soft change when a version is picked)
@@ -54,7 +55,7 @@ export function holoCardHTML({ src, kind = 'plain', shine = true, alt = '', prev
   const look = shine ? (LOOK[kind] || []) : [];
   return `<div class="holo-card k-${kind} lay-${layout} ${shine ? 'shiny' : ''}">
       <img class="h-base" src="${esc(src)}" alt="${esc(alt)}" draggable="false">
-      ${look.map(([area, fx]) => `<div class="h-shine a-${area} fx-${fx}"><img class="h-map" src="${esc(src)}" alt="" draggable="false"><div class="h-fx"></div></div>`).join('')}
+      ${look.map(([area, fx]) => `<div class="h-shine a-${area} fx-${fx}">${NEEDS_PICTURE.has(fx) ? `<img class="h-pic" src="${esc(src)}" alt="" draggable="false">` : ''}<div class="h-fx"></div></div>`).join('')}
       <div class="h-glare"></div>
       ${prev && prev !== src ? `<img class="h-prev" src="${esc(prev)}" alt="" draggable="false">` : ''}
     </div>`;

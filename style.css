@@ -319,74 +319,91 @@ textarea.field.area { min-height: 92px; resize: vertical; font-family: inherit; 
   box-shadow: var(--sx) var(--sy) 50px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.07); }
 .holo-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; user-select: none; pointer-events: none; }
 .holo-card .h-base { position: relative; display: block; }
-/* The shine: one layer per area (name / artwork / whole card), each = (effect) x (brightened copy of the picture),
-   so bright foil areas shine and dark ones stay calm. Areas have soft edges. A slow shimmer runs even without tilting. */
+/* ---------- Foil ----------
+   One layer per area (name bar / artwork window / whole card) with soft edges, laid on the picture with
+   color-dodge: bright parts light up in the foil colours, dark parts stay calm. A slow shimmer (--t) runs
+   without tilting; tilting (--pos, --mx/--my, --hyp) moves the colours and the light. */
 @property --t { syntax: '<number>'; inherits: true; initial-value: 0; }
-.holo-card.shiny { animation: h-shimmer 5.5s ease-in-out infinite alternate; }
+.holo-card.shiny { animation: h-shimmer 6s ease-in-out infinite alternate; }
 @keyframes h-shimmer { to { --t: 1; } }
-.h-shine { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: color-dodge; opacity: calc(.8 + var(--hyp) * .2);
-  --x1: 0%; --x2: 100%; --y1: 0%; --y2: 100%; --e: 3%;
+.holo-card { --p: calc(var(--pos) + var(--t) * 60% - 30%); --g1: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='1' seed='3'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 14 0 0 0 -9.6'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); --g2: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='1' seed='8'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 12 0 0 0 -8.4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.h-shine { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: color-dodge; opacity: calc(.68 + var(--hyp) * .32);
+  --x1: 0%; --x2: 100%; --y1: 0%; --y2: 100%; --e: 2.2%;
   -webkit-mask-image: linear-gradient(to right, transparent var(--x1), #000 calc(var(--x1) + var(--e)), #000 calc(var(--x2) - var(--e)), transparent var(--x2)),
     linear-gradient(to bottom, transparent var(--y1), #000 calc(var(--y1) + var(--e)), #000 calc(var(--y2) - var(--e)), transparent var(--y2));
   mask-image: linear-gradient(to right, transparent var(--x1), #000 calc(var(--x1) + var(--e)), #000 calc(var(--x2) - var(--e)), transparent var(--x2)),
     linear-gradient(to bottom, transparent var(--y1), #000 calc(var(--y1) + var(--e)), #000 calc(var(--y2) - var(--e)), transparent var(--y2));
   -webkit-mask-composite: source-in; mask-composite: intersect; }
 .h-shine.a-all { -webkit-mask-image: none; mask-image: none; }
-.h-shine.a-name { --x1: 5%; --x2: 83%; --y1: 3.4%; --y2: 11.6%; --e: 1.8%; }
-.h-shine.a-art { --x1: 10.5%; --x2: 89.5%; --y1: 17.2%; --y2: 64.8%; }
-.lay-pendulum .h-shine.a-art { --x1: 5.5%; --x2: 94.5%; --y1: 16.8%; --y2: 69%; }
-.h-map { filter: grayscale(1) brightness(1.4) contrast(2); }
-/* colour of rainbow foils stays visible on bright parts too */
-.h-shine:is(.fx-rainbow, .fx-foil, .fx-secret, .fx-glitter, .fx-prism-fine, .fx-prism-coarse)::after { content: ''; position: absolute; inset: 0; mix-blend-mode: overlay; opacity: .35;
-  background: linear-gradient(110deg, #ff4f9a, #ffe14f, #4fffb0, #4fc8ff, #b44fff, #ff4f9a, #ffe14f); background-size: 300% 300%; background-position: var(--q, 50%) var(--q, 50%); }
-.holo-card { --q: calc(var(--pos) + var(--t) * 70% - 35%); }
-.h-fx { position: absolute; inset: 0; mix-blend-mode: multiply; background-color: #000;
-  --p: calc(var(--pos) + var(--t) * 70% - 35%); }
-.h-glare { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: soft-light; opacity: calc(.35 + var(--hyp) * .5);
-  background: radial-gradient(circle at var(--mx) var(--my), rgba(255,255,255,.8) 0%, rgba(255,255,255,.12) 32%, rgba(0,0,0,.35) 90%); }
+/* real card layout (59 × 86 mm): name bar and the square artwork window */
+.h-shine.a-name { --x1: 6.6%; --x2: 84.5%; --y1: 4.2%; --y2: 10.8%; --e: 1.2%; }
+.h-shine.a-art { --x1: 11.6%; --x2: 88.4%; --y1: 17.9%; --y2: 70.8%; --e: 1.4%; }
+.lay-pendulum .h-shine.a-art { --x1: 6.4%; --x2: 93.6%; --y1: 17.6%; --y2: 63%; }
+.h-fx { position: absolute; inset: 0; }
+.h-pic { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.h-glare { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: overlay; opacity: calc(.25 + var(--hyp) * .55);
+  background: radial-gradient(farthest-corner circle at var(--mx) var(--my), rgba(255,255,255,.75) 0%, rgba(255,255,255,.18) 25%, rgba(0,0,0,.4) 95%); }
 .holo-card:not(.shiny) .h-glare { display: none; }
 .h-prev { animation: hfade .7s ease forwards; }
 @keyframes hfade { to { opacity: 0; } }
-.k-common .h-glare, .k-plain .h-glare { opacity: calc(.22 + var(--hyp) * .35); }
+.k-common .h-glare, .k-plain .h-glare { opacity: calc(.15 + var(--hyp) * .35); }
 
-/* effects */
-.fx-silver .h-fx { background-image: linear-gradient(115deg, #1c1c22 calc(var(--p) - 40%), #9da2b0 calc(var(--p) - 12%), #ffffff var(--p), #9da2b0 calc(var(--p) + 12%), #1c1c22 calc(var(--p) + 40%)); }
-.fx-gold .h-fx { background-image: linear-gradient(115deg, #2a1c04 calc(var(--p) - 40%), #b8862b calc(var(--p) - 12%), #fff0b8 var(--p), #c99a3a calc(var(--p) + 12%), #2a1c04 calc(var(--p) + 40%)); }
-.fx-rainbow .h-fx { background-image: linear-gradient(110deg, #ff4f9a, #ffe14f, #4fffb0, #4fc8ff, #b44fff, #ff4f9a, #ffe14f);
-  background-size: 300% 300%; background-position: var(--p) var(--p); }
-.fx-foil .h-fx { background-image: linear-gradient(115deg, transparent calc(var(--p) - 18%), rgba(255,240,200,.95) var(--p), transparent calc(var(--p) + 18%)),
-    linear-gradient(110deg, #ff4f9a, #ffe14f, #4fffb0, #4fc8ff, #b44fff, #ff4f9a, #ffe14f);
-  background-size: 100% 100%, 300% 300%; background-position: 0 0, var(--p) var(--p); background-blend-mode: screen, normal; }
-.fx-secret .h-fx { background-image:
-    radial-gradient(circle, #fff 0 .6px, transparent 1.1px),
-    repeating-linear-gradient(135deg, #000 0 2px, #fff 2px 3.6px),
-    linear-gradient(120deg, #ff3c8e, #ffd23c, #3cff9e, #3cc8ff, #b43cff, #ff3c8e, #ffd23c);
-  background-size: 9px 9px, 100% 100%, 300% 300%;
-  background-position: calc(var(--t) * 9px) calc(var(--t) * 5px), 0 0, var(--p) var(--p); background-blend-mode: screen, multiply, normal; }
-.fx-glitter .h-fx, .fx-glitter-soft .h-fx { background-image:
-    radial-gradient(circle, #fff 0 .8px, transparent 1.4px), radial-gradient(circle, #fff 0 .55px, transparent 1.1px),
-    linear-gradient(rgba(0,0,0,.35), rgba(0,0,0,.35)),
-    linear-gradient(120deg, #ff3c8e, #ffd23c, #3cff9e, #3cc8ff, #b43cff, #ff3c8e, #ffd23c);
-  background-size: 7px 7px, 11px 11px, 100% 100%, 300% 300%;
-  background-position: calc(var(--p) * .09) calc(var(--t) * 6px), calc(var(--p) * -.12) calc(var(--t) * -4px), 0 0, var(--p) var(--p);
-  background-blend-mode: screen, screen, normal, normal; }
-.fx-glitter-soft { opacity: calc(.3 + var(--hyp) * .3); }
-.fx-prism-fine .h-fx, .fx-prism-coarse .h-fx { --s: 7px; background-image:
-    repeating-linear-gradient(60deg, #000 0 calc(var(--s) * .5), #fff calc(var(--s) * .5) var(--s)),
-    repeating-linear-gradient(-60deg, #000 0 calc(var(--s) * .5), #fff calc(var(--s) * .5) var(--s)),
-    linear-gradient(120deg, #ff3c8e, #ffd23c, #3cff9e, #3cc8ff, #b43cff, #ff3c8e, #ffd23c);
-  background-size: 100% 100%, 100% 100%, 300% 300%; background-position: 0 0, 0 0, var(--p) var(--p); background-blend-mode: difference, multiply, normal; }
-.fx-prism-coarse .h-fx { --s: 20px; }
-/* Ultimate: raised, matte gold, no rainbow – the structure of the picture is pressed into the card */
-.fx-relief { mix-blend-mode: soft-light; opacity: calc(.85 + var(--hyp) * .15); }
-.fx-relief .h-map { filter: grayscale(1) contrast(3.2) brightness(1.05) drop-shadow(1px 1px 0 rgba(0,0,0,.6)) drop-shadow(-.6px -.6px 0 rgba(255,245,210,.7)); }
-.fx-relief .h-fx { mix-blend-mode: multiply; background-image: linear-gradient(115deg, #b08a3e calc(var(--p) - 45%), #e9cc84 calc(var(--p) - 10%), #fff6d6 var(--p), #dcb76a calc(var(--p) + 12%), #a8823a calc(var(--p) + 45%)); }
-.k-relief .h-base { filter: sepia(.45) saturate(.8) brightness(1.04); }
-/* Ghost: pale, silvery ghost picture */
-.fx-ghost { mix-blend-mode: screen; opacity: calc(.7 + var(--hyp) * .3); }
-.fx-ghost .h-map { filter: grayscale(1) brightness(1.15) contrast(.85); }
-.fx-ghost .h-fx { background-image: linear-gradient(115deg, #7d8aa6 calc(var(--p) - 40%), #dfe8ff var(--p), #7d8aa6 calc(var(--p) + 40%)); }
-.k-ghost .h-base { filter: saturate(.4) brightness(1.05); }
+/* Rainbow foil (Super, Ultra artwork): bands of colour + fine vertical bars, moving with the light */
+.fx-rainbow .h-fx, .fx-rainbow-soft .h-fx { filter: brightness(.68) contrast(1.7) saturate(1.7);
+  background-image:
+    repeating-linear-gradient(115deg, #ff5f6d 0%, #ffd36b 5%, #7dff8a 10%, #5fe4ff 15%, #8b7bff 20%, #ff6fd8 25%, #ff5f6d 30%),
+    repeating-linear-gradient(90deg, rgba(0,0,0,.3) 0 2px, rgba(255,255,255,.2) 2px 3px, rgba(0,0,0,.3) 3px 5px),
+    radial-gradient(farthest-corner circle at var(--mx) var(--my), rgba(255,255,255,.55), rgba(0,0,0,.55) 75%);
+  background-size: 300% 300%, 100% 100%, 100% 100%;
+  background-position: var(--p) var(--p), 0 0, 0 0;
+  background-blend-mode: soft-light, hard-light, normal; }
+.fx-rainbow-soft { opacity: calc(.3 + var(--hyp) * .35); }
+/* Silver / gold foil (name bar): a bright metal sweep */
+.fx-silver .h-fx { filter: contrast(1.3);
+  background-image: linear-gradient(110deg, #3a3d46 calc(var(--p) - 45%), #c8ccd8 calc(var(--p) - 14%), #ffffff var(--p), #b9bdc9 calc(var(--p) + 14%), #3a3d46 calc(var(--p) + 45%)); }
+.fx-gold .h-fx, .fx-gold-soft .h-fx {
+  background-image: linear-gradient(110deg, #4a3208 calc(var(--p) - 45%), #d7a13c calc(var(--p) - 14%), #fff1bf var(--p), #e0b34f calc(var(--p) + 14%), #4a3208 calc(var(--p) + 45%)); }
+.fx-gold-soft { opacity: calc(.35 + var(--hyp) * .25); }
+/* Secret: fine diagonal lines, rainbow inside them, sparkle */
+.fx-secret .h-fx { filter: brightness(.7) contrast(1.8) saturate(1.4);
+  background-image:
+    var(--g1),
+    repeating-linear-gradient(45deg, rgba(0,0,0,.85) 0 1.6px, rgba(255,255,255,.9) 1.6px 2.4px, rgba(0,0,0,.85) 2.4px 3.6px),
+    repeating-linear-gradient(120deg, #ff5f6d 0%, #ffd36b 6%, #7dff8a 12%, #5fe4ff 18%, #8b7bff 24%, #ff6fd8 30%, #ff5f6d 36%),
+    radial-gradient(farthest-corner circle at var(--mx) var(--my), rgba(255,255,255,.4), rgba(0,0,0,.6) 80%);
+  background-size: 180px 180px, 100% 100%, 300% 300%, 100% 100%;
+  background-position: calc(var(--t) * 30px) calc(var(--t) * 18px), 0 0, var(--p) var(--p), 0 0;
+  background-blend-mode: screen, multiply, normal, normal; }
+/* Glitter (Starlight, QCSR, Collector's): sparkles that move against each other and twinkle as the card moves */
+.fx-glitter .h-fx, .fx-glitter-soft .h-fx { filter: brightness(1.1) contrast(1.4);
+  background-image: var(--g1), var(--g2),
+    repeating-linear-gradient(120deg, #ff5f6d 0%, #ffd36b 7%, #7dff8a 14%, #5fe4ff 21%, #8b7bff 28%, #ff6fd8 35%, #ff5f6d 42%),
+    linear-gradient(#000, #000);
+  background-size: 180px 180px, 130px 130px, 300% 300%, 100% 100%;
+  background-position: calc(var(--p) * .6) calc(var(--t) * 40px), calc(var(--p) * -.8) calc(var(--t) * -30px), var(--p) var(--p), 0 0;
+  background-blend-mode: screen, screen, multiply, normal; }
+.fx-glitter-soft { opacity: calc(.4 + var(--hyp) * .3); }
+/* Prism textures (Collector's fine, Prismatic coarse): triangles that catch different colours */
+.fx-prism-fine .h-fx, .fx-prism-coarse .h-fx { --s: 6px; filter: brightness(.7) contrast(1.8) saturate(1.5);
+  background-image:
+    repeating-linear-gradient(60deg, rgba(255,255,255,.85) 0 calc(var(--s) * .5), rgba(0,0,0,.85) calc(var(--s) * .5) var(--s)),
+    repeating-linear-gradient(-60deg, rgba(255,255,255,.85) 0 calc(var(--s) * .5), rgba(0,0,0,.85) calc(var(--s) * .5) var(--s)),
+    repeating-linear-gradient(115deg, #ff5f6d 0%, #ffd36b 6%, #7dff8a 12%, #5fe4ff 18%, #8b7bff 24%, #ff6fd8 30%, #ff5f6d 36%);
+  background-size: 100% 100%, 100% 100%, 300% 300%;
+  background-position: 0 0, 0 0, var(--p) var(--p);
+  background-blend-mode: difference, multiply, normal; }
+.fx-prism-coarse .h-fx { --s: 22px; }
+.fx-prism-coarse { opacity: calc(.55 + var(--hyp) * .3); }
+.fx-prism-fine { opacity: calc(.7 + var(--hyp) * .25); }
+/* Ultimate: the picture pressed into the card (emboss), matte gold, no rainbow */
+.fx-relief { mix-blend-mode: overlay; opacity: calc(.75 + var(--hyp) * .2); }
+.fx-relief .h-pic { filter: url(#cs-emboss) contrast(2.2); }
+.fx-relief .h-fx { mix-blend-mode: multiply; opacity: .55; background-image: linear-gradient(110deg, #a5803a calc(var(--p) - 50%), #f6e2a6 var(--p), #a5803a calc(var(--p) + 50%)); }
+.k-relief .h-base { filter: sepia(.6) saturate(.7) brightness(.98); }
+/* Ghost: pale, silvery, almost transparent picture */
+.fx-ghost { mix-blend-mode: screen; opacity: calc(.82 + var(--hyp) * .18); }
+.fx-ghost .h-pic { filter: grayscale(1) brightness(1.15) contrast(.7); }
+.fx-ghost .h-fx { mix-blend-mode: multiply; background-image: linear-gradient(115deg, #8d9bb8 calc(var(--p) - 45%), #f2f6ff var(--p), #8d9bb8 calc(var(--p) + 45%)); }
 @media (prefers-reduced-motion: reduce) { .holo-card.shiny { animation: none; --t: .5; } }
 
 /* big card on the card page */
@@ -509,7 +526,7 @@ textarea.field.area { min-height: 92px; resize: vertical; font-family: inherit; 
 .jackpot.show { opacity: 1; pointer-events: auto; }
 .jp-card { width: min(66vw, 330px); aspect-ratio: 59 / 86; perspective: 900px; transform: translateY(60vh) scale(.4) rotate(-12deg); opacity: 0; }
 .jackpot.show .jp-card { animation: jp-in .9s cubic-bezier(.2,1.25,.4,1) .1s forwards; }
-.jp-card .holo-card { animation: jp-tilt 3.2s ease-in-out .9s infinite; box-shadow: 0 0 60px 10px rgba(247,215,116,.35), 0 30px 60px rgba(0,0,0,.6); }
+.jp-card .holo-card { animation: jp-tilt 3.2s ease-in-out .9s infinite, h-shimmer 6s ease-in-out infinite alternate; box-shadow: 0 0 60px 10px rgba(247,215,116,.35), 0 30px 60px rgba(0,0,0,.6); }
 .jp-info { display: flex; flex-direction: column; align-items: center; gap: 2px; color: #fff; text-align: center; opacity: 0; transform: translateY(12px); }
 .jackpot.show .jp-info { animation: jp-info .5s ease-out .75s forwards; }
 .jp-info b { font-size: 19px; }

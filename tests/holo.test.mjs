@@ -28,9 +28,9 @@ test('each rarity shines in its own areas', () => {
   const areas = (k) => [...holoCardHTML({ src: 'x.jpg', kind: k }).matchAll(/h-shine a-(\w+) fx-([\w-]+)/g)].map((m) => `${m[1]}:${m[2]}`).join(' ');
   assert.equal(areas('rare'), 'name:silver');
   assert.equal(areas('super'), 'art:rainbow');
-  assert.equal(areas('ultra'), 'art:foil name:gold');
+  assert.equal(areas('ultra'), 'art:rainbow name:gold');
   assert.equal(areas('secret'), 'art:secret name:silver');
-  assert.equal(areas('relief'), 'all:relief');
+  assert.equal(areas('relief'), 'all:relief name:gold');
   assert.equal(areas('common'), '');
   assert.equal(holoCardHTML({ src: 'x.jpg', kind: 'ultra', shine: false }).includes('h-shine'), false);
 });
