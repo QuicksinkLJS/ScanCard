@@ -7,6 +7,7 @@ import { baseOf } from './codematch.js';
 import { createApi } from './api.js';
 import { createOcr } from './ocr.js';
 import { createRecognizer } from './recognize.js';
+import { loadLearned, learned, learn } from './learn.js';
 import { createDetector } from './detect.js';
 import { createCamera } from './camera.js';
 import { createScanner } from './scan.js';
@@ -40,7 +41,8 @@ function setStatus(text, isError = false, progress = null) {
 }
 
 // ---------- engines ----------
-const recognizer = createRecognizer({ onStatus: (t, p) => setStatus(t, false, p) });
+loadLearned();
+const recognizer = createRecognizer({ onStatus: (t, p) => setStatus(t, false, p), learned });
 const detector = createDetector({ onStatus: (t) => setStatus(t) });
 let ocrPromise = null;
 function getOcr() {
@@ -70,6 +72,7 @@ const scanner = createScanner({
   getPack: () => pack,
   setPack,
   onOpen: (c) => openCardPage(c, scanHooks),
+  onCorrect: (c) => scanHooks.onChange(c),
   onAddAll: async (list) => {
     for (const c of list) await addScanned(c, false);
     scanner.renderList();
@@ -181,6 +184,7 @@ const scanHooks = {
   removeLabel: 'Not a card – remove from this scan',
   onRemove: (s) => scanner.remove(s),
   onChange: async (s) => {
+    if (s.corrected && s.emb) learn(s.sampleId, s.name, s.emb);
     await scanner.refresh(s);
     if (s.added) { upsertEntry(entryFromSubject(s, { id: s.collId })); saveSample(s); }
   },

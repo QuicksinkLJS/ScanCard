@@ -192,6 +192,15 @@ body.cam-open { overflow: hidden; }
   position: fixed; left: 50%; bottom: calc(var(--tabs-h) + 16px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 40;
   background: var(--surface2); color: var(--text); padding: 10px 16px; border-radius: 12px; font-size: 14px; max-width: 90vw; box-shadow: 0 4px 18px rgba(0,0,0,.25);
 }
+.dym { padding: 2px 12px 12px 12px; }
+.dym > small { color: var(--mid); font-weight: 600; }
+.dym-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 6px; }
+.dym-c { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px; border-radius: 12px; border: 1px solid var(--border);
+  background: var(--surface2); color: var(--text); font: inherit; font-size: 12px; line-height: 1.2; cursor: pointer; text-align: center; }
+.dym-c img { width: 54px; aspect-ratio: 59 / 86; object-fit: cover; border-radius: 6px; background: var(--surface); }
+.dym-c img.none { visibility: hidden; }
+.dym-c em { font-style: normal; color: var(--muted); font-size: 11px; }
+.dym-c:active { border-color: var(--accent); }
 .toast-act { background: none; border: 0; color: var(--accent); font: inherit; font-weight: 650; padding: 4px 4px 4px 10px; cursor: pointer; }
 .choose { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,.55); display: flex; align-items: flex-end; justify-content: center; padding: 16px 16px calc(16px + env(safe-area-inset-bottom)); }
 .choose-box { width: 100%; max-width: 420px; background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 16px; display: grid; gap: 8px; animation: rise .18s ease-out; }

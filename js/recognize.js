@@ -57,6 +57,38 @@ function cropView(src, box, rotate180) {
   return c;
 }
 
+// Even out the light before the fingerprint: grey-world white balance (warm lamp vs daylight)
+// and a gentle auto contrast (1 % / 99 % of the brightness). Works on the canvas in place.
+export function evenLight(c) {
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  const img = ctx.getImageData(0, 0, c.width, c.height);
+  const px = img.data;
+  const n = px.length / 4;
+  let r = 0, g = 0, b = 0;
+  const hist = new Uint32Array(256);
+  for (let j = 0; j < px.length; j += 4) {
+    r += px[j]; g += px[j + 1]; b += px[j + 2];
+    hist[(px[j] * 77 + px[j + 1] * 150 + px[j + 2] * 29) >> 8]++;
+  }
+  const grey = (r + g + b) / 3;
+  // only half of the colour cast is removed: foil and red/blue artworks have a real cast of their own
+  const k = [r, g, b].map((v) => 1 + 0.5 * (grey / Math.max(1, v) - 1));
+  let lo = 0, hi = 255, acc = 0;
+  for (let v = 0; v < 256; v++) { acc += hist[v]; if (acc >= n * 0.01) { lo = v; break; } }
+  acc = 0;
+  for (let v = 255; v >= 0; v--) { acc += hist[v]; if (acc >= n * 0.01) { hi = v; break; } }
+  // stretch at most to double contrast, so a dark artwork stays dark
+  const span = Math.max(hi - lo, 128);
+  const mid = (hi + lo) / 2;
+  const lut = new Uint8ClampedArray(256 * 3);
+  for (let ch = 0; ch < 3; ch++) for (let v = 0; v < 256; v++) lut[ch * 256 + v] = (v * k[ch] - mid) * (255 / span) + 127.5;
+  for (let j = 0; j < px.length; j += 4) {
+    px[j] = lut[px[j]]; px[j + 1] = lut[256 + px[j + 1]]; px[j + 2] = lut[512 + px[j + 2]];
+  }
+  ctx.putImageData(img, 0, 0);
+  return c;
+}
+
 function toTensorData(canvases) {
   const n = canvases.length;
   const data = new Float32Array(n * 3 * SIZE * SIZE);
@@ -73,7 +105,11 @@ function toTensorData(canvases) {
   return data;
 }
 
-export function createRecognizer({ base = 'models/ygo', onStatus = () => {} } = {}) {
+// Options (defaults = what the app uses; tools/uitest/t14_recog_eval.py compares them):
+//   light: 'off' | 'on' (even the light of every view) | 'extra' (both, the better one counts)
+//   extra: more artwork cuts (slightly tighter / looser / shifted) for unsure cards
+//   minScore, minMargin: when a guess counts as sure
+export function createRecognizer({ base = 'models/ygo', onStatus = () => {}, light = 'on', extra = true, minScore = 0.55, minMargin = 0.08, learned = null } = {}) {
   let loading = null;
 
   async function load() {
@@ -139,21 +175,40 @@ export function createRecognizer({ base = 'models/ygo', onStatus = () => {} } = 
     return out;
   }
 
-  // The artwork of a card, as it lies and turned upside down (the finder can't tell up from down).
-  function views2(card) {
-    const W = card.width, H = card.height;
-    const ax = ART_BOX.x0 * W, ay = ART_BOX.y0 * H;
-    const aw = (ART_BOX.x1 - ART_BOX.x0) * W, ah = (ART_BOX.y1 - ART_BOX.y0) * H;
-    const full = { x: ax, y: ay, w: aw, h: ah };
-    // Upside-down cards: the artwork box of a rotated card sits mirrored, so cut it from there.
-    const flip = (b) => ({ x: W - b.x - b.w, y: H - b.y - b.h, w: b.w, h: b.h });
-    return [cropView(card, full, false), cropView(card, flip(full), true)];
+  const artBox = (W, H, scale = 1, dx = 0, dy = 0) => {
+    const aw = (ART_BOX.x1 - ART_BOX.x0) * W * scale, ah = (ART_BOX.y1 - ART_BOX.y0) * H * scale;
+    const cx = (ART_BOX.x0 + ART_BOX.x1) / 2 * W + dx * W, cy = (ART_BOX.y0 + ART_BOX.y1) / 2 * H + dy * H;
+    return { x: cx - aw / 2, y: cy - ah / 2, w: aw, h: ah };
+  };
+  // Upside-down cards: the artwork box of a rotated card sits mirrored, so cut it from there.
+  const flip = (b, W, H) => ({ x: W - b.x - b.w, y: H - b.y - b.h, w: b.w, h: b.h });
+  const prep = (c) => (light === 'on' ? [evenLight(c)] : light === 'extra' ? [c, evenLight(cloneCanvas(c))] : [c]);
+  function cloneCanvas(c) {
+    const d = document.createElement('canvas');
+    d.width = c.width; d.height = c.height;
+    d.getContext('2d').drawImage(c, 0, 0);
+    return d;
   }
 
-  // Tested on real photos: right answers scored >= 0.62 with a clear lead; the miss scored 0.44.
+  // The artwork of a card, as it lies and turned upside down (the finder can't tell up from down).
+  // Returns [views upright..., views upside down...] (same count each).
+  function views2(card) {
+    const W = card.width, H = card.height;
+    const b = artBox(W, H);
+    return [...prep(cropView(card, b, false)), ...prep(cropView(card, flip(b, W, H), true))];
+  }
+
+  // A closer look for unsure cards: tighter, looser and shifted cuts (sleeves, toploaders, cut-off edges),
+  // in the orientation that fitted better.
+  function viewsMore(card, upsideDown) {
+    const W = card.width, H = card.height;
+    const boxes = [artBox(W, H, 0.86), artBox(W, H, 1.1), artBox(W, H, 0.94, 0, -0.025), artBox(W, H, 0.94, 0, 0.025)];
+    return boxes.flatMap((b) => prep(cropView(card, upsideDown ? flip(b, W, H) : b, upsideDown)));
+  }
+
   function judge(top) {
     const margin = top.length > 1 ? top[0].score - top[1].score : 1;
-    return { top, confident: top[0].score >= 0.55 && margin >= 0.08 };
+    return { top, confident: top[0].score >= minScore && margin >= minMargin };
   }
 
   // card: an upright card image (canvas), roughly 59:86. Returns best guesses, best first.
@@ -161,31 +216,91 @@ export function createRecognizer({ base = 'models/ygo', onStatus = () => {} } = 
     return (await identifyMany([card], opts))[0];
   }
 
+  // Fingerprints learned from the user's corrections: {name, emb: Float32Array}[] (see learn.js)
+  function learnedBoost(scores, engine, e, nViews) {
+    const list = learned?.() || [];
+    if (!list.length) return null;
+    const dim = engine.meta.dim;
+    const extraScore = new Map();
+    for (const l of list) {
+      let best = -1;
+      for (let v = 0; v < nViews; v++) {
+        let s = 0;
+        for (let d = 0; d < dim; d++) s += l.emb[d] * e[v * dim + d];
+        if (s > best) best = s;
+      }
+      if (best > (extraScore.get(l.name) ?? -1)) extraScore.set(l.name, best);
+    }
+    return extraScore;
+  }
+
+  function rankWith(engine, scores, allow, extraScore) {
+    let top = allow ? ranked(engine, scores, 12, allow) : [];
+    if (!top.length) top = ranked(engine, scores, 12); // nothing from that set looks like it: ignore the filter
+    if (extraScore) {
+      for (const [name, s] of extraScore) {
+        if (allow && !allow.has(normName(name))) continue;
+        const t = top.find((x) => x.name === name);
+        if (t) { if (s > t.score) { t.score = s; t.learned = true; } } else if (s > (top[top.length - 1]?.score ?? -1)) top.push({ name, score: s, artworkId: null, index: -1, learned: true });
+      }
+      top.sort((a, b) => b.score - a.score);
+    }
+    return top.slice(0, 6);
+  }
+
   // Several cards in one go (faster than one by one).
-  async function identifyMany(cards, { onEach = () => {}, allow = null } = {}) {
+  async function identifyMany(cards, { onEach = () => {}, allow = null, closer = extra } = {}) {
     const engine = await ready();
+    const dim = engine.meta.dim;
     const out = [];
+    const embs = [];
+    const per = views2(cards[0] || document.createElement('canvas')).length; // views per card
     const batch = 4;
     for (let i = 0; i < cards.length; i += batch) {
       const part = cards.slice(i, i + batch);
-      const views = part.flatMap((c) => views2(c));
-      const emb = await embed(engine, views);
-      const dim = engine.meta.dim;
+      const emb = await embed(engine, part.flatMap((c) => views2(c)));
       part.forEach((_, k) => {
-        const e = emb.subarray(k * 2 * dim, (k + 1) * 2 * dim);
-        const scores = scoreAll(engine, e, 2);
-        let top = allow ? ranked(engine, scores, 6, allow) : [];
-        if (!top.length) top = ranked(engine, scores); // nothing from that set looks like it: ignore the filter
+        const e = emb.subarray(k * per * dim, (k + 1) * per * dim);
+        const scores = scoreAll(engine, e, per);
+        const top = rankWith(engine, scores, allow, learnedBoost(scores, engine, e, per));
         const result = judge(top);
         // which way round did the best match fit? (needed to read the set code in the right place)
-        const best = result.top[0].index * dim;
-        let s0 = 0, s1 = 0;
-        for (let d = 0; d < dim; d++) { s0 += engine.fp[best + d] * e[d]; s1 += engine.fp[best + d] * e[dim + d]; }
+        const half = per / 2;
+        let s0 = -9, s1 = -9;
+        const ref = result.top[0].index >= 0 ? engine.fp.subarray(result.top[0].index * dim, (result.top[0].index + 1) * dim) : null;
+        if (ref) {
+          for (let v = 0; v < per; v++) {
+            let s = 0;
+            for (let d = 0; d < dim; d++) s += ref[d] * e[v * dim + d];
+            if (v < half) s0 = Math.max(s0, s); else s1 = Math.max(s1, s);
+          }
+        }
         result.upsideDown = s1 > s0;
+        embs[i + k] = { e: Float32Array.from(e.subarray(result.upsideDown ? half * dim : 0, (result.upsideDown ? half + 1 : 1) * dim)), scores };
         out.push(result);
         onEach(i + k, result);
       });
     }
+    // closer look at the unsure ones
+    if (closer) {
+      const unsure = out.map((r, i) => i).filter((i) => !out[i].confident);
+      for (let u = 0; u < unsure.length; u += 2) {
+        const idx = unsure.slice(u, u + 2);
+        const vs = idx.map((i) => viewsMore(cards[i], out[i].upsideDown));
+        const n = vs[0].length;
+        const emb = await embed(engine, vs.flat());
+        idx.forEach((i, k) => {
+          const e = emb.subarray(k * n * dim, (k + 1) * n * dim);
+          const more = scoreAll(engine, e, n);
+          const scores = embs[i].scores;
+          for (let a = 0; a < scores.length; a++) if (more[a] > scores[a]) scores[a] = more[a];
+          const res = judge(rankWith(engine, scores, allow, learnedBoost(scores, engine, e, n)));
+          res.upsideDown = out[i].upsideDown;
+          out[i] = res;
+        });
+      }
+    }
+    out.forEach((r, i) => { r.embedding = embs[i].e; });
     return out;
   }
 

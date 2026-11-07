@@ -9,10 +9,11 @@ import { valueTier } from './parse.js';
 import { quickPrice } from './cardpage.js';
 import { sharePulls } from './share.js';
 import { pileOf, PILES } from './sortpile.js';
+import { versionImage } from './prices.js';
 
 const SHOW_MAX = 1600; // longest side of the photo shown on screen
 
-export function createScanner({ api, recognizer, detector, getOcr, getPack, setPack, onOpen, onAddAll, setStatus }) {
+export function createScanner({ api, recognizer, detector, getOcr, getPack, setPack, onOpen, onAddAll, setStatus, onCorrect = () => {} }) {
   let scanId = 0;
   let cards = [];   // the cards of the current photo
   let photoSize = null;
@@ -104,7 +105,7 @@ export function createScanner({ api, recognizer, detector, getOcr, getPack, setP
           const box = { ...b, w: b.w * shrink, h: b.h * shrink };
           return { i, box, canvas: cutCard(found[i].source, box) };
         });
-        const more = await recognizer.identifyMany(tries.map((t) => t.canvas), { allow: await allowed() });
+        const more = await recognizer.identifyMany(tries.map((t) => t.canvas), { allow: await allowed(), closer: false });
         if (id !== scanId) return;
         tries.forEach((t, k) => {
           if (more[k].top[0].score > res[t.i].top[0].score + 0.02) {
@@ -127,6 +128,7 @@ export function createScanner({ api, recognizer, detector, getOcr, getPack, setP
         name: top[0].name, top, score: top[0].score, confident: f.result.confident,
         code: null, language: null, ocrText: null, codeStatus: 'waiting',
         pack: pack?.prefix ? { prefix: pack.prefix, name: pack.name } : null,
+        emb: f.result.embedding || null,
         vkey: null, price: null, sampleId: `s${Date.now().toString(36)}${i}${Math.random().toString(36).slice(2, 5)}`,
       };
     });
@@ -241,9 +243,12 @@ export function createScanner({ api, recognizer, detector, getOcr, getPack, setP
         <img class="thumb" src="${c.thumb}" alt="">
         <span class="what"><b>${esc(c.name)}</b><small>${piles ? `<span class="pile p-${pileOf(c.price)}">${PILES[pileOf(c.price)].label}</span> ` : ''}${c.confident ? '' : '<span class="unsure">check</span> '}${esc(sub)}</small></span>
         <span class="eur">${range(c.price?.lo, c.price?.hi)}${c.added ? '<small>added ✓</small>' : ''}</span>
-      </button></li>`;
+      </button>${!c.confident && c.top?.length > 1 ? `<div class="dym"><small>Did you mean…?</small><div class="dym-row">${c.top.slice(0, 3).map((t, k) => `
+        <button type="button" class="dym-c" data-n="${c.n}" data-name="${esc(t.name)}"><img data-pic="${esc(t.name)}" alt=""><span>${esc(t.name)}</span>${k === 0 ? '<em>current guess</em>' : ''}</button>`).join('')}</div></div>` : ''}</li>`;
     }).join('');
-    $('found').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => open(Number(b.dataset.n))));
+    $('found').querySelectorAll('.dym-c').forEach((b) => b.addEventListener('click', () => pick(Number(b.dataset.n), b.dataset.name)));
+    fillPictures();
+    $('found').querySelectorAll('li > button').forEach((b) => b.addEventListener('click', () => open(Number(b.dataset.n))));
     const lo = cards.reduce((s, c) => s + (c.price?.lo || 0), 0);
     const hi = cards.reduce((s, c) => s + (c.price?.hi || 0), 0);
     $('result-total').textContent = cards.length ? range(lo, hi) : '';
@@ -312,6 +317,41 @@ export function createScanner({ api, recognizer, detector, getOcr, getPack, setP
     }
     for (const c of cards) if (celebrated.has(c.sampleId)) $('found').querySelector(`button[data-n="${c.n}"]`)?.classList.add('hit-glow');
     if (buzz && getPack()) navigator.vibrate?.([60, 40, 120]);
+  }
+
+  // "Did you mean …?": small official pictures of the candidates; one tap fixes the card.
+  const pics = new Map();
+  function fillPictures() {
+    $('found').querySelectorAll('img[data-pic]').forEach((img) => {
+      const name = img.dataset.pic;
+      if (!pics.has(name)) {
+        pics.set(name, api.cardDetail(name).then((rows) => {
+          for (const r of rows) for (const p of r.products) if (p.image) return versionImage(p, 'preview');
+          return '';
+        }).catch(() => ''));
+      }
+      pics.get(name).then((src) => { if (src) img.src = src; else img.classList.add('none'); });
+    });
+  }
+
+  async function pick(n, name) {
+    const c = cards.find((x) => x.n === n);
+    if (!c) return;
+    const renamed = c.name !== name;
+    c.name = name; c.confident = true; c.corrected = true;
+    if (renamed) {
+      c.vkey = null;
+      const info = await api.nameInfo(name).catch(() => null);
+      if (c.ocrText != null) {
+        c.code = matchCode(c.ocrText, info?.bases);
+        c.language = c.code?.language || languageFromText(c.ocrText);
+        c.codeStatus = c.code ? 'done' : 'none';
+      }
+    }
+    c.price = await quickPrice(api, c);
+    renderList();
+    navigator.vibrate?.(20);
+    await onCorrect(c);
   }
 
   function open(n) {

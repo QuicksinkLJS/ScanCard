@@ -109,6 +109,7 @@ Object.assign(DE, {
   'Remove from collection': 'Aus der Sammlung entfernen', "Don't count for this set": 'Für dieses Set nicht zählen',
   'This tick comes from a card in your collection.': 'Dieser Haken kommt von einer Karte in deiner Sammlung.',
   'Removed from your collection': 'Aus der Sammlung entfernt', 'This card': 'Diese Karte',
+  'Did you mean…?': 'Meintest du …?', 'current guess': 'aktueller Tipp',
   'Tilt your phone · tap for full screen': 'Handy kippen · tippen für Vollbild',
   'Official picture · tap for full screen': 'Offizielles Bild · tippen für Vollbild',
   'Your photo – pick your version below for the official picture': 'Dein Foto – wähle unten deine Version für das offizielle Bild',
