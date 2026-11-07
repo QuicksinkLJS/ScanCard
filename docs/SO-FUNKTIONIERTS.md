@@ -62,6 +62,31 @@ Jeden Morgen um 5:17 Uhr (UTC) wiederholt GitHub das automatisch mit frischen Pr
 **Grenzen:** Die kostenlosen Cardmarket-Daten unterscheiden nicht nach Sprache und Zustand.
 Japanische und koreanische Drucke gibt es auf Cardmarket meist nicht als eigene Produkte.
 
+### Seltenheit, Bild und Link pro Version (CardTrader)
+
+Bei Cardmarket heißen alle Versionen einer Karte im selben Set gleich – ohne Seltenheit. Deshalb holt der Bauplan zusätzlich
+die **CardTrader-Daten** (`tools/fetch_cardtrader.py`, Schlüssel im GitHub-Secret `CARDTRADER_TOKEN`). Jeder CardTrader-Eintrag
+nennt die Cardmarket-Produktnummer, die Seltenheit, eine Zusatzangabe (z. B. „7th Art“) und ein offizielles Bild.
+
+- Gibt es keine Zuordnung, steht in der App „Rarity unknown“ – es wird **nicht** geraten.
+- **Cardmarket-Link pro Version:** `…/Singles/<Expansion>/<Karte>-V<n>-<Seltenheit>`. `V<n>` ist die Reihenfolge der
+  Produktnummern im Set (geprüft an LEDE: V1 Ultra, V2 Quarter Century). Ohne Seltenheit: Suche im richtigen Set.
+- Beim täglichen Lauf werden die CardTrader-Daten frisch geladen; bei jedem Push wird die gespeicherte Kopie
+  (Branch `cardtrader-files`, Workflow „Store CardTrader files“) benutzt – das geht schneller.
+
+### Weitere Dateien im Datenpaket
+
+| Datei | wofür |
+|---|---|
+| `boosters.json` | Booster-/Display-Preis pro Set (Pack-Bilanz) |
+| `expansions.json`, `sets/<nr>.json` | Masterset-Listen: ein Eintrag pro Cardmarket-Produkt (Set × Karte × Seltenheit × Artwork) |
+| `passcodes.json` | Passcode → Kartenname (Deck-Import aus `.ydk` / `ydke://`) |
+
+## Was auf dem Handy gespeichert wird
+
+Alles bleibt im Browser des Handys (localStorage): Sammlung (`cardscan-collection-v1`, mit Preis beim Hinzufügen),
+verfolgte Mastersets und Haken, Decks, Merkliste, Wunschliste, Sprache. Trainingsbilder liegen in IndexedDB.
+
 ## Wie die Artwork-Erkennung funktioniert
 
 Der Set-Code ist winzig und auf glänzenden Karten oft unleserlich. Deshalb kommt eine zweite Erkennung dazu:
@@ -74,7 +99,8 @@ Der Set-Code ist winzig und auf glänzenden Karten oft unleserlich. Deshalb komm
 ## Was du gefahrlos ändern kannst
 
 - **Farbgrenzen** (ab wann rot/gelb): in `js/parse.js`, Funktion `valueTier`. Die Zahlen `10` und `1` sind Euro.
-- **Texte auf dem Bildschirm:** in `index.html` und in `js/app.js` (alles in Anführungszeichen).
+- **Texte auf dem Bildschirm:** englisch in `index.html` und den `js/`-Dateien; die deutschen Übersetzungen stehen alle in `js/i18n.js`
+  (Wörterbuch oben, Muster mit Zahlen darunter). Neue englische Texte dort ergänzen, sonst bleiben sie im deutschen Modus englisch.
 - **Farben:** ganz oben in `style.css` (`--high` = rot, `--mid` = gelb …).
 
 Nach einer Änderung auf GitHub läuft automatisch der Kontrolleur. Ist er grün, ist die neue Version 1–2 Minuten später online.
