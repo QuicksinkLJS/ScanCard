@@ -1,6 +1,9 @@
 // "My pulls" picture: the scanned cards with their prices and the total, shared with the phone's share sheet.
 
+import { t, lang } from './i18n.js';
+
 const W = 1080;
+const LOCALE = () => (lang === 'de' ? 'de-DE' : 'en-GB');
 
 function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
@@ -47,9 +50,9 @@ export function pullsImage(cards, info = {}) {
 
   // header
   ctx.fillStyle = '#fff'; ctx.font = font(800, 76); ctx.textBaseline = 'alphabetic';
-  ctx.fillText(info.title || 'My pulls', pad, 118);
+  ctx.fillText(t(info.title || 'My pulls'), pad, 118);
   ctx.fillStyle = 'rgba(255,255,255,.65)'; ctx.font = font(500, 34);
-  ctx.fillText(fit(ctx, info.sub || new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }), W - 2 * pad), pad, 172);
+  ctx.fillText(fit(ctx, info.sub || new Date().toLocaleDateString(LOCALE(), { day: 'numeric', month: 'long', year: 'numeric' }), W - 2 * pad), pad, 172);
 
   // cards
   const top = list[0];
@@ -78,7 +81,7 @@ export function pullsImage(cards, info = {}) {
   const hi = cards.reduce((s, x) => s + (x.price?.hi || 0), 0);
   const fy = H - foot + 70;
   ctx.fillStyle = 'rgba(255,255,255,.65)'; ctx.font = font(600, 32);
-  ctx.fillText(`${cards.length} card${cards.length > 1 ? 's' : ''} · total`, pad, fy);
+  ctx.fillText(t(`${cards.length} card${cards.length > 1 ? 's' : ''} · total`), pad, fy);
   ctx.fillStyle = '#fff'; ctx.font = font(800, 72);
   ctx.fillText(money(lo, hi), pad, fy + 78);
   if (info.balance) {
@@ -89,7 +92,7 @@ export function pullsImage(cards, info = {}) {
     ctx.textAlign = 'left';
   }
   ctx.fillStyle = 'rgba(255,255,255,.4)'; ctx.font = font(600, 26);
-  ctx.fillText('CardScan · Cardmarket trend prices', pad, H - 40);
+  ctx.fillText(t('CardScan · Cardmarket trend prices'), pad, H - 40);
   return c;
 }
 
@@ -98,7 +101,7 @@ export async function sharePulls(cards, info) {
   const blob = await new Promise((r) => canvas.toBlob(r, 'image/png'));
   const file = new File([blob], `cardscan-pulls-${new Date().toISOString().slice(0, 10)}.png`, { type: 'image/png' });
   if (navigator.canShare?.({ files: [file] })) {
-    try { await navigator.share({ files: [file], title: 'My pulls' }); return 'shared'; } catch (e) { if (e.name === 'AbortError') return 'cancelled'; }
+    try { await navigator.share({ files: [file], title: t('My pulls') }); return 'shared'; } catch (e) { if (e.name === 'AbortError') return 'cancelled'; }
   }
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);

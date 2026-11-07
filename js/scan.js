@@ -346,7 +346,7 @@ export function createScanner({ api, recognizer, detector, getOcr, getPack, setP
     const pack = getPack();
     const bal = $('pack-balance');
     const pct = !bal.hidden ? bal.querySelector('.bal-pct')?.textContent.split(' … ')[0].replace(/\s/g, ' ') : '';
-    const day = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    const day = new Date().toLocaleDateString(document.documentElement.lang === 'de' ? 'de-DE' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
     const r = await sharePulls(cards, { title: 'My pulls', sub: pack?.name ? `${pack.name} · ${day}` : day, balance: pct || '' });
     if (r === 'downloaded') toast('Picture saved');
   });

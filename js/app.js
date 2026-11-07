@@ -1,5 +1,6 @@
 // The boss: tabs, camera, and what happens when a button is pressed.
 
+import { startI18n, lang, setLang } from './i18n.js';
 import { $, esc, eur, range, toast, loadImage, canvasBlob, blobToDataURL } from './util.js';
 import { parseManualCode, valueTier } from './parse.js';
 import { baseOf } from './codematch.js';
@@ -19,6 +20,12 @@ import { loadWatch, loadWish, removeWatch, belowTarget } from './lists.js';
 import {
   loadCollection, saveCollection, newId, loadPack, savePack, putSample, updateSample, allSamples, countSamples,
 } from './store.js';
+
+startI18n();
+document.querySelectorAll('#lang-seg [data-lang]').forEach((b) => {
+  b.classList.toggle('on', b.dataset.lang === lang);
+  b.addEventListener('click', () => { if (b.dataset.lang !== lang) setLang(b.dataset.lang); });
+});
 
 const api = createApi();
 initCardPage(api);
@@ -213,7 +220,8 @@ function renderCollection() {
   $('coll-list').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => openEntry(b.dataset.id)));
   const open = list.filter((e) => e.price && !e.price.exact).length;
   $('coll-total').textContent = range(pf.lo, pf.hi);
-  $('coll-change').innerHTML = pf.pct != null && list.length
+  $('coll-change').innerHTML = pf.pct != null && list.length && Math.abs(pf.change) < 0.005 ? '<span class="muted">Unchanged since added</span>'
+    : pf.pct != null && list.length
     ? `<span class="${pf.change >= 0 ? 'up' : 'down'}">${pctText(pf.pct)} (${pf.change >= 0 ? '+' : '−'}${eur(Math.abs(pf.change)).slice(0)})</span> since added`
     : '';
   $('coll-sub').textContent = list.length
