@@ -10,6 +10,7 @@ import { quickPrice } from './cardpage.js';
 import { sharePulls } from './share.js';
 import { pileOf, PILES } from './sortpile.js';
 import { versionImage } from './prices.js';
+import { openReveal } from './reveal.js';
 
 const SHOW_MAX = 1600; // longest side of the photo shown on screen
 
@@ -138,6 +139,8 @@ export function createScanner({ api, recognizer, detector, getOcr, getPack, setP
     scanning(false);
     renderList();
     readCodes(id);
+    // pack opening: turn the cards one by one
+    if (getPack() && cards.length) openReveal(api, cards);
   }
 
   // ---------- set codes (one card after the other, list updates as they come in) ----------
@@ -259,6 +262,7 @@ export function createScanner({ api, recognizer, detector, getOcr, getPack, setP
     $('add-all').hidden = !cards.length || cards.every((c) => c.added);
     $('share-pulls').hidden = !cards.length;
     $('sort-piles').hidden = !cards.length;
+    $('reveal-btn').hidden = cards.length < 2;
     $('sort-piles').textContent = piles ? 'Hide piles' : 'Sort into piles';
     const ps = $('pile-sum');
     ps.hidden = !piles || !cards.length;
@@ -381,6 +385,7 @@ export function createScanner({ api, recognizer, detector, getOcr, getPack, setP
 
   $('add-all').addEventListener('click', () => onAddAll(cards.filter((c) => !c.added)));
   $('sort-piles').addEventListener('click', () => { piles = !piles; renderList(); });
+  $('reveal-btn').addEventListener('click', () => openReveal(api, cards));
   $('share-pulls').addEventListener('click', async () => {
     if (!cards.length) return;
     const pack = getPack();

@@ -110,6 +110,9 @@ Object.assign(DE, {
   'This tick comes from a card in your collection.': 'Dieser Haken kommt von einer Karte in deiner Sammlung.',
   'Removed from your collection': 'Aus der Sammlung entfernt', 'This card': 'Diese Karte',
   'choose rarity': 'Seltenheit wählen',
+  'Best:': 'Beste:', 'Open one by one': 'Einzeln aufdecken', 'Skip': 'Überspringen', 'Tap the card': 'Karte antippen',
+  'The last one – your best card': 'Die letzte – deine beste Karte', 'Tap for the next card': 'Tippen für die nächste Karte',
+  'Tap to finish': 'Tippen zum Abschließen', 'Tap to close': 'Tippen zum Schließen',
   'Did you mean…?': 'Meintest du …?', 'current guess': 'aktueller Tipp',
   'Tilt your phone · tap for full screen': 'Handy kippen · tippen für Vollbild',
   'Official picture · tap for full screen': 'Offizielles Bild · tippen für Vollbild',
@@ -118,6 +121,10 @@ Object.assign(DE, {
 
 // [pattern, German] for texts with numbers or names in them
 const P = [
+  [/^Masterset complete: (.+)!$/, 'Masterset komplett: $1!'],
+  [/^Missing in your masterset (.+)$/, 'Fehlt in deinem Masterset $1'],
+  [/^(\d+) cards? opened$/, '$1 Karte(n) aufgedeckt'],
+  [/^Best: (.+)$/, 'Beste: $1'],
   [/^All (\d+)$/, 'Alle $1'],
   [/^choose rarity (\d+)$/, 'Seltenheit wählen $1'],
   [/^Pack: (.+)$/, 'Pack: $1'],
