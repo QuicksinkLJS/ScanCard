@@ -13,7 +13,7 @@ import { cardmarketSearchUrl, normName } from './parse.js';
 import { matchCode } from './codematch.js';
 import { openHolo, holoCardHTML, holoKind, attachTilt } from './holo.js';
 import { findWatch, toggleWatch, findWish, setWish, removeWish } from './lists.js';
-import { filterOptions, versionOptions, rankOptions, bestOptions, priceOf, tierOfPrice, oddValues, optionCode, versionLabel, cardmarketUrl, versionImage } from './prices.js';
+import { fairTrend, filterOptions, versionOptions, rankOptions, bestOptions, priceOf, tierOfPrice, oddValues, optionCode, versionLabel, cardmarketUrl, versionImage } from './prices.js';
 
 let api = null;
 let current = null; // {subject, hooks, info, ranked, showAll}
@@ -113,7 +113,8 @@ function render() {
       <div class="pricebox ${tier}">
         <p class="what">${esc([`${chosen.set}${chosen.year ? ` (${chosen.year})` : ''}`, optionCode(chosen, lang?.code)].filter(Boolean).join(' · '))}</p>
         <p class="rarity">${esc(versionLabel(chosen))}</p>
-        <p class="big">${eur(chosen.trend)}</p>
+        <p class="big">${eur(chosen.trend)}${fairTrend(chosen).odd ? ' <span class="warn-dot" title="Unusual">⚠</span>' : ''}</p>
+        ${fairTrend(chosen).odd ? `<p class="note warn">⚠ This trend is far above the recent averages – probably one unusual listing. Totals use ${eur(fairTrend(chosen).v)} instead.</p>` : ''}
         <p class="what">Cardmarket trend price · offers from ${eur(chosen.low)}</p>
         <div class="pgrid">${cell('avg1', 'Yesterday')}${cell('avg7', '7 days')}${cell('avg30', '30 days')}${cell('trend', 'Trend')}</div>
         ${odd.size ? '<p class="note warn">⚠ marks a value far from the others – usually one unusual sale.</p>' : ''}
@@ -144,7 +145,7 @@ function render() {
       ${o.image ? `<img class="vimg" loading="lazy" src="${esc(versionImage(o, 'preview'))}" alt="" onerror="this.remove()">` : ''}
       <span class="what">${esc(o.set)}${o.year ? ` (${o.year})` : ''}${o.likely ? '<span class="likely">LIKELY</span>' : ''}
         <small>${esc([optionCode(o, lang?.code), versionLabel(o)].filter(Boolean).join(' · '))}${!o.label && o.variants > 1 && o.rarities.length ? `<span class="muted"> (one of: ${esc(o.rarities.join(', '))})</span>` : ''}</small></span>
-      <span class="eur">${eur(o.trend)}</span>
+      <span class="eur">${eur(o.trend)}${fairTrend(o).odd ? '<small class="warn-dot">⚠ unusual</small>' : ''}</span>
     </button></li>`).join('') || '<li><div class="row muted small">No version matches.</div></li>';
   const filtered = filterOptions(ranked, current.vq);
   const list = current.showAll || current.vq ? filtered : filtered.slice(0, 8);

@@ -2,7 +2,7 @@
 // One entry per Cardmarket product of the set = set x card x rarity x artwork.
 
 import { $, esc, eur, toast, choose } from './util.js';
-import { cardmarketUrl, versionImage, rarityRank } from './prices.js';
+import { cardmarketUrl, versionImage, rarityRank, fairTrend } from './prices.js';
 import { syncBody } from './cardpage.js';
 import { loadCollection, saveCollection } from './store.js';
 import { progress } from './mastercalc.js';
@@ -118,7 +118,7 @@ export function createMasters({ api, openCard, onCollectionChange = () => {} }) 
             <button type="button" class="tick" data-key="${e.key}" aria-label="I have this">${h >= target ? '✓' : target > 1 ? `${h}/${target}` : '○'}</button>
             ${e.image ? `<img class="vimg" loading="lazy" src="${esc(versionImage(e, 'preview'))}" alt="" onerror="this.remove()">` : ''}
             <button type="button" class="what plain" data-open="${e.key}"><b>${esc(e.name)}</b><small>${esc([e.code, e.label || 'Rarity unknown'].filter(Boolean).join(' · '))}${auto ? ' · in collection' : ''}</small></button>
-            <a class="eur" href="${esc(cardmarketUrl(e, e.name))}" target="_blank" rel="noopener">${eur(e.trend)}<small>Cardmarket ↗</small></a>
+            <a class="eur" href="${esc(cardmarketUrl(e, e.name))}" target="_blank" rel="noopener">${eur(e.trend)}<small>${fairTrend(e).odd ? '⚠ unusual · ' : ''}Cardmarket ↗</small></a>
           </div></li>`;
       }).join('') || '<li><div class="row muted small">Nothing here.</div></li>'}</ul>
       <div class="actions">

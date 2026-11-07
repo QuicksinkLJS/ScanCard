@@ -100,10 +100,31 @@ export function bestOptions(ranked) {
   return ranked.filter((o) => o.likely === ranked[0].likely);
 }
 
+// The trend price, unless it is far above everything else known about the same version
+// (e.g. Sky Striker at €8975 after one odd listing): then the middle of the averages (or the lowest offer).
+// {v, odd}: odd = the trend was replaced; such values are left out of ranges and sums and marked ⚠.
+export function fairTrend(o) {
+  const t = o?.trend;
+  if (t == null) return { v: null, odd: false };
+  const others = ['avg1', 'avg7', 'avg30'].map((k) => o[k]).filter((v) => v != null).sort((a, b) => a - b);
+  if (others.length >= 2) {
+    // far above every one of the averages (a thin market where one average agrees is left alone)
+    const top = others[others.length - 1];
+    const mid = others.length % 2 ? others[(others.length - 1) / 2] : (others[others.length / 2 - 1] + others[others.length / 2]) / 2;
+    if (t > top * 2.5 && t - top > 20) return { v: mid, odd: true };
+    return { v: t, odd: false };
+  }
+  if (o.low != null && o.low > 0 && t > o.low * 30 && t - o.low > 200) return { v: o.low, odd: true };
+  return { v: t, odd: false };
+}
+
 export function priceOf(opts) {
-  const t = opts.map((o) => o.trend).filter((v) => v != null);
-  if (!t.length) return { lo: null, hi: null, exact: false };
-  return { lo: Math.min(...t), hi: Math.max(...t), exact: opts.length === 1 };
+  const f = opts.map((o) => fairTrend(o)).filter((x) => x.v != null);
+  if (!f.length) return { lo: null, hi: null, exact: false };
+  const t = f.map((x) => x.v);
+  const out = { lo: Math.min(...t), hi: Math.max(...t), exact: opts.length === 1 };
+  if (f.some((x) => x.odd)) out.outlier = true;
+  return out;
 }
 
 export const tierOfPrice = (p) => valueTier(p?.hi ?? p?.lo);

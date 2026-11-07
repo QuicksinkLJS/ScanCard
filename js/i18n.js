@@ -109,7 +109,7 @@ Object.assign(DE, {
   'Remove from collection': 'Aus der Sammlung entfernen', "Don't count for this set": 'Für dieses Set nicht zählen',
   'This tick comes from a card in your collection.': 'Dieser Haken kommt von einer Karte in deiner Sammlung.',
   'Removed from your collection': 'Aus der Sammlung entfernt', 'This card': 'Diese Karte',
-  'choose rarity': 'Seltenheit wählen', 'Set code or set name, e.g. MP19': 'Set-Code oder Set-Name, z. B. MP19', 'No version matches.': 'Keine Version passt.', 'BETA channel': 'BETA-Kanal',
+  'choose rarity': 'Seltenheit wählen', '⚠ unusual': '⚠ ungewöhnlich', '⚠ unusual · Cardmarket ↗': '⚠ ungewöhnlich · Cardmarket ↗', 'Set code or set name, e.g. MP19': 'Set-Code oder Set-Name, z. B. MP19', 'No version matches.': 'Keine Version passt.', 'BETA channel': 'BETA-Kanal',
   'Best:': 'Beste:', 'Open one by one': 'Einzeln aufdecken', 'Skip': 'Überspringen', 'Tap the card': 'Karte antippen',
   'The last one – your best card': 'Die letzte – deine beste Karte', 'Tap for the next card': 'Tippen für die nächste Karte',
   'Tap to finish': 'Tippen zum Abschließen', 'Tap to close': 'Tippen zum Schließen',
@@ -121,6 +121,7 @@ Object.assign(DE, {
 
 // [pattern, German] for texts with numbers or names in them
 const P = [
+  [/^⚠ This trend is far above the recent averages – probably one unusual listing\. Totals use (.+) instead\.$/, '⚠ Dieser Trend liegt weit über den letzten Durchschnitten – wahrscheinlich ein einzelnes ungewöhnliches Angebot. Summen rechnen mit $1.'],
   [/^Masterset complete: (.+)!$/, 'Masterset komplett: $1!'],
   [/^Missing in your masterset (.+)$/, 'Fehlt in deinem Masterset $1'],
   [/^(\d+) cards? opened$/, '$1 Karte(n) aufgedeckt'],

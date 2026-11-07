@@ -66,3 +66,19 @@ test('version filter: set code, set name, rarity', async () => {
   assert.equal(filterOptions(opts, 'secret').length, 1);
   assert.equal(filterOptions(opts, '').length, 3);
 });
+
+test('outlier trend (Sky Striker €8975) stays out of ranges and sums', async () => {
+  const { fairTrend, priceOf } = await import('../js/prices.js');
+  const { progress } = await import('../js/mastercalc.js');
+  const sky = { trend: 8975, avg1: 2.5, avg7: 3.1, avg30: 2.9, low: 1.5 };
+  assert.deepEqual(fairTrend(sky), { v: 2.9, odd: true });
+  assert.equal(fairTrend({ trend: 30, avg1: 28, avg7: 31, avg30: 26 }).odd, false);
+  assert.equal(fairTrend({ trend: 12, avg1: 2, avg7: 3 }).odd, false); // small amounts: no alarm
+  const p = priceOf([sky, { trend: 5 }]);
+  assert.equal(p.hi, 5); assert.equal(p.outlier, true);
+  // set entries only have trend + low
+  assert.equal(fairTrend({ trend: 900, low: 2 }).odd, true);
+  assert.equal(fairTrend({ trend: 115, low: 5 }).odd, false);
+  assert.equal(fairTrend({ trend: 40, low: 1 }).odd, false);
+  assert.equal(progress([{ key: 'a', trend: 900, low: 2 }, { key: 'b', trend: 3 }], {}).missingValue, 5);
+});
