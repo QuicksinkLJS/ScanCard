@@ -121,6 +121,11 @@ jobs:
             git archive FETCH_HEAD index.html style.css manifest.webmanifest sw.js icon.svg icons js | tar -x -C _site/beta
             sed -i "s/const BUILD = 'dev';/const BUILD = 'beta-$(git rev-parse --short FETCH_HEAD)-${{ github.run_number }}';/" _site/beta/sw.js
             sed -i "s#'models/ygo'#'../models/ygo'#g; s#'data/ygo'#'../data/ygo'#g" _site/beta/js/*.js
+            # extra fingerprints built on beta (tools/build_extra_fingerprints.py); only the beta app loads them
+            if git cat-file -e FETCH_HEAD:models/ygo/extra.json 2>/dev/null; then
+              git archive FETCH_HEAD models/ygo/extra.json models/ygo/extra.i8 | tar -x -C _site/
+              ls -la _site/models/ygo/
+            fi
             grep -n "const BUILD" _site/beta/sw.js
           fi
 
