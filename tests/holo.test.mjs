@@ -27,10 +27,12 @@ test('each rarity shines in its own areas', () => {
   const { holoCardHTML } = globalThis.__holo;
   const areas = (k) => [...holoCardHTML({ src: 'x.jpg', kind: k }).matchAll(/h-shine a-(\w+) fx-([\w-]+)/g)].map((m) => `${m[1]}:${m[2]}`).join(' ');
   assert.equal(areas('rare'), 'name:silver');
-  assert.equal(areas('super'), 'art:rainbow');
-  assert.equal(areas('ultra'), 'art:rainbow name:gold');
-  assert.equal(areas('secret'), 'art:secret name:silver');
-  assert.equal(areas('relief'), 'all:relief name:gold');
+  assert.equal(areas('super'), 'art:tint art:rainbow');
+  assert.equal(areas('ultra'), 'art:tint art:rainbow name:gold');
+  assert.equal(areas('secret'), 'art:tint art:secret name:silver');
+  assert.equal(areas('relief'), 'all:relief all:gold-metal all:glitter-soft');
+  assert.equal(areas('ghost'), 'art:tint art:ghost art:glitter-soft');
+  assert.ok(holoCardHTML({ src: 'https://x/418250-blue-eyes-original-artwork-collection-ocg.png', kind: 'ultra' }).includes('lay-manga'));
   assert.equal(areas('common'), '');
   assert.equal(holoCardHTML({ src: 'x.jpg', kind: 'ultra', shine: false }).includes('h-shine'), false);
 });
