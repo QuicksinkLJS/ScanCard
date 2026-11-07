@@ -1,0 +1,28 @@
+name: Store Cardmarket files
+
+# On demand: saves today's Cardmarket catalog files (gzipped) to the branch `cardmarket-files`,
+# so the data pack can be built and tested outside GitHub.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download and commit
+        run: |
+          mkdir files && cd files
+          base=https://downloads.s3.cardmarket.com/productCatalog
+          curl -fsSL "$base/priceGuide/price_guide_3.json" | gzip -9 > price_guide_3.json.gz
+          curl -fsSL "$base/productList/products_singles_3.json" | gzip -9 > products_singles_3.json.gz
+          curl -fsSL "$base/productList/products_nonsingles_3.json" | gzip -9 > products_nonsingles_3.json.gz
+          ls -la
+          git init -q -b cardmarket-files .
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Cardmarket files $(date -u +%Y-%m-%d)"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" cardmarket-files
