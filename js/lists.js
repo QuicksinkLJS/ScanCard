@@ -1,10 +1,11 @@
 // Wishlist (cards you want – one tap, no price) and watchlist (price tracking, optional target price).
 // Stored on the phone. Live and beta share this storage: only add fields, never rename or drop them.
 import { newId } from './store.js';
+import { gameKey } from './game.js';
 
-const WATCH = 'cardscan-watch-v1';
-const WISH = 'cardscan-wish-v1';
-const MIGRATED = 'cardscan-lists-mig1';
+const WATCH = gameKey('cardscan-watch-v1');
+const WISH = gameKey('cardscan-wish-v1');
+const MIGRATED = gameKey('cardscan-lists-mig1');
 const load = (k) => { try { return JSON.parse(localStorage.getItem(k) || '[]'); } catch { return []; } };
 const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* full */ } };
 const same = (a, b) => a.name === b.name && (a.vkey || null) === (b.vkey || null);

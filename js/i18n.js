@@ -184,7 +184,21 @@ Object.assign(DE, {
   'Not sure. Try again under one bright lamp (or with the light on), tilting a bit more.': 'Nicht sicher. Versuch es nochmal unter einer hellen Lampe (oder mit Licht) und kipp etwas stärker.',
   'Artwork colour': 'Bild-Farbe', 'Glitter': 'Glitzer', 'Name shine': 'Name-Glanz', 'Whole card': 'Ganze Karte',
   'Show matching versions': 'Passende Versionen zeigen',
+  // life story of a card
+  'Story of this card': 'Lebenslauf dieser Karte', 'Today': 'Heute', 'Add': 'Hinzufügen',
+  'Pulled it myself': 'Selbst gezogen', 'Got it as a gift': 'Geschenkt bekommen', 'Traded for it': 'Ertauscht', 'Bought it': 'Gekauft', 'At an event': 'Auf einem Event',
+  'Add a moment, e.g. pulled at the Regional with Max': 'Moment hinzufügen, z. B. beim Regional mit Max gezogen',
+  'Remove this moment': 'Diesen Moment entfernen', 'Write a moment or pick one': 'Schreib einen Moment oder wähle einen aus', 'Moment removed': 'Moment entfernt',
+  'Came into your collection': 'In deine Sammlung gekommen', 'Pulled from a pack': 'Aus einem Pack gezogen', 'new in your collection today': 'heute neu in deiner Sammlung',
+  'same as then': 'gleich wie damals',
+  // collector quartet
+  'Collector quartet': 'Sammler-Quartett', 'Collection value': 'Sammlungswert', 'Most valuable card': 'Wertvollste Karte', 'Cards': 'Karten',
+  'Secret Rares & better': 'Secret Rares & besser', 'Oldest card': 'Älteste Karte', 'Print languages': 'Drucksprachen', 'Best masterset': 'Bestes Masterset',
+  'You win!': 'Du gewinnst!', "It's a draw": 'Unentschieden', 'Play again': 'Nochmal spielen', 'You': 'Du', 'Dealing the cards…': 'Karten werden verteilt…',
+  'Pick a category on your card – the better value wins the round': 'Wähle eine Kategorie auf deiner Karte – der bessere Wert gewinnt die Runde',
+  "Prices of today. Your friend's cards are from the code they showed you last.": 'Preise von heute. Die Karten deines Freundes stammen aus dem Code, den er dir zuletzt gezeigt hat.',
   // hologram (stage 1)
+  'That code is from another card game': 'Dieser Code gehört zu einem anderen Kartenspiel',
   '◈ Hologram': '◈ Hologramm', 'Place again': 'Neu platzieren', 'Without camera': 'Ohne Kamera',
   'Lay the card on the table and point the camera at it': 'Leg die Karte auf den Tisch und richte die Kamera darauf',
   'Not found yet – hold the phone above the card, or tap the card on the screen': 'Noch nicht gefunden – halt das Handy über die Karte oder tipp die Karte auf dem Bildschirm an',
@@ -299,6 +313,20 @@ const P = [
   [/^(\d+) (Sell|Keep|Bulk|Check version)$/, (m, n, k) => `${n} ${DE[k]}`],
   [/^(.*)\(([\d.]+) EUR\)$/, '$1($2 EUR)'],
 ];
+P.push(
+  [/^Round (\d+) of (\d+) – pick the next category$/, 'Runde $1 von $2 – wähle die nächste Kategorie'],
+  [/^🃏 Collector quartet vs (.*)$/, '🃏 Sammler-Quartett gegen $1'],
+  [/^vs (.*)$/, 'gegen $1'],
+  [/^(.*) wins$/, '$1 gewinnt'],
+  [/^Pulled from a pack: (.*)$/, 'Aus einem Pack gezogen: $1'],
+  [/^worth (.*) then$/, 'damals $1 wert'],
+  [/^Version: (.*)$/, 'Version: $1'],
+  [/^Your copy: (.*)$/, 'Dein Exemplar: $1'],
+  [/^Today: worth (.*)$/, 'Heute: $1 wert'],
+  [/^with you for (\d+) (day|days|month|months|year|years)$/, (m, n, u) => `seit ${n} ${({ day: 'Tag', days: 'Tagen', month: 'Monat', months: 'Monaten', year: 'Jahr', years: 'Jahren' })[u]} bei dir`],
+  [/^([+−][\d.]+) % since then$/, '$1 % seitdem'],
+  [/^(\d+) moments? · stays on this phone \(in your backup\)$/, '$1 Moment(e) · bleibt auf diesem Handy (im Backup)'],
+);
 const MONTHS = { Jan: 'Jan.', Feb: 'Feb.', Mar: 'März', Apr: 'Apr.', May: 'Mai', Jun: 'Juni', Jul: 'Juli', Aug: 'Aug.', Sept: 'Sept.', Sep: 'Sept.', Oct: 'Okt.', Nov: 'Nov.', Dec: 'Dez.',
   January: 'Januar', February: 'Februar', March: 'März', April: 'April', June: 'Juni', July: 'Juli', August: 'August', September: 'September', October: 'Oktober', November: 'November', December: 'Dezember' };
 

@@ -2,14 +2,12 @@
 // and how far the scene moves when the phone turns (so the hologram stays above the real card).
 // Pure functions, tested in Node (tests/holomath.test.mjs).
 
-export const CARD_MM = { w: 59, h: 86 };
+import { GAME } from './game.js';
 
-// Artwork window per card layout, as share of the card (same numbers as the foil areas in style.css).
-export const ART_BOX = {
-  normal: { x1: 0.116, x2: 0.884, y1: 0.179, y2: 0.708 },
-  pendulum: { x1: 0.064, x2: 0.936, y1: 0.176, y2: 0.63 },
-  manga: { x1: 0.076, x2: 0.926, y1: 0.174, y2: 0.76 },
-};
+export const CARD_MM = GAME.cardMm;
+
+// Artwork window per card layout, as share of the card (from the game pack; same numbers as the foil areas in style.css).
+export const ART_BOX = GAME.artBox;
 
 // How to show only the artwork: a box with the artwork's shape, the card picture inside it moved and enlarged.
 // Returns width : height of the box and the picture's size/position in % of the box.

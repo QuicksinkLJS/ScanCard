@@ -2,8 +2,10 @@
 //  * collection: localStorage (small JSON list)
 //  * training samples: IndexedDB (card cut-outs as JPEG + what the user finally chose)
 
-const COLL_KEY = 'cardscan-collection-v1';
-const PACK_KEY = 'cardscan-pack-v1';
+import { gameKey } from './game.js';
+
+const COLL_KEY = gameKey('cardscan-collection-v1');
+const PACK_KEY = gameKey('cardscan-pack-v1');
 
 export function loadCollection() {
   try { return JSON.parse(localStorage.getItem(COLL_KEY) || '[]'); } catch { return []; }

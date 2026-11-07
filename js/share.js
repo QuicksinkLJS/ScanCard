@@ -1,6 +1,7 @@
 // "My pulls" picture: the scanned cards with their prices and the total, shared with the phone's share sheet.
 
 import { t, lang } from './i18n.js';
+import { cardRatio } from './game.js';
 
 const W = 1080;
 const font = (w, px) => `${w} ${px}px Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif`;
@@ -31,7 +32,7 @@ export function pullsImage(cards, info = {}) {
   const cols = list.length <= 1 ? 1 : list.length <= 4 ? 2 : 3;
   const pad = 56, gap = 28;
   const cw = (W - 2 * pad - gap * (cols - 1)) / cols;
-  const ch = cw * 86 / 59;
+  const ch = cw / cardRatio();
   const rows = Math.ceil(list.length / cols);
   const cellH = ch + 104;
   const head = 230, foot = 230;

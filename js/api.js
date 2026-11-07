@@ -2,11 +2,12 @@
 // The pack joins Cardmarket's free price guide (EUR) with set codes; see tools/build_data.py.
 
 import { lookupCandidates, normName } from './parse.js';
+import { GAME } from './game.js';
 
 // Same rule as bucket_of() in tools/build_data.py
 export const bucketOf = (k) => (k.slice(0, 2) || '_').padEnd(2, '_');
 
-export function createApi({ fetchFn = globalThis.fetch?.bind(globalThis), base = 'data/ygo' } = {}) {
+export function createApi({ fetchFn = globalThis.fetch?.bind(globalThis), base = GAME.data } = {}) {
   let indexPromise = null;
   const setFiles = new Map();
 

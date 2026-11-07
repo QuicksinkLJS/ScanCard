@@ -7,6 +7,7 @@
 // Files (made by tools/pack_model.py): models/ygo/model.onnx, fingerprints.i8, cards.json
 
 import { normName } from './parse.js';
+import { GAME } from './game.js';
 
 const ORT_URL = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.31.1/dist/ort.min.js';
 const SIZE = 224;
@@ -109,7 +110,7 @@ function toTensorData(canvases) {
 //   light: 'off' | 'on' (even the light of every view) | 'extra' (both, the better one counts)
 //   extra: more artwork cuts (slightly tighter / looser / shifted) for unsure cards
 //   minScore, minMargin: when a guess counts as sure
-export function createRecognizer({ base = 'models/ygo', onStatus = () => {}, light = 'on', extra = true, minScore = 0.55, minMargin = 0.08, learned = null } = {}) {
+export function createRecognizer({ base = GAME.models, onStatus = () => {}, light = 'on', extra = true, minScore = 0.55, minMargin = 0.08, learned = null } = {}) {
   let loading = null;
 
   async function load() {

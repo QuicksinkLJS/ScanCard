@@ -16,6 +16,7 @@ import { findWatch, toggleWatch, findWish, toggleWish, restoreWish, restoreWatch
 import { CONDS, LANGS, hasFirstEdition, copyText, langOf } from './copy.js';
 import { openTiltScan } from './tiltui.js';
 import { openHologram } from './hologram.js';
+import { lifeOf, TAGS, NOTE_MAX } from './life.js';
 import { tiltRank } from './tilt.js';
 import { rarityQuery, fairTrend, filterOptions, versionOptions, rankOptions, bestOptions, priceOf, tierOfPrice, oddValues, optionCode, versionLabel, cardmarketUrl, versionImage, historyOf } from './prices.js';
 
@@ -77,6 +78,56 @@ function copyBoxes(s, chosen, hooks) {
   }
   return out;
 }
+
+// ---------- life story of your copy ----------
+let storyOpen = false;   // the story box stays open across re-renders (own flag: the copy boxes share openBox)
+const dayText = (t) => new Date(t).toLocaleDateString(document.documentElement.lang === 'de' ? 'de-DE' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+function storyBox(s, hooks, value) {
+  const entry = hooks.story?.(s);
+  if (!entry) return '';
+  const lines = lifeOf(entry, { value, eur });
+  const moments = lines.filter((l) => l.k !== 'now').length;
+  const now = lines[lines.length - 1];
+  return `<details class="fold story-box" id="story" ${storyOpen ? 'open' : ''}>
+    <summary>Story of this card <span class="muted small">${esc(now.sub.split(' · ')[0])}</span></summary>
+    <ol class="story">${lines.map((l) => `<li class="st-${l.k}${l.own ? ' own' : ''}">
+      <span class="st-dot"></span>
+      <div>${l.k === 'now' ? '' : `<small class="muted">${esc(dayText(l.t))}</small>`}
+        <b>${esc(l.text)}</b>${l.sub ? `<small>${esc(l.sub)}</small>` : ''}</div>
+      ${l.own ? `<button type="button" class="link st-del" data-t="${l.t}" aria-label="Remove this moment">×</button>` : ''}
+    </li>`).join('')}</ol>
+    <form id="story-form" class="story-form" autocomplete="off">
+      <div class="chips">${Object.entries(TAGS).map(([k, label]) => `<button type="button" class="chip st-tag" data-tag="${k}">${esc(label)}</button>`).join('')}</div>
+      <div class="inline-form"><input id="story-text" class="field" maxlength="${NOTE_MAX}" placeholder="Add a moment, e.g. pulled at the Regional with Max">
+        <button class="btn primary" type="submit">Add</button></div>
+    </form>
+    <p class="small muted">${moments} moment${moments === 1 ? '' : 's'} · stays on this phone (in your backup)</p>
+  </details>`;
+}
+function bindStory(s, hooks, render) {
+  $('story')?.addEventListener('toggle', (e) => { storyOpen = e.target.open; });
+  let tag = '';
+  $('card-body').querySelectorAll('.st-tag').forEach((b) => b.addEventListener('click', () => {
+    tag = tag === b.dataset.tag ? '' : b.dataset.tag;
+    $('card-body').querySelectorAll('.st-tag').forEach((x) => x.classList.toggle('on', x.dataset.tag === tag));
+  }));
+  $('story-form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const x = $('story-text').value.trim();
+    if (!x && !tag) { toast('Write a moment or pick one'); return; }
+    hooks.onNote?.(s, { x, tag });
+    storyOpen = true;
+    render();
+  });
+  $('card-body').querySelectorAll('.st-del').forEach((b) => b.addEventListener('click', () => {
+    const t = Number(b.dataset.t);
+    const gone = hooks.story?.(s)?.life?.find((x) => x.k === 'note' && x.t === t);
+    hooks.onNoteRemove?.(s, t);
+    render();
+    if (gone) toast('Moment removed', 2600, { label: 'Undo', run: () => { hooks.onNote?.(s, gone); render(); } });
+  }));
+}
+
 function bindCopyBoxes(s, chosen, hooks, render) {
   const keep = (id, name) => $(id)?.addEventListener('toggle', (e) => { if (e.target.open) openBox = name; else if (openBox === name) openBox = null; });
   keep('copy-own', 'own'); keep('copy-wish', 'wish');
@@ -273,6 +324,7 @@ function render() {
       ${findWatch(s).target != null ? '<button class="btn" type="button" id="watch-target-clear">No target</button>' : ''}
     </form>` : ''}
     ${copyBoxes(s, chosen, hooks)}
+    ${storyBox(s, hooks, chosen && price.lo != null ? (price.hi != null ? (price.lo + price.hi) / 2 : price.lo) : null)}
     ${hooks.onRemove ? `<button class="btn wide danger" type="button" id="card-remove">${esc(hooks.removeLabel || 'Remove from collection')}</button>` : ''}
   `;
   const priceNow = () => ({ lo: price.lo, hi: price.hi, label: chosen ? [`${chosen.set}`, versionLabel(chosen)].join(' · ') : 'any version' });
@@ -306,6 +358,7 @@ function render() {
     render();
   });
   bindCopyBoxes(s, chosen, hooks, render);
+  bindStory(s, hooks, render);
   $('watch-target-clear')?.addEventListener('click', () => { setWatchTarget(s, null, priceNow()); toast('No target price'); render(); });
 
   const bindVersions = () => $('card-body').querySelectorAll('.versions button').forEach((b) => b.addEventListener('click', () => {
@@ -390,5 +443,6 @@ export async function quickPrice(theApi, s) {
     ? [`${chosen.set}${chosen.year ? ` (${chosen.year})` : ''}`, optionCode(chosen, lang?.code), chosen.label || (chosen.variants <= 1 ? chosen.rarities[0] : '')].filter(Boolean).join(' · ')
     : best?.length ? `${best[0].set} · ${best.length} versions` : (ranked.length ? `${ranked.length} version${ranked.length > 1 ? 's' : ''}` : 'no price found');
   return { ...price, label, exact: !!chosen, rarity: chosen ? (chosen.rarity || (chosen.variants <= 1 ? chosen.rarities[0] : '') || '') : '',
-    image: chosen?.image || '', guess: likeliest(chosen, best, ranked)?.image || '', hist: historyOf(chosen ? [chosen] : (best?.length ? best : ranked)), set: chosen?.set || (best?.length && best.every((o) => o.set === best[0].set) ? best[0].set : ''), pid: chosen ? Number(chosen.key) : null };
+    image: chosen?.image || '', guess: likeliest(chosen, best, ranked)?.image || '', hist: historyOf(chosen ? [chosen] : (best?.length ? best : ranked)), set: chosen?.set || (best?.length && best.every((o) => o.set === best[0].set) ? best[0].set : ''),
+    year: chosen ? chosen.year || null : (best?.length && best.every((o) => o.year === best[0].year) ? best[0].year || null : null), pid: chosen ? Number(chosen.key) : null };
 }

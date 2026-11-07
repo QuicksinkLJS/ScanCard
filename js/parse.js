@@ -1,5 +1,7 @@
 // Pure parsing helpers. No browser APIs, so they can be tested in Node.
 
+import { GAME } from './game.js';
+
 // Language part of a TCG set code -> language.
 // Modern codes use two letters (LOB-DE001), old European prints one letter (LOB-G001),
 // old North American prints none (LOB-001).
@@ -90,7 +92,7 @@ export function valueTier(eur) {
 }
 
 export function cardmarketSearchUrl(name) {
-  return `https://www.cardmarket.com/en/YuGiOh/Products/Search?searchString=${encodeURIComponent(name)}`;
+  return `${GAME.cardmarket}/Search?searchString=${encodeURIComponent(name)}`;
 }
 
 // Same key as tools/build_data.py norm(): lower case letters and digits only, accents removed.

@@ -2,6 +2,7 @@
 
 import { baseOf } from './codematch.js';
 import { valueTier } from './parse.js';
+import { GAME } from './game.js';
 
 // One option per Cardmarket product (that is what has a price).
 // rows: api.cardDetail(name)
@@ -80,7 +81,7 @@ export function versionLabel(o) {
 
 // Cardmarket page of this exact version; else a search for the card (in its expansion when known).
 export function cardmarketUrl(o, name) {
-  const base = 'https://www.cardmarket.com/en/YuGiOh/Products';
+  const base = GAME.cardmarket;
   if (o?.path) return `${base}/Singles/${o.path.split('/').map(encodeURIComponent).join('/')}`;
   const q = `searchString=${encodeURIComponent(name)}`;
   return o?.expansion ? `${base}/Search?${q}&idExpansion=${o.expansion}` : `${base}/Search?${q}`;

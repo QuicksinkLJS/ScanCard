@@ -2,6 +2,7 @@
 // and cuts each one out as an upright card image.
 
 import { CARD_W, CARD_H } from './camera.js';
+import { GAME } from './game.js';
 
 const ORT_URL = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.31.1/dist/ort.min.js';
 
@@ -91,7 +92,7 @@ export function cutCard(img, b, scale = 1.5) {
   return c;
 }
 
-export function createDetector({ base = 'models/ygo', size = 1024, onStatus = () => {} } = {}) {
+export function createDetector({ base = GAME.models, size = 1024, onStatus = () => {} } = {}) {
   let loading = null;
 
   async function load() {

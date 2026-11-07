@@ -3,6 +3,8 @@
 // Helps where the picture alone is not enough: Ghost Rares (pale pictures), alternative artworks, glare.
 // The matching is tested in Node; loading needs the API.
 
+import { GAME } from './game.js';
+
 // Printed language (code from the set code) -> file and Tesseract language
 export const TEXT_LANG = { EN: 'en', AE: 'en', DE: 'de', FR: 'fr', IT: 'it', SP: 'sp', PT: 'pt', JP: 'jp', KR: 'kr' };
 export const TESS_LANG = { en: 'eng', de: 'eng', fr: 'eng', it: 'eng', sp: 'eng', pt: 'eng', jp: 'jpn', kr: 'kor' };
@@ -83,7 +85,7 @@ export function decide(matches, { min = 0.62, margin = 0.08 } = {}) {
 }
 
 // Loader with cache, per language and kind ('text' names, 'effect' effect texts)
-export function createTextIndex(base = 'data/ygo', fetchFn = globalThis.fetch?.bind(globalThis)) {
+export function createTextIndex(base = GAME.data, fetchFn = globalThis.fetch?.bind(globalThis)) {
   const cache = new Map();
   return function get(lang, kind = 'text') {
     const key = `${kind}-${lang}`;

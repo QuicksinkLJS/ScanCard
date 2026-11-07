@@ -9,8 +9,9 @@ import { versionOptions, cardmarketUrl, versionLabel, versionImage } from './pri
 import { syncBody } from './cardpage.js';
 import { loadCollection, newId } from './store.js';
 import { parseDeck, resolveDeck, allocate, pickVersion, wantsLines } from './deck.js';
+import { gameKey } from './game.js';
 
-const KEY = 'cardscan-decks-v1';
+const KEY = gameKey('cardscan-decks-v1');
 export const loadDecks = () => { try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch { return []; } };
 const saveDecks = (d) => { try { localStorage.setItem(KEY, JSON.stringify(d)); } catch { /* full */ } };
 const DEFAULT_PREFS = { mode: 'cheap', lang: 'any', cond: 'EX', first: false };

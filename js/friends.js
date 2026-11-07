@@ -14,6 +14,8 @@
 // Encoded: JSON -> deflate-raw -> base64url. A QR code holds one part; long snapshots are split into parts
 // ("CSF1/<id>/<i>/<n>/<data>") that the scanner collects. A link holds the whole thing after #friend=.
 
+import { gameKey, GAME } from './game.js';
+
 export const QR_PREFIX = 'CSF1/';
 export const PART_SIZE = 1200; // characters of base64 per QR code – small enough to scan from a phone screen
 
@@ -75,7 +77,7 @@ export function buildSnapshot({ me, collection, wish, tracked, ticks, decks, toC
   let prev = 0;
   const rows = [...groups.values()].sort((a, b) => a[1] - b[1]).map((r) => { const d = r[1] ? r[1] - prev : 0; if (r[1]) prev = r[1]; return [r[0], d, ...r.slice(2)]; });
   return {
-    v: 1, id: me.id, n: me.name || 'Friend', t: Date.now(),
+    v: 1, g: GAME.id, id: me.id, n: me.name || 'Friend', t: Date.now(),
     c: rows.map(trim),
     w: wish.map((w) => trim([toCode(w.name), Number(w.vkey) || 0, w.group === 'deck' ? (w.deck?.name || 'Deck') : '', w.cond || '', w.lang && w.lang !== 'any' ? w.lang : '', w.first ? 1 : ''])),
     m: tracked.map((t) => trim([t.exp, t.name, t.target || 1, t.hidden?.length ? t.hidden.map(Number) : ''])),
@@ -90,7 +92,7 @@ export function readSnapshot(snap, fromCode = (c) => String(c)) {
   const name = (c) => (typeof c === 'number' ? fromCode(c) : c) || String(c);
   const first = (f) => (f === 1 ? true : f === 0 ? false : null);
   return {
-    id: snap.id, name: snap.n, time: snap.t,
+    id: snap.id, name: snap.n, time: snap.t, game: snap.g || 'ygo',
     collection: (() => { let prev = 0; return (snap.c || []).map(([c, dv, count = 1, cond = '', lang = '', f = '']) => {
       const vkey = dv ? (prev += dv) : 0;
       return { name: name(c), vkey: vkey ? String(vkey) : null, count, cond, lang, first: first(f) };
@@ -142,7 +144,7 @@ export function suggestOffer(askValue, candidates, value) {
 }
 
 // ---------- storage ----------
-const FRIENDS = 'cardscan-friends-v1';
+const FRIENDS = gameKey('cardscan-friends-v1');
 const ME = 'cardscan-me-v1';
 const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k) || 'null') ?? d; } catch { return d; } };
 const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } };

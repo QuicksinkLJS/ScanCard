@@ -2,8 +2,9 @@
 //  * "multi": full picture at the camera's best resolution (ImageCapture.takePhoto), cards are found later
 //  * "single": card-shaped frame, returns the upright card (canvas, CARD_W x CARD_H)
 
-export const CARD_W = 590;
-export const CARD_H = 860;
+import { cardPx } from './game.js';
+
+export const { w: CARD_W, h: CARD_H } = cardPx();   // 590 × 860 for Yu-Gi-Oh!
 
 export function createCamera({ root, video, frame, hint, onPhoto, onCard, onError }) {
   let stream = null;

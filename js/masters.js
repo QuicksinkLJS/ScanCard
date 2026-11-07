@@ -8,9 +8,10 @@ import { loadCollection, saveCollection } from './store.js';
 import { progress, sortEntries, SET_SORTS, fillCodes } from './mastercalc.js';
 import { holoKind } from './holo.js';
 import { progressImage, shareCanvas } from './share.js';
+import { gameKey } from './game.js';
 
-const TRACK_KEY = 'cardscan-masters-v1';
-const OWN_KEY = 'cardscan-owned-v1';
+const TRACK_KEY = gameKey('cardscan-masters-v1');
+const OWN_KEY = gameKey('cardscan-owned-v1');
 
 const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k) || 'null') ?? d; } catch { return d; } };
 const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* full */ } };

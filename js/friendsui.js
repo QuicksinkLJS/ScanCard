@@ -7,10 +7,14 @@ import { quickPrice } from './cardpage.js';
 import { versionImage } from './prices.js';
 import { holoKind, openHolo } from './holo.js';
 import { fanHTML } from './fan.js';
-import { copyText } from './copy.js';
+import { copyText, langOf } from './copy.js';
 import { loadCollection } from './store.js';
 import { loadWish } from './lists.js';
-import { loadTracked } from './masters.js';
+import { loadTracked, ownedCounts } from './masters.js';
+import { progress } from './mastercalc.js';
+import { collectorStats, bestMaster } from './quartet.js';
+import { quartetLoading, showQuartet, quartetOnBack } from './quartetui.js';
+import { gameKey, GAME } from './game.js';
 import {
   buildSnapshot, encodeSnapshot, decodeSnapshot, splitParts, createCollector, readSnapshot, friendOwned,
   matchTrades, suggestOffer, loadMe, saveMe, loadFriends, addFriend, removeFriend, restoreFriend, renameFriend,
@@ -62,7 +66,7 @@ export function createFriends({ api, openCard, loadDecks }) {
   async function mySnapshot() {
     const { toCode } = await codes();
     let ticks = {};
-    try { ticks = JSON.parse(localStorage.getItem('cardscan-owned-v1') || '{}'); } catch { /* ignore */ }
+    try { ticks = JSON.parse(localStorage.getItem(gameKey('cardscan-owned-v1')) || '{}'); } catch { /* ignore */ }
     return buildSnapshot({
       me: loadMe(), collection: loadCollection(), wish: loadWish(), tracked: loadTracked(), ticks,
       decks: loadDecks(), toCode: (n) => toCode.get(n) ?? n,
@@ -167,6 +171,7 @@ export function createFriends({ api, openCard, loadDecks }) {
     try {
       const snap = await decodeSnapshot(data);
       if (snap.id === loadMe().id) { toast('That is your own code'); history.back(); return; }
+      if ((snap.g || 'ygo') !== GAME.id) { toast('That code is from another card game'); history.back(); return; }
       const r = addFriend(snap);
       if (!r) { toast('Not enough space on this phone for this collection'); return; }
       toast(r.updated ? `${r.entry.name}'s collection updated` : `${r.entry.name} added to your friends`);
@@ -234,6 +239,7 @@ export function createFriends({ api, openCard, loadDecks }) {
         <p class="result-total" id="fr-total">…</p>
         <p class="muted small">Shared on ${date} · prices of today</p>
       </div>
+      <button type="button" class="btn wide qt-open" id="fr-quartet">🃏 Collector quartet vs ${esc(f.name)}</button>
       <div class="seg small fr-tabs" role="tablist">${tabs.map(([k, l]) => `<button type="button" data-ft="${k}" class="${cur.tab === k ? 'on' : ''}">${esc(l)}</button>`).join('')}</div>
       <div id="fr-tab"></div>
       <div class="actions">
@@ -242,6 +248,7 @@ export function createFriends({ api, openCard, loadDecks }) {
       </div>
       <p class="muted small">To see newer cards, ask ${esc(f.name)} to show you their code again.</p>`;
     $('friend-body').querySelectorAll('[data-ft]').forEach((b) => b.addEventListener('click', () => { cur.tab = b.dataset.ft; renderFriend(); }));
+    $('fr-quartet').addEventListener('click', () => startQuartet());
     $('fr-remove').addEventListener('click', () => {
       removeFriend(f.id); history.back(); renderList();
       toast(`${f.name} removed`, 5000, { label: 'Undo', run: () => { restoreFriend(f); renderList(); } });
@@ -265,6 +272,31 @@ export function createFriends({ api, openCard, loadDecks }) {
       $('fr-fan').querySelectorAll('.fan-card').forEach((b) => b.addEventListener('click', () => openHolo(
         top.map((r) => ({ name: r.e.name, rarity: r.p.exact ? r.p.rarity : '', src: picOf(r.p), kind: kindOf(r.p), price: r.p.lo })), Number(b.dataset.i))));
     }
+  }
+
+  // ---------- collector quartet: my collection against theirs ----------
+  async function masterOf(sets, owned) {
+    const list = await Promise.all(sets.map(async (t) => {
+      const hid = new Set((t.hidden || []).map(String));
+      const entries = (await api.setEntries(t.exp).catch(() => [])).filter((e) => !hid.has(String(e.key)));
+      const p = progress(entries, owned, t.target || 1);
+      return { name: t.name, have: p.have, total: p.total };
+    }));
+    return bestMaster(list);
+  }
+  async function startQuartet() {
+    const { f, fr } = cur;
+    quartetLoading(f.name);
+    const rowsOf = (list, one) => Promise.all(list.map(async (e) => ({ name: e.name, count: one ? 1 : e.count, lang: one ? langOf(e) : e.lang, p: await priceOf(e.name, e.vkey) })));
+    const [mine, theirs, myMaster, theirMaster] = await Promise.all([
+      rowsOf(loadCollection(), true), rowsOf(fr.collection, false),
+      masterOf(loadTracked(), ownedCounts().all), masterOf(fr.sets, friendOwned(fr)),
+    ]);
+    const side = (name, rows, master) => {
+      const stats = collectorStats(rows, { kindOf: holoKind, master });
+      return { name, stats, pic: stats.top.image ? versionImage({ image: stats.top.image }, 'show') : '' };
+    };
+    showQuartet(side(loadMe().name || (DE ? 'Ich' : 'Me'), mine, myMaster), side(f.name, theirs, theirMaster));
   }
 
   const cardRow = (e, p, extra = '') => `<li><button type="button" data-name="${esc(e.name)}" data-vkey="${esc(e.vkey || '')}">
@@ -380,6 +412,7 @@ export function createFriends({ api, openCard, loadDecks }) {
 
   // back button: which sheet was closed
   function onBack() {
+    if (quartetOnBack()) return true;
     if (!$('qrscan-page').hidden) { stopScan(); closeSheet('qrscan-page'); return true; }
     if (!$('qr-page').hidden) { clearInterval(carousel); closeSheet('qr-page'); return true; }
     if (!$('friend-page').hidden) { closeSheet('friend-page'); cur = null; renderList(); return true; }

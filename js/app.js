@@ -28,7 +28,10 @@ import { copyText } from './copy.js';
 import { valueSeries } from './depot.js';
 import { bindTiltScan, tiltOnBack } from './tiltui.js';
 import { bindHologram, hologramOnBack } from './hologram.js';
+import { bindQuartet } from './quartetui.js';
 import { loadWatch, loadWish, removeWatch, belowTarget, migrateLists, removeWishId, restoreWish } from './lists.js';
+import { GAME, applyGameStyle } from './game.js';
+import { addLife, addEvent, removeNote } from './life.js';
 import {
   loadCollection, saveCollection, newId, loadPack, savePack, putSample, updateSample, allSamples, countSamples,
 } from './store.js';
@@ -87,7 +90,8 @@ function getLineOcr(lang) {
   }
   return lineReaders.get(lang);
 }
-const textIndex = createTextIndex('data/ygo');
+applyGameStyle();
+const textIndex = createTextIndex(GAME.data);
 
 // ---------- pack mode ----------
 let pack = loadPack();
@@ -177,9 +181,35 @@ function upsertEntry(entry) {
     const old = list[i];
     const same = old.name === entry.name && (old.vkey || null) === (entry.vkey || null);
     list[i] = { ...old, ...entry, added: old.added, buy: same && old.buy ? old.buy : snap };
-  } else list.unshift({ ...entry, buy: snap });
+    // life story: a newly picked version (or a corrected name) is a moment of its own
+    if (!same && entry.vkey && entry.price?.exact) addLife(list[i], { k: 'ver', v: entry.price.label });
+  } else {
+    const e = { ...entry, buy: snap };
+    addLife(e, addEvent(e));
+    if (e.vkey && e.price?.exact) addLife(e, { k: 'ver', v: e.price.label });
+    list.unshift(e);
+  }
   saveCollection(list);
 }
+
+// Life story hooks for the card page (your collection's copy of the card)
+const storyHooks = {
+  story: (s) => (s.collId ? loadCollection().find((e) => e.id === s.collId) || null : null),
+  onNote: (s, note) => {
+    const list = loadCollection();
+    const e = list.find((x) => x.id === s.collId);
+    if (!e) return;
+    addLife(e, { ...note, k: 'note' });
+    saveCollection(list);
+  },
+  onNoteRemove: (s, t) => {
+    const list = loadCollection();
+    const e = list.find((x) => x.id === s.collId);
+    if (!e) return;
+    removeNote(e, t);
+    saveCollection(list);
+  },
+};
 
 // Training example: the cut-out card and the final answer. Saving again replaces it (last choice counts).
 async function saveSample(s) {
@@ -218,6 +248,8 @@ async function addScanned(c, notify = true) {
 
 const scanHooks = {
   own: true,
+  ...storyHooks,
+  story: (s) => (s.added ? storyHooks.story(s) : null),
   addLabel: (s) => (s.added ? 'Saved ✓ – save again' : 'Add to collection'),
   onAdd: async (s) => { await addScanned(s); scanner.renderList(); },
   removeLabel: 'Not a card – remove from this scan',
@@ -231,12 +263,15 @@ const scanHooks = {
 
 const collHooks = {
   own: true,
+  ...storyHooks,
   // condition / language / 1st Edition of your copy
   onCopy: (s, patch) => {
     const list = loadCollection();
     const e = list.find((x) => x.id === s.collId);
     if (!e) return;
     Object.assign(e, patch);
+    const c = copyText(e);
+    if (c) addLife(e, { k: 'copy', c });
     saveCollection(list);
     renderCollection();
   },
@@ -421,6 +456,7 @@ const masters = createMasters({ api, openCard: (s) => openCardPage(s, plainHooks
 const decks = createDecks({ api, openCard: (s) => openCardPage(s, plainHooks) });
 bindTiltScan();
 bindHologram({ detector });
+bindQuartet();
 const friends = createFriends({ api, openCard: (s) => openCardPage(s, plainHooks), loadDecks });
 friends.fromLink();
 window.addEventListener('hashchange', () => friends.fromLink());

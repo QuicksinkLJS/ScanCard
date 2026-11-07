@@ -1,7 +1,9 @@
 // Learning from corrections: when you fix a card's name, the fingerprint of your photo is kept
 // on the phone and compared along with the official ones next time (same card, same light, same sleeve).
 
-const DB = 'cardscan-learn';
+import { gameKey } from './game.js';
+
+const DB = gameKey('cardscan-learn');
 const MAX = 400; // newest first; older ones drop out
 let cache = [];
 let dbp = null;
