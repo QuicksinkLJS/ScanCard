@@ -573,3 +573,9 @@ textarea.field.area { min-height: 92px; resize: vertical; font-family: inherit; 
 /* Your copy / looking for */
 .copy-box summary .muted { margin-left: 6px; font-weight: 400; }
 .copytag { color: var(--text); opacity: .85; }
+
+/* Wishlist sections */
+.wsec { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.wsec .muted { font-weight: 400; }
+.wsec-clear { margin-left: auto; font-size: 13px; font-weight: 500; }
+#wish-list li.have .what b { color: var(--muted); }

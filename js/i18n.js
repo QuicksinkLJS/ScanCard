@@ -116,6 +116,8 @@ Object.assign(DE, {
   'Prices are per version – condition and language don\'t change them.': 'Preise gelten pro Version – Zustand und Sprache ändern sie nicht.',
   'OCG prints (Japanese, Korean, Asian English) have no 1st Edition.': 'OCG-Drucke (Japanisch, Koreanisch, Asian English) haben keine 1st Edition.',
   'Japanese (OCG)': 'Japanisch (OCG)', 'Korean (OCG)': 'Koreanisch (OCG)', 'Asian English (OCG)': 'Asian English (OCG)',
+  'Singles': 'Einzelkarten', '♡ Missing cards to the wishlist': '♡ Fehlende Karten auf die Wunschliste', 'All missing cards are already on your wishlist': 'Alle fehlenden Karten sind schon auf deiner Wunschliste',
+  '✓ in your collection': '✓ in deiner Sammlung', 'complete ✓': 'komplett ✓',
   'Big moment': 'Big Moment', 'Value · approx. last 30 days': 'Wert · ca. letzte 30 Tage', '30-day avg.': 'Ø 30 Tage', '7-day avg.': 'Ø 7 Tage',
   'yesterday': 'gestern', 'today': 'heute', '🂠 Draw test hand': '🂠 Testhand ziehen', '🂠 New test hand': '🂠 Neue Testhand', 'Draw again': 'Neu ziehen',
   '+1 card': '+1 Karte', 'Test hand': 'Testhand', 'No main deck': 'Kein Main Deck', 'Deck value (max rarity)': 'Deckwert (höchste Seltenheit)',
@@ -141,6 +143,10 @@ Object.assign(DE, {
 
 // [pattern, German] for texts with numbers or names in them
 const P = [
+  [/^(\d+) cards? on your wishlist \(Collection › Wishlist\)$/, '$1 Karte(n) auf deiner Wunschliste (Sammlung › Wunschliste)'],
+  [/^(\d+) cards? removed from your wishlist$/, '$1 Karte(n) von der Wunschliste entfernt'],
+  [/^(\d+) missing · from (.+)$/, '$1 fehlen · ab $2'],
+  [/^(\d+) missing · approx\. (.+)$/, '$1 fehlen · ca. $2'],
   [/^looking for (.+)$/, 'gesucht: $1'],
   [/^(\d+) cards? on your watchlist at your target price – see Market › Watchlist$/, '$1 Karte(n) auf deiner Merkliste zum Wunschpreis – siehe Markt › Merkliste'],
   [/^Marked when it is (.+) or less$/, 'Markiert, wenn sie $1 oder weniger kostet'],

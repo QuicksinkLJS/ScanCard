@@ -33,17 +33,23 @@ export function ownedCounts() {
 export function createMasters({ api, openCard, onCollectionChange = () => {} }) {
   let cur = null; // {exp, name, target, entries, filter, rarity}
 
+  // progress of every tracked set: [{t, p: {have, total, missingValue}}]
+  async function summaries() {
+    const tracked = loadTracked();
+    const { all } = ownedCounts();
+    return Promise.all(tracked.map(async (t) => {
+      const entries = await api.setEntries(t.exp).catch(() => []);
+      const hid = new Set(t.hidden || []);
+      return { t, p: progress(entries.filter((e) => !hid.has(e.key)), all, t.target || 1) };
+    }));
+  }
+
   async function renderList() {
     const tracked = loadTracked();
     const ul = $('masters-list');
     $('masters-empty').hidden = tracked.length > 0;
     if (!tracked.length) { ul.innerHTML = ''; return; }
-    const { all } = ownedCounts();
-    const rows = await Promise.all(tracked.map(async (t) => {
-      const entries = await api.setEntries(t.exp).catch(() => []);
-      const hid = new Set(t.hidden || []);
-      return { t, p: progress(entries.filter((e) => !hid.has(e.key)), all, t.target || 1) };
-    }));
+    const rows = await summaries();
     ul.innerHTML = rows.map(({ t, p }) => `
       <li><button type="button" data-exp="${t.exp}">
         <span class="what"><b>${esc(t.name)}</b>
@@ -269,5 +275,5 @@ export function createMasters({ api, openCard, onCollectionChange = () => {} }) 
   function closeSet() { $('set-page').hidden = true; syncBody(); renderList(); }
   $('set-back').addEventListener('click', () => history.back());
 
-  return { renderList, openSet, closeSet, refresh: () => { if (cur && !$('set-page').hidden) renderSet(); } };
+  return { renderList, summaries, openSet, closeSet, refresh: () => { if (cur && !$('set-page').hidden) renderSet(); } };
 }

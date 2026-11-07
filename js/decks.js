@@ -1,6 +1,7 @@
 // Decks: import a deck, see which cards you have (any version or language counts) and what the rest costs.
 
 import { $, esc, eur, toast, countTo } from './util.js';
+import { loadWish, addWish, removeWishId } from './lists.js';
 import { fanHTML, drawHand } from './fan.js';
 import { holoKind } from './holo.js';
 import { normName } from './parse.js';
@@ -140,6 +141,7 @@ export function createDecks({ api, openCard }) {
       </details>
       ${section('main', 'Main deck')}${section('extra', 'Extra deck')}${section('side', 'Side deck')}
       <p class="muted small">You count as having a card when your collection has it in any version or language. Prices are Cardmarket trend prices of the version – they don't depend on language or condition, so take them as a guide.</p>
+      <button type="button" class="btn wide" id="deck-wish" ${a.need === a.have ? 'hidden' : ''}>♡ Missing cards to the wishlist</button>
       <button type="button" class="btn wide primary" id="deck-wants">Copy as Cardmarket wants list</button>
       <p class="muted small" id="deck-wants-note"></p>
       <button type="button" class="btn wide danger" id="deck-delete">Delete deck</button>`;
@@ -163,6 +165,21 @@ export function createDecks({ api, openCard }) {
       const r = cur.rows.find((x) => x.name === b.dataset.name);
       openCard({ name: b.dataset.name, vkey: r?.pick && prefs.mode === 'max' ? r.pick.key : null });
     }));
+    // missing cards to the wishlist, as their own section (cards already wished stay where they are)
+    $('deck-wish').addEventListener('click', () => {
+      const have = new Set(loadWish().map((w) => normName(w.name)));
+      const added = [];
+      for (const r of cur.rows) {
+        if (!r.missing || have.has(normName(r.name))) continue;
+        have.add(normName(r.name));
+        const label = r.pick && prefs.mode === 'max' ? [r.pick.set, versionLabel(r.pick)].join(' · ') : 'any version';
+        added.push(addWish({ name: r.name, vkey: r.pick && prefs.mode === 'max' ? r.pick.key : null }, { lo: r.pick?.trend ?? null, label },
+          { group: 'deck', deck: { id: deck.id, name: deck.name }, lang: prefs.lang || 'any', first: prefs.first ? true : null, cond: prefs.cond || null }));
+      }
+      if (!added.length) { toast('All missing cards are already on your wishlist'); return; }
+      toast(`${added.length} card${added.length > 1 ? 's' : ''} on your wishlist (Collection › Wishlist)`, 5000,
+        { label: 'Undo', run: () => { for (const w of added) removeWishId(w.id); toast('Undone'); } });
+    });
     $('deck-wants').addEventListener('click', async () => {
       const text = wantsLines(cur.rows);
       if (!text) { toast('Nothing missing'); return; }

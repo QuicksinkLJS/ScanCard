@@ -2,7 +2,7 @@
 
 import { startI18n, lang, setLang } from './i18n.js';
 import { $, esc, eur, range, toast, countTo, loadImage, canvasBlob, blobToDataURL, thumbOf } from './util.js';
-import { parseManualCode, valueTier } from './parse.js';
+import { parseManualCode, valueTier, normName } from './parse.js';
 import { baseOf } from './codematch.js';
 import { createApi } from './api.js';
 import { createOcr } from './ocr.js';
@@ -20,7 +20,7 @@ import { openHolo, closeHolo, holoKind, holoCardHTML } from './holo.js';
 import { fanHTML } from './fan.js';
 import { copyText } from './copy.js';
 import { valueSeries } from './depot.js';
-import { loadWatch, loadWish, removeWatch, belowTarget, migrateLists } from './lists.js';
+import { loadWatch, loadWish, removeWatch, belowTarget, migrateLists, removeWishId, restoreWish } from './lists.js';
 import {
   loadCollection, saveCollection, newId, loadPack, savePack, putSample, updateSample, allSamples, countSamples,
 } from './store.js';
@@ -409,14 +409,48 @@ document.querySelectorAll('#coll-tabs [data-ctab]').forEach((b) => b.addEventLis
 
 // ---------- wishlist and watchlist ----------
 migrateLists(); // once: old wishlist target prices move to the watchlist
+// Wishlist in sections: single cards, one per deck (missing cards added from the deck page), mastersets (summary).
 async function renderWish() {
   const list = loadWish();
-  $('wish-empty').hidden = list.length > 0;
-  const rows = await Promise.all(list.map(async (w) => ({ w, p: await quickPrice(api, { name: w.name, vkey: w.vkey }).catch(() => null) })));
-  $('wish-list').innerHTML = rows.map(({ w, p }) => `<li><button type="button" data-name="${esc(w.name)}" data-vkey="${esc(w.vkey || '')}">
-      <span class="what"><b>${esc(w.name)}</b><small>${esc(w.label || p?.label || '')}${copyText(w, { wish: true }) ? ` · <span class="copytag">looking for ${esc(copyText(w, { wish: true }))}</span>` : ''}</small></span>
-      <span class="eur">${range(p?.lo, p?.hi)}</span></button></li>`).join('');
-  $('wish-list').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => openCardPage({ name: b.dataset.name, vkey: b.dataset.vkey || null }, plainHooks)));
+  const sets = await masters.summaries().catch(() => []);
+  $('wish-empty').hidden = list.length > 0 || sets.length > 0;
+  const owned = new Set(loadCollection().map((e) => normName(e.name)));
+  const prices = new Map(await Promise.all(list.map(async (w) => [w.id, await quickPrice(api, { name: w.name, vkey: w.vkey }).catch(() => null)])));
+  const row = (w) => {
+    const p = prices.get(w.id);
+    const have = w.group === 'deck' && owned.has(normName(w.name));
+    const want = copyText(w, { wish: true });
+    return `<li class="${have ? 'have' : ''}"><button type="button" data-name="${esc(w.name)}" data-vkey="${esc(w.vkey || '')}">
+      <span class="what"><b>${esc(w.name)}</b><small>${have ? '<span class="dealtag">✓ in your collection</span> ' : ''}${esc(w.label || p?.label || '')}${want ? ` · <span class="copytag">looking for ${esc(want)}</span>` : ''}</small></span>
+      <span class="eur">${range(p?.lo, p?.hi)}</span></button></li>`;
+  };
+  const singles = list.filter((w) => w.group !== 'deck');
+  const decks = new Map();
+  for (const w of list) if (w.group === 'deck') { const k = w.deck?.id || '?'; if (!decks.has(k)) decks.set(k, { deck: w.deck, items: [] }); decks.get(k).items.push(w); }
+  const sum = (items) => items.reduce((v, w) => v + (prices.get(w.id)?.lo || 0), 0);
+  let html = '';
+  if (singles.length) html += `<h2 class="wsec">Singles <span class="muted small">${singles.length}</span></h2><ul class="rows">${singles.map(row).join('')}</ul>`;
+  for (const [id, g] of decks) {
+    const open = g.items.filter((w) => !owned.has(normName(w.name))).length;
+    html += `<h2 class="wsec">${esc(g.deck?.name || 'Deck')} <span class="muted small">${open ? `${open} missing · from ${eur(sum(g.items))}` : 'complete ✓'}</span>
+      <button type="button" class="link wsec-clear" data-deck="${esc(id)}">Remove</button></h2><ul class="rows">${g.items.map(row).join('')}</ul>`;
+  }
+  if (sets.length) {
+    html += `<h2 class="wsec">Mastersets <span class="muted small">${sets.length}</span></h2><ul class="rows">${sets.map(({ t, p }) => `
+      <li><button type="button" data-exp="${t.exp}"><span class="what"><b>${esc(t.name)}</b>
+        <small>${p.total - p.have} missing · approx. ${eur(p.missingValue)}</small></span>
+        <span class="eur">${p.have}/${p.total}</span></button></li>`).join('')}</ul>`;
+  }
+  const el = $('wish-list');
+  el.innerHTML = html;
+  el.querySelectorAll('button[data-name]').forEach((b) => b.addEventListener('click', () => openCardPage({ name: b.dataset.name, vkey: b.dataset.vkey || null }, plainHooks)));
+  el.querySelectorAll('button[data-exp]').forEach((b) => b.addEventListener('click', () => masters.openSet(Number(b.dataset.exp))));
+  el.querySelectorAll('.wsec-clear').forEach((b) => b.addEventListener('click', () => {
+    const gone = loadWish().filter((w) => w.group === 'deck' && (w.deck?.id || '?') === b.dataset.deck);
+    for (const w of gone) removeWishId(w.id);
+    renderWish();
+    toast(`${gone.length} card${gone.length > 1 ? 's' : ''} removed from your wishlist`, 5000, { label: 'Undo', run: () => { for (const w of gone.reverse()) restoreWish(w); renderWish(); } });
+  }));
 }
 
 // Watchlist: price since you marked it; with a target price, cards at or below it come first and are marked.
