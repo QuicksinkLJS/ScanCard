@@ -84,7 +84,8 @@ export function createMasters({ api, openCard, onCollectionChange = () => {} }) 
   }
   $('masters-search').addEventListener('input', (e) => search(e.target.value));
 
-  async function openSet(exp) {
+  // highlight: a version key to show in the binder (from the binder assistant)
+  async function openSet(exp, { highlight = null } = {}) {
     const t = loadTracked().find((x) => x.exp === exp);
     if (!t) return;
     const page = $('set-page');
@@ -99,7 +100,9 @@ export function createMasters({ api, openCard, onCollectionChange = () => {} }) 
       entries = fillCodes(entries, infos);
     }
     cur = { ...t, entries, filter: cur?.exp === exp ? cur.filter : 'missing', rarity: cur?.exp === exp ? cur.rarity : '', view: cur?.exp === exp ? cur.view : 'list', showHidden: false, sort: t.sort || 'number' };
+    if (highlight) { cur.view = 'binder'; cur.rarity = ''; }
     renderSet();
+    if (highlight) showPocket(String(highlight));
   }
 
   const saveHidden = (keys) => {
@@ -148,7 +151,7 @@ export function createMasters({ api, openCard, onCollectionChange = () => {} }) 
     const p = progress(entries, all, target);
     const rarities = [...new Set(entries.map((e) => e.rarity || ''))].sort((a, b) => rarityRank(a) - rarityRank(b));
     const have = (e) => Math.min(all[e.key] || 0, target);
-    const byRarity = (e) => !cur.rarity || (e.rarity || '') === cur.rarity;
+    const byRarity = (e) => !cur.rarity || (cur.rarity === '__none' ? !e.rarity : (e.rarity || '') === cur.rarity);
     const sortOpts = { have, target, rank: (r) => { const k = rarityRank(r); return k >= 99 ? -1 : k; }, value: (e) => fairTrend(e).v ?? e.trend };
     const sorted = (l) => sortEntries(l, cur.sort, sortOpts);
     let list = sorted((cur.showHidden ? cur.entries : entries).filter(byRarity));
@@ -185,7 +188,7 @@ export function createMasters({ api, openCard, onCollectionChange = () => {} }) 
       </label>
       <div class="chips">
         <button type="button" class="chip ${!cur.rarity ? 'on' : ''}" data-r="">All rarities</button>
-        ${rarities.map((r) => `<button type="button" class="chip ${cur.rarity === r ? 'on' : ''}" data-r="${esc(r)}">${esc(r || 'Rarity unknown')}</button>`).join('')}
+        ${rarities.map((r) => { const v = r || '__none'; return `<button type="button" class="chip ${cur.rarity === v ? 'on' : ''}" data-r="${esc(v)}">${esc(r || 'Rarity unknown')}</button>`; }).join('')}
         ${hidden.size ? `<button type="button" class="chip ${cur.showHidden ? 'on' : ''}" id="set-hidden">Left out ${hidden.size}</button>` : ''}
       </div>
       ${cur.view === 'binder' ? `
@@ -287,6 +290,16 @@ export function createMasters({ api, openCard, onCollectionChange = () => {} }) 
       renderList();
       toast('Set removed');
     });
+  }
+
+  function showPocket(key) {
+    const el = $('set-body').querySelector(`.pocket[data-key="${key}"]`);
+    const binder = $('binder');
+    if (!el || !binder) return;
+    const page = el.closest('.bpage');
+    binder.scrollTo({ left: page.offsetLeft - binder.offsetLeft, behavior: 'instant' });
+    el.classList.add('spot');
+    setTimeout(() => el.classList.remove('spot'), 4000);
   }
 
   function closeSet() { $('set-page').hidden = true; syncBody(); renderList(); }

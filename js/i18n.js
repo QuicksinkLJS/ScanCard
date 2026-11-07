@@ -141,6 +141,7 @@ Object.assign(DE, {
   'Cards without a chosen version are left out – pick the version on the card page first.': 'Karten ohne gewählte Version fehlen – wähle die Version zuerst auf der Kartenseite.',
   'Your collection, wishlist, decks, sets and friends are only on this phone. Save a backup now and then – for a new phone, or if the browser data gets cleared.': 'Sammlung, Wunschliste, Decks, Sets und Freunde liegen nur auf diesem Handy. Speichere ab und zu eine Sicherung – für ein neues Handy oder falls die Browserdaten gelöscht werden.',
   'The sell list has one row per version with its Cardmarket product id, quantity, language and condition – the format seller tools like TCG PowerTools import.': 'Die Verkaufsliste hat je Version eine Zeile mit Cardmarket-Produkt-ID, Menge, Sprache und Zustand – das Format, das Verkäufer-Tools wie TCG PowerTools einlesen.',
+  'Binder': 'Binder', 'Deck': 'Deck', 'missing in a set you collect': 'fehlt in einem Set, das du sammelst', 'a deck still needs it': 'ein Deck braucht sie noch',
   'Big moment': 'Big Moment', 'Value · approx. last 30 days': 'Wert · ca. letzte 30 Tage', '30-day avg.': 'Ø 30 Tage', '7-day avg.': 'Ø 7 Tage',
   'yesterday': 'gestern', 'today': 'heute', '🂠 Draw test hand': '🂠 Testhand ziehen', '🂠 New test hand': '🂠 Neue Testhand', 'Draw again': 'Neu ziehen',
   '+1 card': '+1 Karte', 'Test hand': 'Testhand', 'No main deck': 'Kein Main Deck', 'Deck value (max rarity)': 'Deckwert (höchste Seltenheit)',
@@ -166,6 +167,7 @@ Object.assign(DE, {
 
 // [pattern, German] for texts with numbers or names in them
 const P = [
+  [/^📒 (.+) · pick version$/, '📒 $1 · Version wählen'],
   [/^Backup from (.+) with (\d+) cards\. Everything on this phone is replaced by it\.$/, 'Sicherung vom $1 mit $2 Karten. Alles auf diesem Handy wird dadurch ersetzt.'],
   [/^(\d+) cards? without a version left out$/, '$1 Karte(n) ohne Version ausgelassen'],
   [/^(\d+) cards? · (one code|(\d+) codes in turn – let your friend hold the camera on it)$/, (m, n, x, k) => `${n} Karten · ${k ? `${k} Codes nacheinander – dein Freund hält die Kamera drauf` : 'ein Code'}`],

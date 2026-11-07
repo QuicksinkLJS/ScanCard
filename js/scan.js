@@ -9,6 +9,7 @@ import { valueTier } from './parse.js';
 import { quickPrice } from './cardpage.js';
 import { sharePulls } from './share.js';
 import { pileOf, PILES } from './sortpile.js';
+import { shortSet } from './placement.js';
 import { versionImage } from './prices.js';
 import { openReveal } from './reveal.js';
 import { loadWish } from './lists.js';
@@ -21,7 +22,7 @@ const SHOW_MAX = 1600; // longest side of the photo shown on screen
 
 export function bigMomentOn() { try { return localStorage.getItem('cardscan-bigmoment') !== 'off'; } catch { return true; } }
 
-export function createScanner({ api, recognizer, detector, getOcr, getLineOcr = null, textIndex = null, getPack, setPack, onOpen, onAddAll, setStatus, onCorrect = () => {} }) {
+export function createScanner({ api, recognizer, detector, getOcr, getLineOcr = null, textIndex = null, placer = null, onSpot = null, getPack, setPack, onOpen, onAddAll, setStatus, onCorrect = () => {} }) {
   let scanId = 0;
   let cards = [];   // the cards of the current photo
   let photoSize = null;
@@ -331,10 +332,36 @@ export function createScanner({ api, recognizer, detector, getOcr, getLineOcr = 
     svg.querySelectorAll('g').forEach((g) => g.addEventListener('click', () => open(Number(g.dataset.n))));
   }
 
+  // ---------- piles + binder assistant: where each card goes ----------
+  let spots = new Map(), spotKey = '';
+  const spotOf = (c) => spots.get(c) || null;
+  function pileTag(c) {
+    const s = spotOf(c);
+    if (s?.kind === 'binder') return `<span class="pile p-binder" data-spot="${c.n}">📒 ${esc(shortSet(s.set))} · p.${s.page} #${s.pocket}</span> `;
+    if (s?.kind === 'binder?') return `<span class="pile p-binder" data-spot="${c.n}">📒 ${esc(shortSet(s.set))} · pick version</span> `;
+    if (s?.kind === 'deck') return `<span class="pile p-deck">🂠 ${esc(s.deck)}</span> `;
+    return `<span class="pile p-${pileOf(c.price)}">${PILES[pileOf(c.price)].label}</span> `;
+  }
+  async function updateSpots() {
+    if (!placer || !piles || !cards.length) return;
+    const key = cards.map((c) => `${c.n}:${c.name}:${c.vkey || ''}`).join('|');
+    if (key === spotKey) return;
+    spotKey = key;
+    const id = scanId;
+    try {
+      const m = await placer.place(cards);
+      if (id !== scanId || key !== spotKey) return;
+      spots = m;
+      renderList(true);
+    } catch (e) { console.warn('placement failed', e); }
+  }
+
   function renderList(fromAlerts = false) {
     renderMarks();
+    updateSpots();
     if (!fromAlerts && cards.length) computeAlerts();
     const sorted = [...cards].sort((a, b) => (b.price?.hi ?? -1) - (a.price?.hi ?? -1));
+    if (!piles) spotKey = '';
     $('found').innerHTML = sorted.map((c) => {
       const codeLine = {
         waiting: '', reading: 'reading set code…', none: 'set code not readable', done: '',
@@ -343,12 +370,18 @@ export function createScanner({ api, recognizer, detector, getOcr, getLineOcr = 
       return `<li><button type="button" data-n="${c.n}">
         <span class="badge-num ${tierOf(c)}">${c.n}</span>
         <img class="thumb" src="${c.thumb}" alt="">
-        <span class="what"><b>${esc(c.name)}</b><small>${(c.alerts || []).map((a) => `<span class="alarm a-${a.kind}">${a.kind === 'wish' ? '♥' : '★'} ${esc(a.text)}</span> `).join('')}${piles ? `<span class="pile p-${pileOf(c.price)}">${PILES[pileOf(c.price)].label}</span> ` : ''}${c.confident ? '' : '<span class="unsure">check</span> '}${c.readBy ? `<span class="readby" title="${esc(c.readFrom ? `Picture said ${c.readFrom}` : '')}">${c.readBy === 'effect' ? 'read from the text' : 'read from the name'}</span> ` : ''}${esc(sub)}</small></span>
+        <span class="what"><b>${esc(c.name)}</b><small>${(c.alerts || []).map((a) => `<span class="alarm a-${a.kind}">${a.kind === 'wish' ? '♥' : '★'} ${esc(a.text)}</span> `).join('')}${piles ? pileTag(c) : ''}${c.confident ? '' : '<span class="unsure">check</span> '}${c.readBy ? `<span class="readby" title="${esc(c.readFrom ? `Picture said ${c.readFrom}` : '')}">${c.readBy === 'effect' ? 'read from the text' : 'read from the name'}</span> ` : ''}${esc(sub)}</small></span>
         <span class="eur">${range(c.price?.lo, c.price?.hi)}${c.added ? '<small>added ✓</small>' : ''}</span>
       </button>${!c.confident && c.top?.length > 1 ? `<div class="dym"><small>Did you mean…?</small><div class="dym-row">${c.top.slice(0, 3).map((t, k) => `
         <button type="button" class="dym-c" data-n="${c.n}" data-name="${esc(t.name)}"><img data-pic="${esc(t.name)}" alt=""><span>${esc(t.name)}</span>${k === 0 ? '<em>current guess</em>' : ''}</button>`).join('')}</div></div>` : ''}</li>`;
     }).join('');
     $('found').querySelectorAll('.dym-c').forEach((b) => b.addEventListener('click', () => pick(Number(b.dataset.n), b.dataset.name)));
+    $('found').querySelectorAll('[data-spot]').forEach((t) => t.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      const c = cards.find((x) => x.n === Number(t.dataset.spot));
+      const sp = c && spotOf(c);
+      if (sp && onSpot) onSpot(sp, c);
+    }));
     fillPictures();
     $('found').querySelectorAll('li > button').forEach((b) => b.addEventListener('click', () => open(Number(b.dataset.n))));
     const lo = cards.reduce((s, c) => s + (c.price?.lo || 0), 0);
@@ -367,8 +400,9 @@ export function createScanner({ api, recognizer, detector, getOcr, getLineOcr = 
     ps.hidden = !piles || !cards.length;
     if (piles) {
       const n = {};
-      for (const c of cards) { const k = pileOf(c.price); n[k] = (n[k] || 0) + 1; }
-      ps.innerHTML = ['sell', 'keep', 'bulk', 'check'].filter((k) => n[k]).map((k) => `<span class="pile p-${k}">${n[k]} ${PILES[k].label}</span> <span>${PILES[k].hint}</span>`).join(' · ');
+      for (const c of cards) { const sp = spotOf(c); const k = sp ? (sp.kind === 'deck' ? 'deck' : 'binder') : pileOf(c.price); n[k] = (n[k] || 0) + 1; }
+      const label = { binder: ['Binder', 'missing in a set you collect'], deck: ['Deck', 'a deck still needs it'] };
+      ps.innerHTML = ['binder', 'deck', 'sell', 'keep', 'bulk', 'check'].filter((k) => n[k]).map((k) => `<span class="pile p-${k}">${n[k]} ${label[k]?.[0] || PILES[k].label}</span> <span>${label[k]?.[1] || PILES[k].hint}</span>`).join(' · ');
     }
     renderBalance(lo, hi);
     celebrate();

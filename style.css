@@ -639,3 +639,9 @@ html, body { overflow-x: clip; }
 #friend-body .rows button { display: flex; align-items: center; gap: 10px; }
 #friend-body .row { display: flex; align-items: center; gap: 10px; }
 #friend-body .what { min-width: 0; flex: 1; }
+
+/* Binder assistant: where a scanned card goes */
+.pile.p-binder { background: rgba(140,120,255,.2); color: #b9a8ff; cursor: pointer; }
+.pile.p-deck { background: rgba(90,180,255,.18); color: #7cc4ff; }
+.pocket.spot { outline: 3px solid #ffd76a; outline-offset: 2px; animation: spot-pulse 1s ease-in-out 3; z-index: 2; }
+@keyframes spot-pulse { 50% { outline-color: rgba(255,215,106,.25); transform: scale(1.04); } }

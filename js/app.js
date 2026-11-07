@@ -19,6 +19,8 @@ import { createMasters } from './masters.js';
 import { createDecks } from './decks.js';
 import { openHolo, closeHolo, holoKind, holoCardHTML } from './holo.js';
 import { fanHTML } from './fan.js';
+import { createPlacer } from './placement.js';
+import { loadTracked, ownedCounts } from './masters.js';
 import { makeBackup, readBackup, restoreBackup, collectionCsv, sellCsv, saveFile } from './backup.js';
 import { createFriends } from './friendsui.js';
 import { loadDecks } from './decks.js';
@@ -100,6 +102,10 @@ setPack(pack);
 let mode = 'multi';
 const scanner = createScanner({
   api, recognizer, detector, getOcr, getLineOcr, textIndex, setStatus,
+  placer: createPlacer({ api, loadTracked, ownedCounts, loadDecks, loadCollection }),
+  onSpot: (sp, c) => {
+    if (sp.kind === 'binder' || sp.kind === 'binder?') { showView('collection'); masters.openSet(sp.exp, { highlight: sp.key || null }); }
+  },
   getPack: () => pack,
   setPack,
   onOpen: (c) => openCardPage(c, scanHooks),
