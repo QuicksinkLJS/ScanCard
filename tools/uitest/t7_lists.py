@@ -1,0 +1,23 @@
+import sys; sys.path.insert(0, __import__('os').path.dirname(__file__))
+from harness import *
+with sync_playwright() as p:
+    b, page = open_app(p)
+    open_card(page, 'Snake-Eyes Diabellstar')
+    page.click('#card-body .versions button >> nth=2'); page.wait_for_timeout(200)
+    page.click('#card-watch'); page.wait_for_timeout(200)
+    page.click('#card-wish'); page.fill('#wish-target', '20'); page.click('#wish-form button[type=submit]'); page.wait_for_timeout(200)
+    print(page.inner_text('#card-body .actions >> nth=1'))
+    page.go_back(); page.wait_for_timeout(200)
+    open_card(page, 'Dark Magician')
+    page.click('#card-wish'); page.fill('#wish-target', '0.01'); page.click('#wish-form button[type=submit]'); page.wait_for_timeout(200)
+    page.go_back(); page.wait_for_timeout(200)
+    # pretend price was lower when marked
+    page.evaluate("() => { const l = JSON.parse(localStorage.getItem('cardscan-watch-v1')); l[0].at = 10; localStorage.setItem('cardscan-watch-v1', JSON.stringify(l)); }")
+    page.click('nav.tabs button[data-view=market]'); page.click('[data-mtab=watch]'); page.wait_for_timeout(800)
+    print('WATCH', page.inner_text('#watch-list'))
+    page.click('nav.tabs button[data-view=collection]'); page.click('[data-ctab=wish]'); page.wait_for_timeout(800)
+    print('WISH', page.inner_text('#wish-list'))
+    page.screenshot(path='/home/claude/shots/t7_wish.png')
+    page.reload(); page.wait_for_timeout(4000)
+    print('TOAST', page.inner_text('#toast'))
+    b.close()

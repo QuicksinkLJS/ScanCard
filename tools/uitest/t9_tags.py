@@ -1,0 +1,17 @@
+import sys; sys.path.insert(0, __import__('os').path.dirname(__file__))
+from harness import *
+with sync_playwright() as p:
+    b, page = open_app(p)
+    page.set_input_files('#gallery', '/home/claude/photos/414d4e04-image.jpg')
+    page.wait_for_timeout(1500)
+    print('scanning class during scan:', page.evaluate("document.querySelector('.photo-wrap').classList.contains('scanning')"))
+    page.screenshot(path='/home/claude/shots/t9_scanning.png')
+    page.wait_for_selector('#found li', timeout=180000); page.wait_for_timeout(1500)
+    print('scanning after:', page.evaluate("document.querySelector('.photo-wrap').classList.contains('scanning')"))
+    print('tags', page.evaluate("[...document.querySelectorAll('#marks .ptxt')].map(t=>t.textContent)"), 'best', page.evaluate("document.querySelectorAll('#marks g.best').length"))
+    page.locator('.photo-wrap').screenshot(path='/home/claude/shots/t9_tags.png')
+    page.click('#found button >> nth=0'); page.wait_for_timeout(600)
+    page.click('#card-body .versions button >> nth=0'); page.wait_for_timeout(400)
+    print('compare', page.is_visible('#card-body .compare'), 'holo btn', page.is_visible('#card-holo'))
+    page.screenshot(path='/home/claude/shots/t9_compare.png')
+    b.close()
