@@ -128,7 +128,7 @@ function render() {
     <li class="${o.key === s.vkey ? 'on' : ''}"><button type="button" data-key="${esc(o.key)}">
       <span class="radio"></span>
       <span class="what">${esc(o.set)}${o.year ? ` (${o.year})` : ''}${o.likely ? '<span class="likely">LIKELY</span>' : ''}
-        <small>${esc([optionCode(o, lang?.code), o.rarities.join(' / '), o.variants > 1 ? `version ${o.variant} of ${o.variants}` : ''].filter(Boolean).join(' · '))}</small></span>
+        <small>${esc([optionCode(o, lang?.code), o.rarities.length > 2 ? `${o.rarities.length} rarities` : o.rarities.join(' / '), o.variants > 1 ? `version ${o.variant} of ${o.variants}` : ''].filter(Boolean).join(' · '))}</small></span>
       <span class="eur">${eur(o.trend)}</span>
     </button></li>`).join('');
 

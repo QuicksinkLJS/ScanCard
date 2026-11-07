@@ -355,5 +355,29 @@ setTimeout(() => recognizer.ready().then(() => {
   detector.ready().then(() => setStatus('')).catch(() => setStatus(''));
 }).catch(() => {}), 500);
 
+// Installable app + offline start
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  navigator.serviceWorker.register('sw.js').catch((e) => console.warn('no service worker', e));
+}
+
+let installPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  installPrompt = e;
+  $('install').hidden = false;
+});
+$('install').addEventListener('click', async () => {
+  if (!installPrompt) return;
+  installPrompt.prompt();
+  await installPrompt.userChoice.catch(() => null);
+  installPrompt = null;
+  $('install').hidden = true;
+});
+// inside the Android app: no need to offer the download
+if (/CardScanApp/.test(navigator.userAgent) || window.matchMedia('(display-mode: standalone)').matches) {
+  $('apk-link').hidden = true;
+  $('install-note').hidden = true;
+}
+
 // for tests
 window.cardscan = { scanner, api, setPack, showView };

@@ -3,10 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#1f1e1d">
+  <meta name="theme-color" content="#0d0d11">
   <title>CardScan</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -94,6 +95,11 @@
         <input id="manual-code" class="field" type="text" placeholder="e.g. LOB-EN001" autocapitalize="characters" spellcheck="false">
         <button class="btn" type="submit">Look up</button>
       </form>
+
+      <h2>Get the app</h2>
+      <button id="install" class="btn wide primary" type="button" hidden>Install CardScan on this phone</button>
+      <a class="btn wide" id="apk-link" href="https://github.com/QuicksinkLJS/ScanCard/releases/latest/download/CardScan.apk">Download Android app (APK)</a>
+      <p class="muted small" id="install-note">Or in Chrome: menu ⋮ → “Install app”. Works offline after the first start.</p>
 
       <h2>Help the scanner learn</h2>
       <p class="muted small">Every card you add or correct is kept on this phone as a training example (picture + right answer). Nothing is uploaded.</p>

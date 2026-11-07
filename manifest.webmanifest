@@ -1,13 +1,19 @@
 {
-  "name": "CardScan",
+  "name": "CardScan – Yu-Gi-Oh card scanner",
   "short_name": "CardScan",
-  "description": "Scan trading cards and see what they might be worth.",
+  "description": "Scan Yu-Gi-Oh cards and see what they are worth on Cardmarket.",
+  "id": "./",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#faf9f5",
-  "theme_color": "#1f1e1d",
+  "orientation": "portrait",
+  "background_color": "#0d0d11",
+  "theme_color": "#0d0d11",
+  "categories": ["utilities", "shopping"],
   "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
     { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
   ]
 }

@@ -89,7 +89,7 @@ jobs:
       - name: Assemble site
         run: |
           mkdir -p _site
-          cp -r index.html style.css manifest.webmanifest icon.svg js data models _site/
+          cp -r index.html style.css manifest.webmanifest sw.js icon.svg icons js data models _site/
 
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -274,6 +274,10 @@ def main():
     exp_name = expansion_names(a.nonsingles)
     exp_date, prices, meta = cm[2], cm[3], cm[5]
     used = {p[0] for vs in data.values() for v in vs for p in v["p"]}
+    matched_name = collections.defaultdict(collections.Counter)  # expansion -> set names it was matched to
+    for vs in data.values():
+        for v in vs:
+            matched_name[v["e"]][v["s"]] += 1
     for vs in data.values():  # show OCG expansions as such
         for v in vs:
             n = exp_name.get(v["e"], "")
@@ -288,7 +292,7 @@ def main():
         d = exp_date.get(exp)
         d = d if d and d > LEGACY else None
         data[f"#{exp}:{k}"] = [{
-            "s": exp_name.get(exp) or f"Cardmarket set #{exp}", "y": d.year if d else None,
+            "s": exp_name.get(exp) or (matched_name[exp].most_common(1)[0][0] if matched_name.get(exp) else f"Cardmarket set #{exp}"), "y": d.year if d else None,
             "d": d.isoformat() if d else None, "r": [], "e": exp, "n": name,
             "p": [[pid] + [prices.get(pid, {}).get(f) for f in ("trend", "avg30", "low", "avg1", "avg7")] for pid in sorted(pids)],
         }]
