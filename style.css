@@ -377,13 +377,14 @@ textarea.field.area { min-height: 92px; resize: vertical; font-family: inherit; 
 @keyframes box-glow { 50% { filter: drop-shadow(0 0 8px rgba(255,207,90,.9)); } }
 
 /* Scan animation: a light sweeping over the photo while it is read */
-.photo-wrap.scanning::after { content: ''; position: absolute; left: 0; right: 0; height: 22%; top: -22%;
+.photo-wrap.scanning::after { content: ''; position: absolute; left: 0; right: 0; height: 22%; top: 0; will-change: transform;
   background: linear-gradient(180deg, transparent, rgba(155,135,255,.35) 70%, rgba(200,190,255,.9) 98%, transparent);
   animation: sweep 1.4s ease-in-out infinite; pointer-events: none; }
 .photo-wrap.scanning::before { content: ''; position: absolute; inset: 0; pointer-events: none;
   background-image: linear-gradient(rgba(155,135,255,.12) 1px, transparent 1px), linear-gradient(90deg, rgba(155,135,255,.12) 1px, transparent 1px);
-  background-size: 28px 28px; animation: gridfade 1.4s ease-in-out infinite; }
-@keyframes sweep { from { top: -22%; } to { top: 100%; } }
+  background-size: 28px 28px; animation: gridfade 1.4s ease-in-out infinite; will-change: opacity; }
+/* transform runs on the compositor: keeps moving while the main thread reads the cards */
+@keyframes sweep { from { transform: translateY(-100%); } to { transform: translateY(455%); } }
 @keyframes gridfade { 50% { opacity: .4; } }
 @media (prefers-reduced-motion: reduce) { .photo-wrap.scanning::after, .marks g.best .ptag, .marks g.best polygon { animation: none; } }
 
