@@ -155,7 +155,7 @@ function render() {
       <a class="btn" href="${cardmarketSearchUrl(info?.name || s.name)}" target="_blank" rel="noopener">Open on Cardmarket</a>
       ${hooks.onAdd ? `<button class="btn primary" type="button" id="card-add">${esc(hooks.addLabel?.(s) || 'Add to collection')}</button>` : ''}
     </div>
-    ${hooks.onRemove ? '<button class="btn wide danger" type="button" id="card-remove">Remove from collection</button>' : ''}
+    ${hooks.onRemove ? `<button class="btn wide danger" type="button" id="card-remove">${esc(hooks.removeLabel || 'Remove from collection')}</button>` : ''}
   `;
 
   $('card-body').querySelectorAll('.versions button').forEach((b) => b.addEventListener('click', () => {
@@ -213,6 +213,6 @@ export async function quickPrice(theApi, s) {
   const lang = s.code?.language || s.language;
   const label = chosen
     ? `${chosen.set}${chosen.year ? ` (${chosen.year})` : ''} · ${optionCode(chosen, lang?.code)}`
-    : best?.length ? `${best[0].set} · ${best.length} versions` : (ranked.length ? `${ranked.length} versions` : 'no price found');
+    : best?.length ? `${best[0].set} · ${best.length} versions` : (ranked.length ? `${ranked.length} version${ranked.length > 1 ? 's' : ''}` : 'no price found');
   return { ...price, label, exact: !!chosen };
 }

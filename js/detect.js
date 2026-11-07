@@ -110,7 +110,7 @@ export function createDetector({ base = 'models/ygo', size = 1024, onStatus = ()
   }
 
   // Returns rotated boxes in photo pixels: {cx, cy, w, h, angle, score}
-  async function find(img, minScore = 0.35) {
+  async function find(img, minScore = 0.6) {
     const { ort, session } = await ready();
     const W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
     const r = Math.min(size / W, size / H);
@@ -141,7 +141,14 @@ export function createDetector({ base = 'models/ygo', size = 1024, onStatus = ()
         angle: o[(ch - 1) * n + i], score,
       });
     }
-    return nms(boxes);
+    // drop cards that are mostly outside the photo (cut off at the edge)
+    const inside = (b) => {
+      const c = corners(b);
+      const clipped = polyArea(clip(orient(c), orient([[0, 0], [W, 0], [W, H], [0, H]])));
+      return clipped / (b.w * b.h);
+    };
+    // also drop boxes that cover nearly the whole photo (close-up of one card: read as one card instead)
+    return nms(boxes).filter((b) => inside(b) > 0.9 && (b.w * b.h) / (W * H) < 0.6);
   }
 
   return { ready, find };

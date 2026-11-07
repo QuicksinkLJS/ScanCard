@@ -148,6 +148,8 @@ async function addScanned(c, notify = true) {
 const scanHooks = {
   addLabel: (s) => (s.added ? 'Saved ✓ – save again' : 'Add to collection'),
   onAdd: async (s) => { await addScanned(s); scanner.renderList(); },
+  removeLabel: 'Not a card – remove from this scan',
+  onRemove: (s) => scanner.remove(s),
   onChange: async (s) => {
     await scanner.refresh(s);
     if (s.added) { upsertEntry(entryFromSubject(s, { id: s.collId })); saveSample(s); }

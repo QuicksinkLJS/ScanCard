@@ -9,26 +9,38 @@ Die App ist wie eine kleine Firma. Jede Datei hat einen Job:
 
 | Datei | Wer das ist | Was die Datei macht |
 | --- | --- | --- |
-| `index.html` | Das Gebäude | Baut den Bildschirm: Knöpfe, Eingabefeld, Liste |
+| `index.html` | Das Gebäude | Baut die vier Bildschirme (Scan, Collection, Market, More), die Kartenseite und die Kamera |
 | `style.css` | Der Innenausstatter | Farben, Abstände, Schrift, Dunkelmodus |
-| `js/app.js` | Der Chef | Entscheidet, was passiert, wenn du einen Knopf drückst, und verteilt die Arbeit |
-| `js/ocr.js` | Die Lupe | Bereitet das Foto vor (Kontrast, Zoom, gerade drehen) und liest den Text |
-| `js/parse.js` | Der Detektiv | Findet im gelesenen Text einen Set-Code wie `LOB-DE001`, korrigiert Lesefehler, erkennt die Sprache |
-| `js/api.js` | Das Nachschlagewerk | Öffnet die passende Set-Datei (`data/ygo/LOB.json`) und holt Karte und Preise |
-| `tools/build_data.py` | Die Preis-Fabrik | Verbindet Cardmarket-Preise mit Set-Codes (läuft bei GitHub, nicht auf dem Handy) |
-| `tools/build_fingerprints.py` | Die Fingerabdruck-Fabrik | Berechnet für jedes Kartenbild einen „Fingerabdruck“ (läuft bei GitHub) |
-| `.github/workflows/` | Die Wecker | Starten die Fabriken automatisch und veröffentlichen die App |
-| `tests/` | Der Kontrolleur | Prüft vor jeder Veröffentlichung, ob Detektiv und Nachschlagewerk richtig arbeiten |
+| `js/app.js` | Der Chef | Reiter, Knöpfe, Sammlung, Markt, Export – verteilt die Arbeit |
+| `js/scan.js` | Der Scanner | Foto → Karten finden → erkennen → Set-Codes lesen → Liste, teuerste zuerst, Markierungen auf dem Foto |
+| `js/detect.js` | Der Kartenfinder | Findet alle Karten im Foto (eigenes Modell, `models/ygo/detector.onnx`) und schneidet sie gerade aus |
+| `js/recognize.js` | Das Gedächtnis | Erkennt die Karte am Artwork (Fingerabdrücke, `models/ygo/`) |
+| `js/ocr.js` | Die Lupe | Liest den Set-Code im kleinen Bereich unter dem Artwork |
+| `js/codematch.js` | Der Abgleicher | Vergleicht das Gelesene mit den Codes, die es für diese Karte wirklich gibt (Lesefehler erlaubt) |
+| `js/cardpage.js` | Die Kartenseite | Versionen, Preise gestern/7/30 Tage/Trend, Turnierstatus, Korrektur |
+| `js/prices.js` | Der Buchhalter | Welche Version ist wahrscheinlich, welcher Preis gilt, welche Werte sind Ausreißer |
+| `js/store.js` | Das Lager | Sammlung (localStorage) und Trainingsbeispiele (IndexedDB) auf dem Handy |
+| `js/parse.js` | Der Detektiv | Set-Code-Muster, Sprachen, Namen vereinheitlichen |
+| `js/api.js` | Das Nachschlagewerk | Lädt die Daten-Dateien unter `data/ygo/` |
+| `tools/build_data.py` | Die Preis-Fabrik | Verbindet Cardmarket-Preise mit Set-Codes (läuft täglich bei GitHub) |
+| `.github/workflows/` | Der Wecker | Baut die Daten jeden Morgen neu und veröffentlicht die App |
+| `tests/` | Der Kontrolleur | Prüft vor jeder Veröffentlichung Detektiv, Abgleicher und Buchhalter |
 
 ## Was beim Scannen passiert
 
-1. Du machst ein Foto. **Der Chef** (`app.js`) gibt es an **die Lupe** (`ocr.js`).
-2. Die Lupe macht das Bild kontrastreicher und liest allen Text darauf. Klappt das nicht, versucht sie es mit Zoom auf den Set-Code-Bereich und mit leicht gedrehtem Bild.
-3. **Der Detektiv** (`parse.js`) sucht im Text nach etwas, das wie ein Set-Code aussieht:
-   Buchstaben/Zahlen, Bindestrich, Sprachkürzel, dreistellige Nummer. Aus `LOB-DEO01` macht er `LOB-DE001` (O → 0).
-   Am Kürzel erkennt er die Sprache: `DE` und `G` = Deutsch, `EN`, `E` oder nichts = Englisch, `JP` = Japanisch …
-4. **Das Nachschlagewerk** (`api.js`) öffnet nur die Datei des Sets (z. B. `LOB.json`, ca. 10 KB) und sucht den Code.
-5. Der Chef zeigt das Ergebnis an und färbt es: rot = kann über 10 € wert sein, gelb = 1–10 €, grau = unter 1 €.
+1. Du legst mehrere Karten nebeneinander und machst ein Foto (volle Kamera-Auflösung).
+2. **Der Kartenfinder** sucht alle Karten im Foto, auch schräg liegende, und schneidet jede gerade aus.
+   Ist das Modell nicht da oder findet nichts, wird das Foto als eine Karte gelesen.
+3. **Das Gedächtnis** erkennt jede Karte am Artwork – egal welche Sprache. Es merkt sich auch, ob die Karte auf dem Kopf lag.
+4. Die Liste erscheint sofort mit Preisspanne (alle Versionen dieser Karte), teuerste zuerst, und farbigen Nummern auf dem Foto.
+5. Danach liest **die Lupe** Karte für Karte den Set-Code. **Der Abgleicher** vergleicht ihn mit den Codes, die es für diese Karte gibt
+   (`SUDA-DE014`, `SUDA-JP014` … – die Sprache wird ignoriert, ein falsch gelesenes Zeichen ist erlaubt). Passt er, wird der Preis genauer.
+6. Auf der Kartenseite wählst du bei Bedarf die genaue Version; die wahrscheinlichste steht oben.
+
+Im **Pack-Modus** wählst du das Set (oder lässt es an den ersten Karten erkennen). Dann kommen nur Karten aus diesem Set in Frage.
+
+Alles, was du in die Sammlung übernimmst oder korrigierst, wird als **Trainingsbeispiel** (Bild + richtige Antwort) auf dem Handy gespeichert.
+Unter „More“ kannst du es exportieren, um das Modell später damit nachzutrainieren. Es zählt immer nur deine letzte Auswahl.
 
 ## Woher die Preise kommen
 
@@ -50,7 +62,7 @@ Jeden Morgen um 5:17 Uhr (UTC) wiederholt GitHub das automatisch mit frischen Pr
 **Grenzen:** Die kostenlosen Cardmarket-Daten unterscheiden nicht nach Sprache und Zustand.
 Japanische und koreanische Drucke gibt es auf Cardmarket meist nicht als eigene Produkte.
 
-## Wie die Artwork-Erkennung funktionieren wird
+## Wie die Artwork-Erkennung funktioniert
 
 Der Set-Code ist winzig und auf glänzenden Karten oft unleserlich. Deshalb kommt eine zweite Erkennung dazu:
 

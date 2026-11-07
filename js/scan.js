@@ -27,7 +27,7 @@ export function createScanner({ api, recognizer, detector, getOcr, getPack, setP
         setStatus('Looking for cards in the photo…');
         try {
           const boxes = await detector.find(image);
-          if (boxes.length) found = boxes.map((b) => ({ box: b, canvas: cutCard(image, b) }));
+          if (boxes.length) found = boxes.map((b) => ({ box: b, canvas: cutCard(image, b), source: image }));
         } catch (e) {
           console.warn('card finder not available', e);
         }
@@ -81,6 +81,26 @@ export function createScanner({ api, recognizer, detector, getOcr, getPack, setP
       onEach: (i) => { if (id === scanId) setStatus(`Recognising ${n} card${n > 1 ? 's' : ''}…`, false, (i + 1) / n); },
     });
     if (id !== scanId) return;
+    // Unsure cards: the box may include a sleeve or toploader. Try tighter cuts, keep the best.
+    const unsure = found.map((f, i) => i).filter((i) => !res[i].confident && found[i].source);
+    if (unsure.length) {
+      setStatus('Taking a closer look at the unsure cards…');
+      for (const shrink of [0.9, 0.8]) {
+        const tries = unsure.map((i) => {
+          const b = found[i].box;
+          const box = { ...b, w: b.w * shrink, h: b.h * shrink };
+          return { i, box, canvas: cutCard(found[i].source, box) };
+        });
+        const more = await recognizer.identifyMany(tries.map((t) => t.canvas), { allow: await allowed() });
+        if (id !== scanId) return;
+        tries.forEach((t, k) => {
+          if (more[k].top[0].score > res[t.i].top[0].score + 0.02) {
+            res[t.i] = more[k];
+            found[t.i] = { ...found[t.i], canvas: t.canvas };
+          }
+        });
+      }
+    }
     await finish(id, found.map((f, i) => ({ ...f, result: res[i] })));
   }
 
@@ -219,6 +239,11 @@ export function createScanner({ api, recognizer, detector, getOcr, getPack, setP
     renderList();
   }
 
+  function remove(c) {
+    cards = cards.filter((x) => x !== c);
+    renderList();
+  }
+
   function clear() {
     scanId++;
     cards = [];
@@ -229,5 +254,5 @@ export function createScanner({ api, recognizer, detector, getOcr, getPack, setP
 
   $('add-all').addEventListener('click', () => onAddAll(cards.filter((c) => !c.added)));
 
-  return { scanPhoto, scanCard, refresh, renderList, clear, cards: () => cards };
+  return { scanPhoto, scanCard, refresh, renderList, clear, remove, cards: () => cards };
 }
