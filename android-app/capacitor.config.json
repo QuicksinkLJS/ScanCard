@@ -1,6 +1,6 @@
 {
   "appId": "io.github.quicksinkljs.cardscan",
-  "appName": "CardScan",
+  "appName": "Curio",
   "webDir": "www",
   "backgroundColor": "#0d0d11",
   "server": {

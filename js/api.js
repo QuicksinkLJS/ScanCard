@@ -1,4 +1,4 @@
-// Card + price lookup from the CardScan data pack (data/ygo/<SET>.json).
+// Card + price lookup from the Curio data pack (data/ygo/<SET>.json).
 // The pack joins Cardmarket's free price guide (EUR) with set codes; see tools/build_data.py.
 
 import { lookupCandidates, normName } from './parse.js';

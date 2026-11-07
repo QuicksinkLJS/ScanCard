@@ -620,7 +620,7 @@ $('export').addEventListener('click', async () => {
   const blob = new Blob([JSON.stringify({ app: 'cardscan', version: 1, exported: new Date().toISOString(), samples: out })], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `cardscan-training-${new Date().toISOString().slice(0, 10)}.json`;
+  a.download = `curio-training-${new Date().toISOString().slice(0, 10)}.json`;
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -638,7 +638,7 @@ $('clear-coll').addEventListener('click', () => {
 const today = () => new Date().toISOString().slice(0, 10);
 $('bk-save').addEventListener('click', async () => {
   const b = makeBackup();
-  const r = await saveFile(JSON.stringify(b), `cardscan-backup-${today()}.json`, 'application/json');
+  const r = await saveFile(JSON.stringify(b), `curio-backup-${today()}.json`, 'application/json');
   if (r !== 'cancelled') { try { localStorage.setItem('cardscan-lastbackup', String(Date.now())); } catch { /* ignore */ } toast(r === 'shared' ? 'Backup ready – keep it somewhere safe' : 'Backup saved'); }
 });
 $('bk-file').addEventListener('change', async (ev) => {
@@ -646,7 +646,7 @@ $('bk-file').addEventListener('change', async (ev) => {
   ev.target.value = '';
   if (!file) return;
   let b;
-  try { b = readBackup(await file.text()); } catch { toast('That is not a CardScan backup'); return; }
+  try { b = readBackup(await file.text()); } catch { toast('That is not a Curio backup'); return; }
   const date = new Date(b.date).toLocaleDateString(lang === 'de' ? 'de-DE' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
   const v = await choose('Restore backup?', [{ label: 'Replace everything', value: 'yes', danger: true }],
     `Backup from ${date} with ${b.cards} cards. Everything on this phone is replaced by it.`);
@@ -658,7 +658,7 @@ $('bk-file').addEventListener('change', async (ev) => {
 $('bk-csv').addEventListener('click', async () => {
   const list = loadCollection();
   if (!list.length) { toast('Your collection is empty'); return; }
-  await saveFile(collectionCsv(list), `cardscan-collection-${today()}.csv`, 'text/csv');
+  await saveFile(collectionCsv(list), `curio-collection-${today()}.csv`, 'text/csv');
 });
 $('bk-sell').addEventListener('click', async () => {
   const list = loadCollection();
@@ -668,7 +668,7 @@ $('bk-sell').addEventListener('click', async () => {
   if (!which) return;
   const r = sellCsv(list, { onlyDoubles: which === 'doubles' });
   if (!r.rows) { toast(which === 'doubles' ? 'No doubles with a known version' : 'No cards with a known version yet'); return; }
-  await saveFile(r.text, `cardscan-sell-${today()}.csv`, 'text/csv');
+  await saveFile(r.text, `curio-sell-${today()}.csv`, 'text/csv');
   if (r.skipped) toast(`${r.skipped} card${r.skipped > 1 ? 's' : ''} without a version left out`);
 });
 

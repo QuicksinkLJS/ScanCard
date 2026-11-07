@@ -90,7 +90,7 @@ const DE = {
   'Market data not available.': 'Marktdaten nicht verfügbar.',
   // more
   'Find a card': 'Karte suchen', 'Card name, e.g. Dark Magician': 'Kartenname, z. B. Dark Magician', 'Look up a set code': 'Set-Code nachschlagen',
-  'e.g. LOB-EN001': 'z. B. LOB-EN001', 'Look up': 'Suchen', 'Get the app': 'App holen', 'Install CardScan on this phone': 'CardScan auf diesem Handy installieren',
+  'e.g. LOB-EN001': 'z. B. LOB-EN001', 'Look up': 'Suchen', 'Get the app': 'App holen', 'Install Curio on this phone': 'Curio auf diesem Handy installieren',
   'Download Android app (APK)': 'Android-App herunterladen (APK)', 'Or in Chrome: menu ⋮ → “Install app”. Works offline after the first start.': 'Oder in Chrome: Menü ⋮ → „App installieren“. Läuft nach dem ersten Start auch offline.',
   'Help the scanner learn': 'Hilf dem Scanner beim Lernen', 'Export training data': 'Trainingsdaten exportieren',
   'Every card you add or correct is kept on this phone as a training example (picture + right answer). Nothing is uploaded.': 'Jede Karte, die du hinzufügst oder korrigierst, bleibt als Trainingsbeispiel (Bild + richtige Antwort) auf diesem Handy. Nichts wird hochgeladen.',
@@ -100,7 +100,7 @@ const DE = {
   'Remove all cards from your collection? Training examples stay.': 'Alle Karten aus der Sammlung entfernen? Trainingsbeispiele bleiben.',
   'New version – tap to update': 'Neue Version – zum Aktualisieren tippen', 'App language': 'App-Sprache',
   'My pulls': 'Meine Pulls',
-  '. Prices are reference values, not live offers. Not affiliated with Konami or Cardmarket.': '. Preise sind Richtwerte, keine Live-Angebote. Nicht verbunden mit Konami oder Cardmarket.', 'CardScan · Cardmarket trend prices': 'CardScan · Cardmarket-Trendpreise',
+  '. Prices are reference values, not live offers. Not affiliated with Konami or Cardmarket.': '. Preise sind Richtwerte, keine Live-Angebote. Nicht verbunden mit Konami oder Cardmarket.', 'Curio · Cardmarket trend prices': 'Curio · Cardmarket-Trendpreise',
 };
 
 // 7 Nov: undo, masterset choice, holo, rarity, reveal, beta features
@@ -125,8 +125,8 @@ Object.assign(DE, {
   'Friends': 'Freunde', 'My QR code': 'Mein QR-Code', "Scan a friend's code": 'Code eines Freundes scannen', 'Your name for friends': 'Dein Name für Freunde',
   'Send as link instead': 'Stattdessen als Link schicken', 'Making your code…': 'Code wird erstellt…', 'one code': 'ein Code', 'Link copied': 'Link kopiert',
   "Show your QR code to a friend, or scan theirs – then you can look through each other's collections, binders and wishlists and ask for trades.": 'Zeig einem Freund deinen QR-Code oder scanne seinen – dann könnt ihr gegenseitig Sammlungen, Binder und Wunschlisten durchschauen und Tausch anfragen.',
-  "Your friend opens CardScan › Collection › Friends › “Scan a friend's code”. They see everything: cards, binders, wishlist and decks – as of now.": 'Dein Freund öffnet CardScan › Sammlung › Freunde › „Code eines Freundes scannen“. Er sieht alles: Karten, Binder, Wunschliste und Decks – Stand jetzt.',
-  "Hold the camera on your friend's code.": 'Halte die Kamera auf den Code deines Freundes.', 'That is not a CardScan code.': 'Das ist kein CardScan-Code.', 'Got it': 'Erkannt',
+  "Your friend opens Curio › Collection › Friends › “Scan a friend's code”. They see everything: cards, binders, wishlist and decks – as of now.": 'Dein Freund öffnet Curio › Sammlung › Freunde › „Code eines Freundes scannen“. Er sieht alles: Karten, Binder, Wunschliste und Decks – Stand jetzt.',
+  "Hold the camera on your friend's code.": 'Halte die Kamera auf den Code deines Freundes.', 'That is not a Curio code.': 'Das ist kein Curio-Code.', 'Got it': 'Erkannt',
   'The camera could not be opened. Allow camera access, or ask your friend for the link.': 'Die Kamera ließ sich nicht öffnen. Erlaube den Kamerazugriff oder lass dir den Link schicken.',
   'That is your own code': 'Das ist dein eigener Code', 'That code could not be read – try again': 'Der Code konnte nicht gelesen werden – versuch es nochmal',
   'Not enough space on this phone for this collection': 'Nicht genug Speicher auf dem Handy für diese Sammlung', 'Rename': 'Umbenennen', 'Remove friend': 'Freund entfernen',
@@ -135,7 +135,7 @@ Object.assign(DE, {
   'Nothing from your wishlist – add cards you want with ♡.': 'Nichts von deiner Wunschliste – markiere Karten, die du willst, mit ♡.', 'None of your cards are on their wishlist.': 'Keine deiner Karten steht auf seiner Wunschliste.',
   'Backup & export': 'Sicherung & Export', 'Save backup': 'Sicherung speichern', 'Restore backup': 'Sicherung wiederherstellen', 'Collection as CSV': 'Sammlung als CSV',
   'Sell list (Cardmarket IDs)': 'Verkaufsliste (Cardmarket-IDs)', 'Restore backup?': 'Sicherung wiederherstellen?', 'Replace everything': 'Alles ersetzen', 'Backup restored': 'Sicherung wiederhergestellt',
-  'Backup ready – keep it somewhere safe': 'Sicherung fertig – bewahr sie gut auf', 'Backup saved': 'Sicherung gespeichert', 'That is not a CardScan backup': 'Das ist keine CardScan-Sicherung',
+  'Backup ready – keep it somewhere safe': 'Sicherung fertig – bewahr sie gut auf', 'Backup saved': 'Sicherung gespeichert', 'That is not a Curio backup': 'Das ist keine Curio-Sicherung',
   'Your collection is empty': 'Deine Sammlung ist leer', 'Sell list': 'Verkaufsliste', 'Only doubles (keep one of each)': 'Nur Doppelte (je eine behalten)', 'All cards': 'Alle Karten',
   'No doubles with a known version': 'Keine Doppelten mit bekannter Version', 'No cards with a known version yet': 'Noch keine Karten mit bekannter Version',
   'Cards without a chosen version are left out – pick the version on the card page first.': 'Karten ohne gewählte Version fehlen – wähle die Version zuerst auf der Kartenseite.',
@@ -158,7 +158,7 @@ Object.assign(DE, {
   "You're offline – scanning still works, prices are from your last visit.": 'Du bist offline – Scannen klappt trotzdem, die Preise sind vom letzten Besuch.', 'List': 'Liste', 'Binder': 'Binder', 'Share progress': 'Fortschritt teilen',
   'Swipe through the pages. Tap a card for details, hold it to leave it out of this set.': 'Wische durch die Seiten. Tippe eine Karte für Details an, halte sie gedrückt, um sie aus diesem Set herauszunehmen.',
   'Tap ○ to tick a card you have (any language counts). Cards in your collection with this exact version are ticked automatically. Hold a card to leave it out of this set.': 'Tippe ○, um eine Karte abzuhaken (jede Sprache zählt). Karten aus deiner Sammlung mit genau dieser Version werden automatisch abgehakt. Halte eine Karte gedrückt, um sie aus diesem Set herauszunehmen.',
-  'Masterset': 'Masterset', 'CardScan · Masterset tracker': 'CardScan · Masterset-Tracker', 'left out': 'herausgenommen', '⚠ unusual': '⚠ ungewöhnlich', '⚠ unusual · Cardmarket ↗': '⚠ ungewöhnlich · Cardmarket ↗', 'Set code or set name, e.g. MP19': 'Set-Code oder Set-Name, z. B. MP19', 'No version matches.': 'Keine Version passt.', 'BETA channel': 'BETA-Kanal',
+  'Masterset': 'Masterset', 'Curio · Masterset tracker': 'Curio · Masterset-Tracker', 'left out': 'herausgenommen', '⚠ unusual': '⚠ ungewöhnlich', '⚠ unusual · Cardmarket ↗': '⚠ ungewöhnlich · Cardmarket ↗', 'Set code or set name, e.g. MP19': 'Set-Code oder Set-Name, z. B. MP19', 'No version matches.': 'Keine Version passt.', 'BETA channel': 'BETA-Kanal',
   'Best:': 'Beste:', 'Open one by one': 'Einzeln aufdecken', 'Skip': 'Überspringen', 'Tap the card': 'Karte antippen',
   'The last one – your best card': 'Die letzte – deine beste Karte', 'Tap for the next card': 'Tippen für die nächste Karte',
   'Tap to finish': 'Tippen zum Abschließen', 'Tap to close': 'Tippen zum Schließen',

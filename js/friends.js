@@ -40,7 +40,7 @@ export async function encodeSnapshot(snap) {
 export async function decodeSnapshot(text) {
   const raw = await pipe(unb64url(text), new DecompressionStream('deflate-raw'));
   const snap = JSON.parse(new TextDecoder().decode(raw));
-  if (!snap || snap.v !== 1 || !snap.id) throw new Error('Not a CardScan collection');
+  if (!snap || snap.v !== 1 || !snap.id) throw new Error('Not a Curio collection');
   return snap;
 }
 

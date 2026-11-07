@@ -93,7 +93,7 @@ export function pullsImage(cards, info = {}) {
     ctx.textAlign = 'left';
   }
   ctx.fillStyle = 'rgba(255,255,255,.4)'; ctx.font = font(600, 26);
-  ctx.fillText(t('CardScan · Cardmarket trend prices'), pad, H - 40);
+  ctx.fillText(t('Curio · Cardmarket trend prices'), pad, H - 40);
   return c;
 }
 
@@ -147,7 +147,7 @@ export function progressImage({ name, code, have, total, cells }) {
     ctx.fill();
   });
   ctx.fillStyle = 'rgba(255,255,255,.4)'; ctx.font = font(600, 26);
-  ctx.fillText(t('CardScan · Masterset tracker'), pad, H - 50);
+  ctx.fillText(t('Curio · Masterset tracker'), pad, H - 50);
   return c;
 }
 

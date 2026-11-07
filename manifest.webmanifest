@@ -1,6 +1,6 @@
 {
-  "name": "CardScan – Yu-Gi-Oh card scanner",
-  "short_name": "CardScan",
+  "name": "Curio – Yu-Gi-Oh card scanner",
+  "short_name": "Curio",
   "description": "Scan Yu-Gi-Oh cards and see what they are worth on Cardmarket.",
   "id": "./",
   "start_url": "./",

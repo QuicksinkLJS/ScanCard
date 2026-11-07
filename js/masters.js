@@ -230,7 +230,7 @@ export function createMasters({ api, openCard, onCollectionChange = () => {} }) 
       const cells = [];
       for (const e of entries) for (let k = 0; k < target; k++) cells.push(have(e) > k);
       const canvas = progressImage({ name: cur.name, code: setCode(entries), have: p.have, total: p.total, cells });
-      const r = await shareCanvas(canvas, `cardscan-masterset-${cur.exp}.png`, cur.name);
+      const r = await shareCanvas(canvas, `curio-masterset-${cur.exp}.png`, cur.name);
       if (r === 'downloaded') toast('Picture saved');
     });
     $('set-sort').addEventListener('change', (ev) => {

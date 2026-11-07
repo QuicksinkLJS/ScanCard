@@ -2,7 +2,7 @@
 // protects it (new phone, cleared browser data). CSV for spreadsheets, and a sell list keyed by the
 // Cardmarket product id (the format seller tools such as TCG PowerTools read).
 
-export const BACKUP_APP = 'CardScan';
+export const BACKUP_APP = 'CardScan';   // file format id of backups – stays (app renamed to Curio), old backups must load
 const SKIP = new Set(['cardscan-lang']); // settings of this phone, not your data
 
 // ---------- backup ----------

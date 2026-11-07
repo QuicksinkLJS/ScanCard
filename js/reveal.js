@@ -66,7 +66,7 @@ export async function openReveal(api, cards, { onDone = () => {} } = {}) {
     const c = order[i];
     const kind = c.price?.exact ? holoKind(c.price.rarity) : 'plain';
     stage.innerHTML = `<div class="rv-card enter">
-        <div class="rv-face rv-back"><span>CardScan</span></div>
+        <div class="rv-face rv-back"><span>Curio</span></div>
         <div class="rv-face rv-front ${RCLASS[kind] || ''}">${pictureOf(c) ? `<img src="${esc(pictureOf(c))}" alt="" draggable="false">` : `<span class="rv-noimg">${esc(c.name)}</span>`}<i class="rv-sweep"></i></div>
       </div>`;
     info.innerHTML = '';

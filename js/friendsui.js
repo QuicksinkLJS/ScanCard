@@ -108,9 +108,9 @@ export function createFriends({ api, openCard, loadDecks }) {
   $('qr-link').addEventListener('click', async () => {
     const link = $('qr-page')._link;
     if (!link) return;
-    const text = DE ? `Schau dir meine Yu-Gi-Oh-Sammlung in CardScan an: ${link}` : `Have a look at my Yu-Gi-Oh! collection in CardScan: ${link}`;
+    const text = DE ? `Schau dir meine Yu-Gi-Oh-Sammlung in Curio an: ${link}` : `Have a look at my Yu-Gi-Oh! collection in Curio: ${link}`;
     try {
-      if (navigator.share) await navigator.share({ title: 'CardScan', text });
+      if (navigator.share) await navigator.share({ title: 'Curio', text });
       else { await navigator.clipboard.writeText(link); toast('Link copied'); }
     } catch { /* cancelled */ }
   });
@@ -149,7 +149,7 @@ export function createFriends({ api, openCard, loadDecks }) {
         try {
           for (const text of await detect()) {
             const r = add(text);
-            if (!r) { $('qrscan-status').textContent = 'That is not a CardScan code.'; continue; }
+            if (!r) { $('qrscan-status').textContent = 'That is not a Curio code.'; continue; }
             $('qrscan-status').textContent = r.total > 1 ? `Got ${r.have} of ${r.total} codes – keep holding` : 'Got it';
             if (r.done) { navigator.vibrate?.([30, 50, 30]); await received(r.data); return; }
           }
@@ -395,8 +395,8 @@ export function createFriends({ api, openCard, loadDecks }) {
     const gap = offer.cards.length && diff >= Math.max(1, ask * 0.15) ? diff : 0; // offer clearly lower: say the difference
     const list = offer.cards.map(fmt).join(', ');
     const text = DE
-      ? `Hey ${name}! Ich hab in CardScan gesehen, dass du ${card.name}${p?.label ? ` (${p.label})` : ''} hast – die steht auf meiner Wunschliste (~${eur(ask)}).${offer.cards.length ? ` Ich könnte dir dafür ${list}${many ? ` (zusammen ~${eur(offer.value)})` : ''} anbieten – die suchst du ja${gap ? `, plus ~${eur(gap)} Ausgleich` : ''}.` : ' Hättest du Lust zu tauschen oder sie mir zu verkaufen?'} Was meinst du?`
-      : `Hey ${name}! I saw in CardScan that you have ${card.name}${p?.label ? ` (${p.label})` : ''} – it's on my wishlist (~${eur(ask)}).${offer.cards.length ? ` I could offer ${list}${many ? ` (together ~${eur(offer.value)})` : ''} – you're looking for ${many ? 'those' : 'that one'}${gap ? `, plus ~${eur(gap)} on top` : ''}.` : ' Would you like to trade or sell it?'} What do you think?`;
+      ? `Hey ${name}! Ich hab in Curio gesehen, dass du ${card.name}${p?.label ? ` (${p.label})` : ''} hast – die steht auf meiner Wunschliste (~${eur(ask)}).${offer.cards.length ? ` Ich könnte dir dafür ${list}${many ? ` (zusammen ~${eur(offer.value)})` : ''} anbieten – die suchst du ja${gap ? `, plus ~${eur(gap)} Ausgleich` : ''}.` : ' Hättest du Lust zu tauschen oder sie mir zu verkaufen?'} Was meinst du?`
+      : `Hey ${name}! I saw in Curio that you have ${card.name}${p?.label ? ` (${p.label})` : ''} – it's on my wishlist (~${eur(ask)}).${offer.cards.length ? ` I could offer ${list}${many ? ` (together ~${eur(offer.value)})` : ''} – you're looking for ${many ? 'those' : 'that one'}${gap ? `, plus ~${eur(gap)} on top` : ''}.` : ' Would you like to trade or sell it?'} What do you think?`;
     try {
       if (navigator.share) await navigator.share({ text });
       else window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener');

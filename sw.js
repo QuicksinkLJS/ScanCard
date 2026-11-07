@@ -1,4 +1,4 @@
-// Service worker: makes CardScan installable and lets it start without network.
+// Service worker: makes Curio installable and lets it start without network.
 //  * app files and models: cache first (models are large and rarely change; a new VERSION refreshes them)
 //  * price data (data/): network first, cached copy when offline
 //  * libraries from jsdelivr: cache first
