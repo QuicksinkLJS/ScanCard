@@ -16,8 +16,9 @@ export function versionOptions(rows) {
         return;
       }
       byId.set(key, {
-        key, set: r.set, year: r.year, date: r.date, rarities: r.rarities, codes: [...r.codes],
-        variant: r.products.length > 1 ? i + 1 : 0, variants: r.products.length, ...p,
+        key, set: r.set, year: r.year, date: r.date, rarities: r.rarities, codes: [...r.codes], expansion: r.expansion ?? null,
+        variant: r.products.length > 1 ? i + 1 : 0, variants: r.products.length,
+        label: '', rarity: '', image: '', path: '', ...p,
       });
     });
   }
@@ -49,7 +50,48 @@ export function rankOptions(opts, ctx = {}) {
   return opts
     .map((o) => ({ ...o, likely: score(o) }))
     .sort((a, b) => ((b.key === ctx.vkey) - (a.key === ctx.vkey)) || (b.likely - a.likely)
-      || (b.date || '').localeCompare(a.date || '') || ((a.trend ?? 1e9) - (b.trend ?? 1e9)));
+      || (b.date || '').localeCompare(a.date || '') || a.set.localeCompare(b.set)
+      || (rarityRank(a.rarity) - rarityRank(b.rarity)) || (a.variant - b.variant));
+}
+
+// Rarity order inside a set, lowest first. Unknown rarities go last.
+const RARITY_ORDER = [
+  'common', 'short print', 'super short print', 'rare', 'super rare', 'ultra rare', 'ultra parallel rare', 'parallel rare',
+  'gold rare', 'premium gold rare', 'mosaic rare', 'starfoil rare', 'shatterfoil rare', 'duel terminal',
+  'secret rare', 'prismatic secret rare', 'ultra secret rare', 'extra secret rare', 'gold secret rare', 'platinum rare',
+  'platinum secret rare', 'collector\'s rare', 'prismatic collector\'s rare', 'ultimate rare', 'prismatic ultimate rare',
+  'ghost rare', 'starlight rare', 'quarter century secret rare', 'special',
+];
+export function rarityRank(r) {
+  if (!r) return 99;
+  const k = r.toLowerCase().replace(/\s+/g, ' ').trim();
+  const i = RARITY_ORDER.indexOf(k);
+  if (i >= 0) return i;
+  const j = RARITY_ORDER.findIndex((x) => k.includes(x)); // "Duel Terminal Ultra Rare" etc.
+  return j >= 0 ? j + 0.5 : 50;
+}
+
+// What the version is called: "Ultra Rare", "Quarter Century Secret Rare · 7th Art", or the set's rarities if unknown.
+export function versionLabel(o) {
+  if (o.label) return o.label;
+  if (o.variants <= 1 && o.rarities.length === 1) return o.rarities[0];
+  return 'Rarity unknown';
+}
+
+// Cardmarket page of this exact version; else a search for the card (in its expansion when known).
+export function cardmarketUrl(o, name) {
+  const base = 'https://www.cardmarket.com/en/YuGiOh/Products';
+  if (o?.path) return `${base}/Singles/${o.path.split('/').map(encodeURIComponent).join('/')}`;
+  const q = `searchString=${encodeURIComponent(name)}`;
+  return o?.expansion ? `${base}/Search?${q}&idExpansion=${o.expansion}` : `${base}/Search?${q}`;
+}
+
+// Picture of this version on CardTrader (bigger "show_" size), or ''.
+export function versionImage(o, size = 'show') {
+  if (!o?.image) return '';
+  const i = o.image.lastIndexOf('/');
+  const file = `${size ? `${size}_` : ''}${o.image.slice(i + 1)}`;
+  return `https://www.cardtrader.com/uploads/blueprints/image/${o.image.slice(0, i + 1)}${encodeURI(file)}`;
 }
 
 // The options that fit the evidence best (all with the top score), or [] if there is no evidence.

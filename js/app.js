@@ -356,8 +356,18 @@ setTimeout(() => recognizer.ready().then(() => {
 }).catch(() => {}), 500);
 
 // Installable app + offline start
+// A new deploy installs a new service worker; then offer a reload.
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
-  navigator.serviceWorker.register('sw.js').catch((e) => console.warn('no service worker', e));
+  const hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.register('sw.js').then((reg) => {
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update().catch(() => {}); });
+  }).catch((e) => console.warn('no service worker', e));
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController) showUpdate(); });
+}
+function showUpdate() {
+  const b = $('update');
+  b.hidden = false;
+  b.onclick = () => location.reload();
 }
 
 let installPrompt = null;

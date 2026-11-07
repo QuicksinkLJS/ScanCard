@@ -58,11 +58,26 @@ jobs:
           curl -fsSL "https://db.ygoprodeck.com/api/v7/cardinfo.php" -o work/cardinfo.json || rm -f work/cardinfo.json
           curl -fsSL "https://db.ygoprodeck.com/api/v7/cardsets.php" -o work/cardsets.json || rm -f work/cardsets.json
 
+      - name: Download CardTrader blueprints (rarity, picture per Cardmarket product)
+        env:
+          CARDTRADER_TOKEN: ${{ secrets.CARDTRADER_TOKEN }}
+        run: |
+          stored() { git fetch -q --depth 1 origin cardtrader-files && git show FETCH_HEAD:cardtrader_ygo.json.gz > work/cardtrader_ygo.json.gz; }
+          # a push only changes the app: the stored copy (branch cardtrader-files) is quick; the daily run fetches fresh data
+          if [ "${{ github.event_name }}" = "push" ]; then
+            stored || python tools/fetch_cardtrader.py work/cardtrader_ygo.json.gz || rm -f work/cardtrader_ygo.json.gz
+          else
+            python tools/fetch_cardtrader.py work/cardtrader_ygo.json.gz \
+              || { echo "::warning::CardTrader download failed, using the stored copy"; stored; } || rm -f work/cardtrader_ygo.json.gz
+          fi
+          ls -la work/cardtrader_ygo.json.gz || true
+
       - name: Build data pack
         run: |
           extra=""
           [ -s work/cardinfo.json ] && extra="--ygoprodeck-cards work/cardinfo.json"
           [ -s work/cardinfo.json ] && [ -s work/cardsets.json ] && extra="$extra --ygoprodeck-sets work/cardsets.json"
+          [ -s work/cardtrader_ygo.json.gz ] && extra="$extra --cardtrader work/cardtrader_ygo.json.gz"
           python tools/build_data.py \
             --products work/products_singles_3.json --prices work/price_guide_3.json \
             --nonsingles work/products_nonsingles_3.json \
@@ -90,6 +105,8 @@ jobs:
         run: |
           mkdir -p _site
           cp -r index.html style.css manifest.webmanifest sw.js icon.svg icons js data models _site/
+          sed -i "s/const BUILD = 'dev';/const BUILD = '${GITHUB_SHA::7}-${{ github.run_number }}';/" _site/sw.js
+          grep -n "const BUILD" _site/sw.js
 
       - uses: actions/upload-pages-artifact@v3
         with:

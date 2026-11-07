@@ -130,6 +130,7 @@ body.sheet-open { overflow: hidden; }
 .pricebox.mid { border-color: var(--mid); background: var(--mid-bg); }
 .pricebox .big { font-size: 30px; font-weight: 700; margin: 0; }
 .pricebox .what { font-size: 13px; margin: 0 0 10px; opacity: .85; }
+.pricebox .rarity { font-size: 14px; font-weight: 600; margin: -6px 0 10px; color: var(--accent, #9b87ff); }
 .pgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .pgrid div { background: rgba(0,0,0,.28); border-radius: 8px; padding: 6px 4px; text-align: center; border: 1px solid transparent; }
 .pgrid small { display: block; font-size: 11px; color: var(--muted); }
@@ -148,6 +149,7 @@ body.sheet-open { overflow: hidden; }
 .versions .radio { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border); flex: none; }
 .versions .on .radio { border: 6px solid var(--accent); }
 .versions .what { flex: 1; min-width: 0; }
+.versions .vimg { width: 34px; height: 49px; object-fit: cover; border-radius: 3px; flex: none; background: var(--surface); }
 .versions .what small { display: block; color: var(--muted); font-size: 12.5px; }
 .versions .eur { font-weight: 650; white-space: nowrap; }
 .likely { font-size: 11px; font-weight: 700; color: var(--accent); margin-left: 4px; }
@@ -192,3 +194,8 @@ body.cam-open { overflow: hidden; }
 }
 .legal { margin-top: 30px; font-size: 12px; color: var(--muted); }
 .legal a { color: inherit; }
+
+/* "New version" banner */
+.update { position: fixed; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top, 0px) + 10px); z-index: 60;
+  padding: 10px 16px; border-radius: 999px; border: 0; font: inherit; font-size: 14px; font-weight: 600;
+  background: var(--accent); color: var(--accent-ink); box-shadow: 0 6px 20px rgba(0,0,0,.4); }

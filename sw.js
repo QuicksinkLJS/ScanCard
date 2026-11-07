@@ -3,6 +3,9 @@
 //  * price data (data/): network first, cached copy when offline
 //  * libraries from jsdelivr: cache first
 const VERSION = 'v3';
+// Replaced by the deploy workflow with the commit id, so every deploy is a new service worker
+// (the app then shows "New version – tap to update"). Caches stay as long as VERSION stays.
+const BUILD = 'dev';
 const APP = `cardscan-app-${VERSION}`;
 const DATA = 'cardscan-data';
 const SHELL = [

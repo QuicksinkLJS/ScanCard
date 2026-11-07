@@ -18,7 +18,7 @@ Matching
 
 Output keys are the exact printed set codes ("LOB-DE001", "LOB-G001", "LOB-001").
 """
-import argparse, collections, json, os, re, sys, unicodedata
+import argparse, collections, gzip, json, os, re, sys, unicodedata
 from datetime import date, datetime, timezone
 
 LEGACY = date(2007, 1, 1)  # Cardmarket's catalog starts here; older products all carry this date
@@ -49,6 +49,58 @@ RARITY = {"common": "Common", "rare": "Rare", "super": "Super Rare", "ultra": "U
           "quartercenturysecret": "Quarter Century Secret Rare", "shortprint": "Short Print",
           "parallel": "Parallel Rare", "ultraparallel": "Ultra Parallel Rare", "duelterminal": "Duel Terminal",
           "mosaic": "Mosaic Rare", "shatterfoil": "Shatterfoil Rare", "starfoil": "Starfoil Rare"}
+
+
+# ---------- CardTrader (rarity, number and picture per Cardmarket product) ----------
+
+RARITY_WORDS = re.compile(r"\b(rare|common|special|token|oversized|parallel|terminal)\b", re.I)
+
+
+def load_cardtrader(path):
+    """{idProduct: (label, rarity, code, image)} from tools/fetch_cardtrader.py output.
+
+    label   what the version is called, e.g. "Quarter Century Secret Rare · 7th Art"
+    rarity  the rarity alone (for sorting and the holo effect)
+    code    printed set code if it can be told from the expansion code ("SUDA-JP014"), else ""
+    image   path below https://cardtrader.com/uploads/blueprints/image/ (without size prefix)
+    """
+    if not path or not os.path.exists(path):
+        return {}
+    ct = json.load(gzip.open(path, "rt", encoding="utf-8"))
+    exp_code = {e["id"]: (e.get("code") or "") for e in ct["expansions"]}
+    out = {}
+    for b in ct["blueprints"]:
+        if b.get("c") != 44 or not b.get("cm"):  # singles only
+            continue
+        fp = b.get("fp") or {}
+        rarity = (fp.get("yugioh_rarity") or "").strip()
+        parts = [x.strip() for x in (b.get("v") or "").split("|") if x.strip()]
+        # the version text is more precise when it names a rarity ("Prismatic Secret Rare" vs "Secret Rare")
+        if parts and RARITY_WORDS.search(parts[0]) and not re.fullmatch(r"(ultra|super|secret) rare s[ev]\d", parts[0], re.I):
+            rarity = parts[0]
+            extra = parts[1:]
+        else:
+            extra = [x for x in parts if x.lower() != rarity.lower()]
+        extra = [x for x in extra if not re.fullmatch(r"[A-Z]{2,5}-\d{3}", x)]
+        label = " · ".join([rarity] + extra) if rarity else " · ".join(extra)
+        code = ""
+        m = re.fullmatch(r"([a-z0-9]{2,5})-(jp|kr|ae|en|de|fr|it|sp|pt)", exp_code.get(b.get("e"), ""))
+        n = re.match(r"(\d{3})", str(fp.get("collector_number") or ""))
+        if m and n:
+            code = f"{m.group(1).upper()}-{m.group(2).upper()}{n.group(1)}"
+        img = b.get("img") or ""
+        img = re.sub(r"^.*/uploads/blueprints/image/", "", img)
+        img = re.sub(r"(^|/)preview_", r"\1", img)
+        for pid in b["cm"]:
+            out[pid] = (label, rarity, code, img)
+    return out
+
+
+def slug(s):
+    """Cardmarket URL slug: 'Ash Blossom & Joyous Spring' -> 'Ash-Blossom-Joyous-Spring'."""
+    s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode()
+    s = re.sub(r"['\u2019\".,!?:]", "", s)
+    return re.sub(r"[^A-Za-z0-9]+", "-", s).strip("-")
 
 
 # ---------- card database adapters ----------
@@ -252,6 +304,7 @@ def main():
     ap.add_argument("--ygoprodeck-cards")
     ap.add_argument("--ygoprodeck-sets")
     ap.add_argument("--nonsingles", help="Cardmarket products_nonsingles_3.json (expansion names)")
+    ap.add_argument("--cardtrader", help="tools/fetch_cardtrader.py output (rarity + picture per product)")
     ap.add_argument("--out", default="data/ygo")
     a = ap.parse_args()
 
@@ -346,7 +399,8 @@ def main():
     with open(os.path.join(out_dir, "names.json"), "w", encoding="utf-8") as f:
         json.dump(names_out, f, ensure_ascii=False, separators=(",", ":"))
     # Every printing per card name, for the card page: data/ygo/cards/<first two letters>.json
-    #   {norm(name): [[set, year, [rarities], [codes], [[pid, trend, avg30, low, avg1, avg7], ...]], ...]}
+    #   {norm(name): [[set, year, [rarities], [codes], [product...], date, expansion], ...]}
+    #   product = [pid, trend, avg30, low, avg1, avg7, label, rarity, code, image, cardmarket path]
     detail = collections.defaultdict(dict)  # norm(name) -> {(set, year, expansion, pids): row}
     for code, versions in data.items():
         for v in versions:
@@ -362,10 +416,47 @@ def main():
             for r in v["r"]:
                 if r not in row[2]:
                     row[2].append(r)
+    # Per product: what CardTrader says it is, and its Cardmarket page.
+    # Cardmarket numbers same-named products of one expansion V1, V2 ... in the order they were added.
+    ct = load_cardtrader(a.cardtrader)
+    same = collections.defaultdict(list)
+    for pid, (name, exp, _) in meta.items():
+        same[(exp, name)].append(pid)
+    vnum = {}
+    for pids in same.values():
+        pids.sort()
+        for i, pid in enumerate(pids):
+            vnum[pid] = (i + 1, len(pids))
+    ct_hits = collections.Counter()
+
+    def enrich(row, exp):
+        out = []
+        for p in row[4]:
+            pid = p[0]
+            label, rarity, code, img = ct.get(pid, ("", "", "", ""))
+            if not rarity and len(row[4]) == 1 and len(row[2]) == 1:
+                label = rarity = row[2][0]  # only one product and one known rarity: that's it
+            if code and code not in row[3]:
+                row[3].append(code)
+            ct_hits["products"] += 1
+            ct_hits["with_rarity"] += bool(rarity)
+            path = ""
+            name = meta.get(pid, ("",))[0]
+            if exp_name.get(exp) and name:
+                v, n = vnum.get(pid, (1, 1))
+                if n == 1:
+                    path = f"{slug(exp_name[exp])}/{slug(name)}"
+                elif rarity:
+                    path = f"{slug(exp_name[exp])}/{slug(name)}-V{v}-{slug(rarity)}"
+            out.append(list(p) + [label, rarity, code, img, path])
+        row[4] = out
+        row.append(exp)
+
     buckets = collections.defaultdict(dict)
     for k, rows in detail.items():
         out_rows = []
-        for row in rows.values():
+        for (sname, exp, _), row in rows.items():
+            enrich(row, exp)
             row[3].sort(key=lambda c: (not re.search(r"-EN\d", c), c))
             out_rows.append(row)
         out_rows.sort(key=lambda r: (r[5] or "0000"), reverse=True)  # newest release first
@@ -422,6 +513,8 @@ def main():
              "prices": cm[4], "sets": sorted(groups)}
     with open(os.path.join(out_dir, "index.json"), "w", encoding="utf-8") as f:
         json.dump(index, f, separators=(",", ":"))
+    stats["detail_products"] = ct_hits["products"]
+    stats["detail_products_with_rarity"] = ct_hits["with_rarity"]
     for k, v in sorted(stats.items()):
         print(f"{k}: {v}")
     print(f"codes in pack: {len(data)} in {len(groups)} set files")

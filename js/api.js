@@ -111,10 +111,13 @@ export function createApi({ fetchFn = globalThis.fetch?.bind(globalThis), base =
     }
     const rows = (await buckets.get(b))[k];
     if (!rows) return [];
-    return rows.map(([set, year, rarities, codes, products, date], i) => ({
+    return rows.map(([set, year, rarities, codes, products, date, expansion], i) => ({
       key: `${i}`,
-      set, year, rarities, codes, date: date || (year ? `${year}-01-01` : null),
-      products: products.map(([id, trend, avg30, low, avg1, avg7]) => ({ id, trend, avg30, low, avg1, avg7 })),
+      set, year, rarities, codes, date: date || (year ? `${year}-01-01` : null), expansion: expansion ?? null,
+      products: products.map(([id, trend, avg30, low, avg1, avg7, label, rarity, code, image, path]) => ({
+        id, trend, avg30, low, avg1, avg7,
+        label: label || '', rarity: rarity || '', image: image || '', path: path || '',
+      })),
     }));
   }
 

@@ -11,7 +11,7 @@
 import { $, esc, eur, range } from './util.js';
 import { cardmarketSearchUrl, normName } from './parse.js';
 import { matchCode } from './codematch.js';
-import { versionOptions, rankOptions, bestOptions, priceOf, tierOfPrice, oddValues, optionCode } from './prices.js';
+import { versionOptions, rankOptions, bestOptions, priceOf, tierOfPrice, oddValues, optionCode, versionLabel, cardmarketUrl, versionImage } from './prices.js';
 
 let api = null;
 let current = null; // {subject, hooks, info, ranked, showAll}
@@ -97,7 +97,8 @@ function render() {
     const cell = (k, label) => `<div class="${odd.has(k) ? 'odd' : ''}"><small>${label}</small><b>${eur(chosen[k])}</b></div>`;
     priceBox = `
       <div class="pricebox ${tier}">
-        <p class="what">${esc([`${chosen.set}${chosen.year ? ` (${chosen.year})` : ''}`, optionCode(chosen, lang?.code), chosen.variants > 1 ? `version ${chosen.variant} of ${chosen.variants}` : ''].filter(Boolean).join(' · '))}</p>
+        <p class="what">${esc([`${chosen.set}${chosen.year ? ` (${chosen.year})` : ''}`, optionCode(chosen, lang?.code)].filter(Boolean).join(' · '))}</p>
+        <p class="rarity">${esc(versionLabel(chosen))}</p>
         <p class="big">${eur(chosen.trend)}</p>
         <p class="what">Cardmarket trend price · offers from ${eur(chosen.low)}</p>
         <div class="pgrid">${cell('avg1', 'Yesterday')}${cell('avg7', '7 days')}${cell('avg30', '30 days')}${cell('trend', 'Trend')}</div>
@@ -127,8 +128,9 @@ function render() {
   const versions = list.map((o) => `
     <li class="${o.key === s.vkey ? 'on' : ''}"><button type="button" data-key="${esc(o.key)}">
       <span class="radio"></span>
+      ${o.image ? `<img class="vimg" loading="lazy" src="${esc(versionImage(o, 'preview'))}" alt="" onerror="this.remove()">` : ''}
       <span class="what">${esc(o.set)}${o.year ? ` (${o.year})` : ''}${o.likely ? '<span class="likely">LIKELY</span>' : ''}
-        <small>${esc([optionCode(o, lang?.code), o.rarities.length > 2 ? `${o.rarities.length} rarities` : o.rarities.join(' / '), o.variants > 1 ? `version ${o.variant} of ${o.variants}` : ''].filter(Boolean).join(' · '))}</small></span>
+        <small>${esc([optionCode(o, lang?.code), versionLabel(o)].filter(Boolean).join(' · '))}${!o.label && o.variants > 1 && o.rarities.length ? `<span class="muted"> (one of: ${esc(o.rarities.join(', '))})</span>` : ''}</small></span>
       <span class="eur">${eur(o.trend)}</span>
     </button></li>`).join('');
 
@@ -154,7 +156,7 @@ function render() {
     <input id="fix-name" class="field" type="search" placeholder="Type the right name" autocomplete="off" spellcheck="false">
     <ul id="fix-results" class="rows compact"></ul>
     <div class="actions">
-      <a class="btn" href="${cardmarketSearchUrl(info?.name || s.name)}" target="_blank" rel="noopener">Open on Cardmarket</a>
+      <a class="btn" href="${esc(chosen ? cardmarketUrl(chosen, info?.name || s.name) : cardmarketSearchUrl(info?.name || s.name))}" target="_blank" rel="noopener">${chosen ? (chosen.path ? 'This version on Cardmarket' : 'Find in this set on Cardmarket') : 'Open on Cardmarket'}</a>
       ${hooks.onAdd ? `<button class="btn primary" type="button" id="card-add">${esc(hooks.addLabel?.(s) || 'Add to collection')}</button>` : ''}
     </div>
     ${hooks.onRemove ? `<button class="btn wide danger" type="button" id="card-remove">${esc(hooks.removeLabel || 'Remove from collection')}</button>` : ''}
@@ -214,7 +216,8 @@ export async function quickPrice(theApi, s) {
   const { chosen, best, price } = summarise(ranked, s.vkey);
   const lang = s.code?.language || s.language;
   const label = chosen
-    ? [`${chosen.set}${chosen.year ? ` (${chosen.year})` : ''}`, optionCode(chosen, lang?.code)].filter(Boolean).join(' · ')
+    ? [`${chosen.set}${chosen.year ? ` (${chosen.year})` : ''}`, optionCode(chosen, lang?.code), chosen.label || (chosen.variants <= 1 ? chosen.rarities[0] : '')].filter(Boolean).join(' · ')
     : best?.length ? `${best[0].set} · ${best.length} versions` : (ranked.length ? `${ranked.length} version${ranked.length > 1 ? 's' : ''}` : 'no price found');
-  return { ...price, label, exact: !!chosen };
+  return { ...price, label, exact: !!chosen, rarity: chosen ? (chosen.rarity || (chosen.variants <= 1 ? chosen.rarities[0] : '') || '') : '',
+    image: chosen?.image || '', set: chosen?.set || '', pid: chosen ? Number(chosen.key) : null };
 }
