@@ -327,7 +327,7 @@ textarea.field.area { min-height: 92px; resize: vertical; font-family: inherit; 
 .holo-card.shiny { animation: h-shimmer 6s ease-in-out infinite alternate; }
 @keyframes h-shimmer { to { --t: 1; } }
 .holo-card { --p: calc(var(--pos) + var(--t) * 60% - 30%); --g1: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='1' seed='3'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 14 0 0 0 -9.6'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); --g2: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='1' seed='8'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 12 0 0 0 -8.4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
-.h-shine { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: color-dodge; opacity: calc(.68 + var(--hyp) * .32);
+.h-shine { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: color-dodge; opacity: calc(.62 + var(--hyp) * .38);
   --x1: 0%; --x2: 100%; --y1: 0%; --y2: 100%; --e: 2.2%;
   -webkit-mask-image: linear-gradient(to right, transparent var(--x1), #000 calc(var(--x1) + var(--e)), #000 calc(var(--x2) - var(--e)), transparent var(--x2)),
     linear-gradient(to bottom, transparent var(--y1), #000 calc(var(--y1) + var(--e)), #000 calc(var(--y2) - var(--e)), transparent var(--y2));
@@ -353,7 +353,7 @@ textarea.field.area { min-height: 92px; resize: vertical; font-family: inherit; 
 .k-common .h-glare, .k-plain .h-glare { opacity: calc(.15 + var(--hyp) * .35); }
 
 /* Rainbow foil (Super, Ultra artwork): bands of colour + fine vertical bars, moving with the light */
-.fx-rainbow .h-fx, .fx-rainbow-soft .h-fx { filter: brightness(.68) contrast(1.7) saturate(1.7);
+.fx-rainbow .h-fx, .fx-rainbow-soft .h-fx { filter: brightness(.56) contrast(1.7) saturate(1.8);
   background-image:
     repeating-linear-gradient(115deg, #ff5f6d 0%, #ffd36b 5%, #7dff8a 10%, #5fe4ff 15%, #8b7bff 20%, #ff6fd8 25%, #ff5f6d 30%),
     repeating-linear-gradient(90deg, rgba(0,0,0,.3) 0 2px, rgba(255,255,255,.2) 2px 3px, rgba(0,0,0,.3) 3px 5px),
@@ -369,7 +369,7 @@ textarea.field.area { min-height: 92px; resize: vertical; font-family: inherit; 
   background-image: linear-gradient(110deg, #4a3208 calc(var(--p) - 45%), #d7a13c calc(var(--p) - 14%), #fff1bf var(--p), #e0b34f calc(var(--p) + 14%), #4a3208 calc(var(--p) + 45%)); }
 .fx-gold-soft { opacity: calc(.35 + var(--hyp) * .25); }
 /* Secret: fine diagonal lines, rainbow inside them, sparkle */
-.fx-secret .h-fx { filter: brightness(.7) contrast(1.8) saturate(1.4);
+.fx-secret .h-fx { filter: brightness(.5) contrast(1.8) saturate(1.5);
   background-image:
     var(--g1),
     repeating-linear-gradient(45deg, rgba(0,0,0,.85) 0 1.6px, rgba(255,255,255,.9) 1.6px 2.4px, rgba(0,0,0,.85) 2.4px 3.6px),
@@ -388,7 +388,7 @@ textarea.field.area { min-height: 92px; resize: vertical; font-family: inherit; 
   background-blend-mode: screen, screen, multiply, normal; }
 .fx-glitter-soft { opacity: calc(.4 + var(--hyp) * .3); }
 /* Prism textures (Collector's fine, Prismatic coarse): triangles that catch different colours */
-.fx-prism-fine .h-fx, .fx-prism-coarse .h-fx { --s: 6px; filter: brightness(.7) contrast(1.8) saturate(1.5);
+.fx-prism-fine .h-fx, .fx-prism-coarse .h-fx { --s: 6px; filter: brightness(.5) contrast(1.8) saturate(1.6);
   background-image:
     repeating-linear-gradient(60deg, rgba(255,255,255,.85) 0 calc(var(--s) * .5), rgba(0,0,0,.85) calc(var(--s) * .5) var(--s)),
     repeating-linear-gradient(-60deg, rgba(255,255,255,.85) 0 calc(var(--s) * .5), rgba(0,0,0,.85) calc(var(--s) * .5) var(--s)),
@@ -397,10 +397,12 @@ textarea.field.area { min-height: 92px; resize: vertical; font-family: inherit; 
   background-position: 0 0, 0 0, var(--p) var(--p);
   background-blend-mode: difference, multiply, normal; }
 .fx-prism-coarse .h-fx { --s: 22px; }
+/* over the whole card the patterns stay lighter, so the picture remains clear */
+.h-shine.a-all:is(.fx-secret, .fx-glitter) { opacity: calc(.42 + var(--hyp) * .4); }
 .fx-prism-coarse { opacity: calc(.55 + var(--hyp) * .3); }
 .fx-prism-fine { opacity: calc(.7 + var(--hyp) * .25); }
 /* Tint: a soft iridescent multiply that also shows on white and pale cards (manga style, ghost rares) */
-.fx-tint { mix-blend-mode: multiply; opacity: calc(.32 + var(--hyp) * .3); }
+.fx-tint { mix-blend-mode: multiply; opacity: calc(.24 + var(--hyp) * .26); }
 .fx-tint .h-fx { background-image: linear-gradient(115deg, #ffc4dc, #fff0b8, #c8ffd8, #bfeaff, #d9c8ff, #ffc4dc, #fff0b8);
   background-size: 300% 300%; background-position: var(--p) var(--p); }
 /* Ultimate: the picture pressed into the card – the emboss is lit from the light point – with a matte gold metal sheen */
