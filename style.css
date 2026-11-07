@@ -645,3 +645,6 @@ html, body { overflow-x: clip; }
 .pile.p-deck { background: rgba(90,180,255,.18); color: #7cc4ff; }
 .pocket.spot { outline: 3px solid #ffd76a; outline-offset: 2px; animation: spot-pulse 1s ease-in-out 3; z-index: 2; }
 @keyframes spot-pulse { 50% { outline-color: rgba(255,215,106,.25); transform: scale(1.04); } }
+/* Box tally (pack mode) */
+.box-tally { margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.08); }
+.box-tally .actions { margin-top: 6px; }

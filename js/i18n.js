@@ -142,6 +142,9 @@ Object.assign(DE, {
   'Your collection, wishlist, decks, sets and friends are only on this phone. Save a backup now and then – for a new phone, or if the browser data gets cleared.': 'Sammlung, Wunschliste, Decks, Sets und Freunde liegen nur auf diesem Handy. Speichere ab und zu eine Sicherung – für ein neues Handy oder falls die Browserdaten gelöscht werden.',
   'The sell list has one row per version with its Cardmarket product id, quantity, language and condition – the format seller tools like TCG PowerTools import.': 'Die Verkaufsliste hat je Version eine Zeile mit Cardmarket-Produkt-ID, Menge, Sprache und Zustand – das Format, das Verkäufer-Tools wie TCG PowerTools einlesen.',
   'Binder': 'Binder', 'Deck': 'Deck', 'missing in a set you collect': 'fehlt in einem Set, das du sammelst', 'a deck still needs it': 'ein Deck braucht sie noch',
+  'Box so far:': 'Box bisher:', '+ Count for the box': '+ Für die Box zählen', 'Counted ✓': 'Gezählt ✓', 'Share box': 'Box teilen', 'Reset': 'Zurücksetzen',
+  'Box tally reset': 'Box-Bilanz zurückgesetzt', 'This photo is already counted': 'Dieses Foto ist schon gezählt', 'My box': 'Meine Box',
+  'Opening a whole box? Count each photo and see at the end whether it paid off.': 'Öffnest du eine ganze Box? Zähl jedes Foto und sieh am Ende, ob es sich gelohnt hat.',
   'Big moment': 'Big Moment', 'Value · approx. last 30 days': 'Wert · ca. letzte 30 Tage', '30-day avg.': 'Ø 30 Tage', '7-day avg.': 'Ø 7 Tage',
   'yesterday': 'gestern', 'today': 'heute', '🂠 Draw test hand': '🂠 Testhand ziehen', '🂠 New test hand': '🂠 Neue Testhand', 'Draw again': 'Neu ziehen',
   '+1 card': '+1 Karte', 'Test hand': 'Testhand', 'No main deck': 'Kein Main Deck', 'Deck value (max rarity)': 'Deckwert (höchste Seltenheit)',
@@ -167,6 +170,7 @@ Object.assign(DE, {
 
 // [pattern, German] for texts with numbers or names in them
 const P = [
+  [/^Counted: (\d+) packs? · box so far (\d+) packs$/, 'Gezählt: $1 Pack(s) · Box bisher $2 Packs'],
   [/^📒 (.+) · pick version$/, '📒 $1 · Version wählen'],
   [/^Backup from (.+) with (\d+) cards\. Everything on this phone is replaced by it\.$/, 'Sicherung vom $1 mit $2 Karten. Alles auf diesem Handy wird dadurch ersetzt.'],
   [/^(\d+) cards? without a version left out$/, '$1 Karte(n) ohne Version ausgelassen'],

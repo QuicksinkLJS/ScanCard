@@ -10,6 +10,7 @@ import { quickPrice } from './cardpage.js';
 import { sharePulls } from './share.js';
 import { pileOf, PILES } from './sortpile.js';
 import { shortSet } from './placement.js';
+import { addToBox, boxResult } from './boxtally.js';
 import { versionImage } from './prices.js';
 import { openReveal } from './reveal.js';
 import { loadWish } from './lists.js';
@@ -433,11 +434,58 @@ export function createScanner({ api, recognizer, detector, getOcr, getLineOcr = 
       <div class="stepper" aria-label="Packs in this photo">
         <button type="button" data-d="-1" aria-label="One pack less">−</button><b>${packs}</b><button type="button" data-d="1" aria-label="One pack more">+</button>
       </div>
-      <p class="small muted bal-note">Booster ${eurS(bp.booster)}${bp.box ? ` · box ${eurS(bp.box)}` : ''} on Cardmarket (${esc(pack.name)})</p>`;
+      <p class="small muted bal-note">Booster ${eurS(bp.booster)}${bp.box ? ` · box ${eurS(bp.box)}` : ''} on Cardmarket (${esc(pack.name)})</p>
+      ${boxTallyHTML(pack)}`;
     el.querySelectorAll('[data-d]').forEach((b) => b.addEventListener('click', () => {
       packs = Math.max(1, Math.min(99, packs + Number(b.dataset.d)));
       renderBalance(lo, hi);
     }));
+    $('box-add')?.addEventListener('click', () => {
+      const pulls = cards.filter((c) => c.price?.lo != null).map((c) => ({ name: c.name, lo: c.price.lo, hi: c.price.hi ?? c.price.lo, thumb: c.canvas ? thumbOf(c.canvas, 200, 0.8) : c.thumb }));
+      const r = addToBox(pack.box, { photo: `${scanId}-${cards.length}`, packs, booster: bp.booster, lo, hi, pulls });
+      if (!r.added) { toast('This photo is already counted'); return; }
+      setPack({ ...pack, box: r.box });
+      toast(`Counted: ${packs} pack${packs > 1 ? 's' : ''} · box so far ${r.box.packs} packs`);
+      renderBalance(lo, hi);
+    });
+    $('box-reset')?.addEventListener('click', () => {
+      const before = pack.box;
+      setPack({ ...pack, box: null });
+      renderBalance(lo, hi);
+      toast('Box tally reset', 5000, { label: 'Undo', run: () => { setPack({ ...getPack(), box: before }); renderBalance(lo, hi); } });
+    });
+    $('box-share')?.addEventListener('click', () => shareBox(pack));
+  }
+
+  // Box tally over several photos (pack mode): packs, cost, pulled value, result, best pulls.
+  function boxTallyHTML(pack) {
+    const b = pack.box;
+    const counted = b?.photos.includes(`${scanId}-${cards.length}`);
+    const r = boxResult(b);
+    const fmt = (x) => `${x >= 0 ? '+' : ''}${x} %`;
+    return `<div class="box-tally">
+      ${b ? `<p class="small"><b>Box so far:</b> ${b.photos.length} photo${b.photos.length > 1 ? 's' : ''} · ${b.packs} pack${b.packs > 1 ? 's' : ''} · cost ${eurS(b.cost)} · pulled ${range(b.lo, b.hi)}
+        · <b class="${r.win ? 'up' : r.maybe ? '' : 'down'}">${r.lo === r.hi ? fmt(r.lo) : `${fmt(r.lo)} … ${fmt(r.hi)}`}</b></p>` : '<p class="small muted">Opening a whole box? Count each photo and see at the end whether it paid off.</p>'}
+      <div class="actions">
+        <button type="button" class="btn" id="box-add" ${counted ? 'disabled' : ''}>${counted ? 'Counted ✓' : '+ Count for the box'}</button>
+        ${b ? '<button type="button" class="btn" id="box-share">Share box</button><button type="button" class="btn" id="box-reset">Reset</button>' : ''}
+      </div></div>`;
+  }
+
+  async function shareBox(pack) {
+    const b = pack.box;
+    if (!b) return;
+    const pulls = await Promise.all(b.pulls.map(async (p) => {
+      const canvas = document.createElement('canvas');
+      if (p.thumb) {
+        const img = new Image(); img.src = p.thumb;
+        try { await img.decode(); canvas.width = img.width; canvas.height = img.height; canvas.getContext('2d').drawImage(img, 0, 0); } catch { /* no picture */ }
+      }
+      return { name: p.name, canvas, price: { lo: p.lo, hi: p.hi } };
+    }));
+    const r = boxResult(b);
+    const res = await sharePulls(pulls, { title: 'My box', sub: `${pack.name || ''} · ${b.packs} packs · ${eurS(b.cost)} → ${range(b.lo, b.hi)}`, balance: `${r.lo >= 0 ? '+' : ''}${r.lo} %` });
+    if (res === 'downloaded') toast('Picture saved');
   }
   const eurS = (v) => (v == null ? '–' : `€${v.toFixed(2)}`);
 
