@@ -201,7 +201,25 @@ body.cam-open { overflow: hidden; }
 .dym-c img.none { visibility: hidden; }
 .dym-c em { font-style: normal; color: var(--muted); font-size: 11px; }
 .dym-c:active { border-color: var(--accent); }
-.toast-act { background: none; border: 0; color: var(--accent); font: inherit; font-weight: 650; padding: 4px 4px 4px 10px; cursor: pointer; }
+.rbadge { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; margin-right: 2px; letter-spacing: .02em; vertical-align: 1px; }
+.r-rainbow { --rc: linear-gradient(100deg, #ff6aa8, #ffd86a, #6affc0, #6ad2ff, #c08aff, #ff6aa8); }
+.r-secret { --rc: linear-gradient(100deg, #8d93a3, #f2f4fa, #9aa1b2, #e7eaf2, #8d93a3); }
+.r-ultra { --rc: linear-gradient(100deg, #9c6e17, #f7d774, #fff1b8, #c99a2e, #8a6416); }
+.r-super { --rc: linear-gradient(100deg, #2f6fe0, #8cc4ff, #3f86ff, #b5dbff, #2f6fe0); }
+.r-rare { --rc: linear-gradient(100deg, #6e7280, #cfd3dc, #7c808c); }
+.r-common { --rc: #4a4a56; }
+.r-open { --rc: #ff9d2e; }
+.rbadge.r-rainbow, .rbadge.r-secret, .rbadge.r-ultra, .rbadge.r-super, .rbadge.r-rare { background: var(--rc); background-size: 200% 100%; color: #15151b; }
+.rbadge.r-common { background: #34343f; color: #c9c8d3; }
+.rbadge.r-open { background: rgba(255, 157, 46, .16); color: #ffb35c; border: 1px solid rgba(255,157,46,.45); }
+.tframe { position: relative; flex: none; display: inline-flex; border-radius: 7px; }
+.tframe.r-rainbow, .tframe.r-secret, .tframe.r-ultra, .tframe.r-super { padding: 2px; background: var(--rc); background-size: 300% 100%; animation: foil 4s linear infinite; }
+.tframe.r-rainbow .thumb, .tframe.r-secret .thumb, .tframe.r-ultra .thumb, .tframe.r-super .thumb { border-radius: 5px; width: 42px; height: 61px; }
+@keyframes foil { to { background-position: 300% 0; } }
+@media (prefers-reduced-motion: reduce) { .tframe { animation: none !important; } }
+.rchips .rchip i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--rc); margin-right: 6px; vertical-align: -1px; }
+.toast:not([hidden]) { display: flex; align-items: center; gap: 6px; }
+.toast-act { white-space: nowrap; background: none; border: 0; color: var(--accent); font: inherit; font-weight: 650; padding: 4px 4px 4px 10px; cursor: pointer; }
 .choose { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,.55); display: flex; align-items: flex-end; justify-content: center; padding: 16px 16px calc(16px + env(safe-area-inset-bottom)); }
 .choose-box { width: 100%; max-width: 420px; background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 16px; display: grid; gap: 8px; animation: rise .18s ease-out; }
 .choose-title { margin: 0 0 6px; }

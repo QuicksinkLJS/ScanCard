@@ -13,10 +13,10 @@ import { createCamera } from './camera.js';
 import { createScanner } from './scan.js';
 import { initCardPage, openCardPage, closeCardPage, syncBody, searchNames, quickPrice } from './cardpage.js';
 import { portfolio, changeOf, mid, pctText } from './depot.js';
-import { versionImage } from './prices.js';
+import { versionImage, rarityRank } from './prices.js';
 import { createMasters } from './masters.js';
 import { createDecks } from './decks.js';
-import { openHolo, closeHolo } from './holo.js';
+import { openHolo, closeHolo, holoKind } from './holo.js';
 import { loadWatch, loadWish, removeWatch, belowTarget } from './lists.js';
 import {
   loadCollection, saveCollection, newId, loadPack, savePack, putSample, updateSample, allSamples, countSamples,
@@ -222,6 +222,18 @@ const plainHooks = {
 };
 
 let collSort = 'value';
+let collRarity = '';
+// Rarity badge of a collection card: colour by kind, short name; no exact version yet -> "choose rarity".
+const RCLASS = { rainbow: 'r-rainbow', secret: 'r-secret', ghost: 'r-secret', ultra: 'r-ultra', relief: 'r-ultra', super: 'r-super', rare: 'r-rare', common: 'r-common', plain: 'r-common' };
+function shortRarity(r) {
+  return ({ 'quarter century secret rare': 'QCSR', 'prismatic secret rare': 'PSR', "collector's rare": 'CR', 'starlight rare': 'Starlight', 'ultimate rare': 'Ultimate', 'ghost rare': 'Ghost', 'platinum secret rare': 'PlSR' })[r.toLowerCase()]
+    || (r.length > 14 ? r.replace(/ Rare$/, '') : r);
+}
+function rarityOf(e) {
+  if (!e.price) return null;
+  if (!e.price.exact || !e.price.rarity) return { key: '~open', cls: 'r-open', label: 'choose rarity' };
+  return { key: e.price.rarity, cls: RCLASS[holoKind(e.price.rarity)] || 'r-common', label: shortRarity(e.price.rarity) };
+}
 // Official picture once the version is known (sharp), else the own photo.
 const pictureOf = (e, size = 'preview') => (e.price?.exact && e.price?.image ? versionImage({ image: e.price.image }, size) : '') || e.thumb || versionImage({ image: e.price?.image }, size) || '';
 function renderCollection() {
@@ -229,13 +241,26 @@ function renderCollection() {
   const pf = portfolio(list);
   $('coll-empty').hidden = list.length > 0;
   const chg = (p) => (p == null || Math.abs(p) < 0.05 ? '' : `<small class="${p >= 0 ? 'up' : 'down'}">${pctText(p)}</small>`);
-  const sorted = collSort === 'value' ? [...list].sort((a, b) => (mid(b.price) ?? -1) - (mid(a.price) ?? -1)) : list;
-  $('coll-list').innerHTML = sorted.map((e) => `
+  // rarity filter chips (with counts)
+  const rcount = new Map();
+  for (const e of list) { const r = rarityOf(e); if (r) { const x = rcount.get(r.key) || { ...r, n: 0 }; x.n++; rcount.set(r.key, x); } }
+  if (collRarity && !rcount.has(collRarity)) collRarity = '';
+  const rlist = [...rcount.values()].sort((a, b) => (a.key === '~open') - (b.key === '~open') || rarityRank(a.key) - rarityRank(b.key));
+  $('coll-rchips').hidden = rlist.length < 2;
+  $('coll-rchips').innerHTML = `<button type="button" class="chip ${!collRarity ? 'on' : ''}" data-rar="">All ${list.length}</button>`
+    + rlist.map((r) => `<button type="button" class="chip rchip ${r.cls} ${collRarity === r.key ? 'on' : ''}" data-rar="${esc(r.key)}"><i></i>${esc(r.label)} ${r.n}</button>`).join('');
+  $('coll-rchips').querySelectorAll('[data-rar]').forEach((b) => b.addEventListener('click', () => { collRarity = b.dataset.rar; renderCollection(); }));
+  const shown = collRarity ? list.filter((e) => rarityOf(e)?.key === collRarity) : list;
+  const sorted = collSort === 'value' ? [...shown].sort((a, b) => (mid(b.price) ?? -1) - (mid(a.price) ?? -1)) : shown;
+  $('coll-list').innerHTML = sorted.map((e) => {
+    const r = rarityOf(e);
+    return `
     <li><button type="button" data-id="${esc(e.id)}">
-      ${pictureOf(e) ? `<img class="thumb" src="${esc(pictureOf(e))}" alt="">` : `<span class="dot ${valueTier(e.price?.hi)}"></span>`}
-      <span class="what"><b>${esc(e.name)}</b><small>${esc(e.price?.label || '')}</small></span>
+      ${pictureOf(e) ? `<span class="tframe ${r?.cls || ''}"><img class="thumb" src="${esc(pictureOf(e))}" alt=""></span>` : `<span class="dot ${valueTier(e.price?.hi)}"></span>`}
+      <span class="what"><b>${esc(e.name)}</b><small>${r ? `<span class="rbadge ${r.cls}">${esc(r.label)}</span> ` : ''}${esc(e.price?.label || '')}</small></span>
       <span class="eur">${range(e.price?.lo, e.price?.hi)}${chg(changeOf(e))}</span>
-    </button></li>`).join('');
+    </button></li>`;
+  }).join('');
   $('coll-list').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => openEntry(b.dataset.id)));
   const open = list.filter((e) => e.price && !e.price.exact).length;
   $('coll-total').textContent = range(pf.lo, pf.hi);
