@@ -219,5 +219,5 @@ export async function quickPrice(theApi, s) {
     ? [`${chosen.set}${chosen.year ? ` (${chosen.year})` : ''}`, optionCode(chosen, lang?.code), chosen.label || (chosen.variants <= 1 ? chosen.rarities[0] : '')].filter(Boolean).join(' · ')
     : best?.length ? `${best[0].set} · ${best.length} versions` : (ranked.length ? `${ranked.length} version${ranked.length > 1 ? 's' : ''}` : 'no price found');
   return { ...price, label, exact: !!chosen, rarity: chosen ? (chosen.rarity || (chosen.variants <= 1 ? chosen.rarities[0] : '') || '') : '',
-    image: chosen?.image || '', set: chosen?.set || '', pid: chosen ? Number(chosen.key) : null };
+    image: chosen?.image || '', set: chosen?.set || (best?.length && best.every((o) => o.set === best[0].set) ? best[0].set : ''), pid: chosen ? Number(chosen.key) : null };
 }

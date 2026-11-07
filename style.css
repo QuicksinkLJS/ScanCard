@@ -222,3 +222,19 @@ body.cam-open { overflow: hidden; }
 @keyframes hit-pop { 0% { transform: scale(1); } 30% { transform: scale(1.04); } 100% { transform: scale(1); } }
 @keyframes hit-shine { from { background-position: 150% 0; } to { background-position: -100% 0; } }
 @media (prefers-reduced-motion: reduce) { .rows button.hit, .rows button.hit-glow { animation: none; } }
+
+/* Collection as a portfolio */
+#coll-change { margin: 2px 0 0; font-weight: 600; }
+.up, .rows .eur small.up { color: #4fd08a; } .down, .rows .eur small.down { color: #ff7b7b; }
+.topstrip { display: flex; gap: 10px; overflow-x: auto; padding: 4px 2px 10px; scroll-snap-type: x mandatory; }
+.topcard { flex: none; width: 112px; scroll-snap-align: start; display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
+  padding: 8px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); color: inherit; font: inherit; text-align: left; position: relative; }
+.topcard img, .topcard .noimg { width: 96px; height: 140px; object-fit: cover; border-radius: 6px; background: var(--border); }
+.topcard b { font-size: 13px; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.topcard .eur { font-weight: 700; font-size: 14px; }
+.topcard small { font-size: 12px; }
+.topcard .rank { position: absolute; top: 4px; left: 4px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--accent); color: var(--accent-ink); font-size: 12px; font-weight: 700; }
+details.fold { margin: 4px 0 12px; border: 1px solid var(--border); border-radius: 12px; padding: 4px 12px; }
+details.fold summary { cursor: pointer; padding: 8px 0; font-weight: 600; }
+details.fold .rows { margin: 0 0 6px; }

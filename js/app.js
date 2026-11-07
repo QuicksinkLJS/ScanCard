@@ -10,6 +10,8 @@ import { createDetector } from './detect.js';
 import { createCamera } from './camera.js';
 import { createScanner } from './scan.js';
 import { initCardPage, openCardPage, closeCardPage, syncBody, searchNames, quickPrice } from './cardpage.js';
+import { portfolio, changeOf, mid, pctText } from './depot.js';
+import { versionImage } from './prices.js';
 import {
   loadCollection, saveCollection, newId, loadPack, savePack, putSample, updateSample, allSamples, countSamples,
 } from './store.js';
@@ -112,11 +114,17 @@ function entryFromSubject(s, extra = {}) {
   };
 }
 
+// The price when a card is added is kept as "buy" (for "since added ±%"). A corrected name or version
+// starts over, since the old price belonged to another card.
 function upsertEntry(entry) {
   const list = loadCollection();
   const i = list.findIndex((e) => e.id === entry.id);
-  if (i >= 0) list[i] = { ...list[i], ...entry, added: list[i].added };
-  else list.unshift(entry);
+  const snap = entry.price ? { lo: entry.price.lo, hi: entry.price.hi, date: Date.now() } : null;
+  if (i >= 0) {
+    const old = list[i];
+    const same = old.name === entry.name && (old.vkey || null) === (entry.vkey || null);
+    list[i] = { ...old, ...entry, added: old.added, buy: same && old.buy ? old.buy : snap };
+  } else list.unshift({ ...entry, buy: snap });
   saveCollection(list);
 }
 
@@ -181,28 +189,54 @@ const plainHooks = {
   },
 };
 
+let collSort = 'value';
+// Own photo, else the official picture of the chosen version.
+const pictureOf = (e, size = 'preview') => e.thumb || versionImage({ image: e.price?.image }, size) || '';
 function renderCollection() {
   const list = loadCollection();
+  const pf = portfolio(list);
   $('coll-empty').hidden = list.length > 0;
-  $('coll-list').innerHTML = list.map((e) => `
+  const chg = (p) => (p == null || Math.abs(p) < 0.05 ? '' : `<small class="${p >= 0 ? 'up' : 'down'}">${pctText(p)}</small>`);
+  const sorted = collSort === 'value' ? [...list].sort((a, b) => (mid(b.price) ?? -1) - (mid(a.price) ?? -1)) : list;
+  $('coll-list').innerHTML = sorted.map((e) => `
     <li><button type="button" data-id="${esc(e.id)}">
-      ${e.thumb ? `<img class="thumb" src="${e.thumb}" alt="">` : `<span class="dot ${valueTier(e.price?.hi)}"></span>`}
+      ${pictureOf(e) ? `<img class="thumb" src="${esc(pictureOf(e))}" alt="">` : `<span class="dot ${valueTier(e.price?.hi)}"></span>`}
       <span class="what"><b>${esc(e.name)}</b><small>${esc(e.price?.label || '')}</small></span>
-      <span class="eur">${range(e.price?.lo, e.price?.hi)}</span>
+      <span class="eur">${range(e.price?.lo, e.price?.hi)}${chg(changeOf(e))}</span>
     </button></li>`).join('');
-  $('coll-list').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
-    const e = loadCollection().find((x) => x.id === b.dataset.id);
-    if (!e) return;
-    openCardPage({ ...e, collId: e.id }, collHooks);
-  }));
-  const lo = list.reduce((s, e) => s + (e.price?.lo || 0), 0);
-  const hi = list.reduce((s, e) => s + (e.price?.hi || 0), 0);
+  $('coll-list').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => openEntry(b.dataset.id)));
   const open = list.filter((e) => e.price && !e.price.exact).length;
-  $('coll-total').textContent = range(lo, hi);
+  $('coll-total').textContent = range(pf.lo, pf.hi);
+  $('coll-change').innerHTML = pf.pct != null && list.length
+    ? `<span class="${pf.change >= 0 ? 'up' : 'down'}">${pctText(pf.pct)} (${pf.change >= 0 ? '+' : '−'}${eur(Math.abs(pf.change)).slice(0)})</span> since added`
+    : '';
   $('coll-sub').textContent = list.length
     ? `${list.length} card${list.length > 1 ? 's' : ''}${open ? ` · ${open} without exact version (shown as a range)` : ''}`
     : '';
+  // Top 5
+  $('coll-top-wrap').hidden = pf.top.length < 2;
+  $('coll-top').innerHTML = pf.top.map((e, i) => `
+    <button type="button" class="topcard" data-id="${esc(e.id)}">
+      <span class="rank">${i + 1}</span>
+      ${pictureOf(e, 'show') ? `<img src="${esc(pictureOf(e, 'show'))}" alt="">` : '<span class="noimg"></span>'}
+      <b>${esc(e.name)}</b><span class="eur">${range(e.price?.lo, e.price?.hi)}</span>${chg(changeOf(e))}
+    </button>`).join('');
+  $('coll-top').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => openEntry(b.dataset.id)));
+  // Value per set
+  $('coll-sets-wrap').hidden = pf.bySet.length < 2;
+  $('coll-sets').innerHTML = pf.bySet.map((s) => `
+    <li><div class="row"><span class="what"><b>${esc(s.set)}</b><small>${s.count} card${s.count > 1 ? 's' : ''}</small></span>
+    <span class="eur">${eur(s.value)}</span></div></li>`).join('');
 }
+function openEntry(id) {
+  const e = loadCollection().find((x) => x.id === id);
+  if (e) openCardPage({ ...e, collId: e.id }, collHooks);
+}
+document.querySelectorAll('#view-collection [data-sort]').forEach((b) => b.addEventListener('click', () => {
+  collSort = b.dataset.sort;
+  document.querySelectorAll('#view-collection [data-sort]').forEach((x) => x.classList.toggle('on', x === b));
+  renderCollection();
+}));
 
 // Refresh the stored prices with today's data once per app start.
 let refreshed = false;
@@ -213,7 +247,8 @@ async function refreshCollectionPrices() {
   let changed = false;
   for (const e of list) {
     const p = await quickPrice(api, e).catch(() => null);
-    if (p && (p.lo !== e.price?.lo || p.hi !== e.price?.hi || p.label !== e.price?.label)) { e.price = p; changed = true; }
+    if (p && (p.lo !== e.price?.lo || p.hi !== e.price?.hi || p.label !== e.price?.label || p.set !== e.price?.set)) { e.price = p; changed = true; }
+    if (!e.buy && (e.price || p)) { const q = e.price || p; e.buy = { lo: q.lo, hi: q.hi, date: e.added || Date.now() }; changed = true; }
   }
   if (changed) { saveCollection(list); renderCollection(); }
 }

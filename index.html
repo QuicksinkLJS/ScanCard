@@ -62,7 +62,20 @@
       <div class="summary">
         <p class="muted small">Total value on Cardmarket</p>
         <p id="coll-total" class="result-total">€0.00</p>
+        <p id="coll-change" class="small"></p>
         <p id="coll-sub" class="muted small"></p>
+      </div>
+      <div id="coll-top-wrap" hidden>
+        <h2>Most valuable</h2>
+        <div id="coll-top" class="topstrip"></div>
+      </div>
+      <details id="coll-sets-wrap" class="fold" hidden>
+        <summary>Value per set</summary>
+        <ul id="coll-sets" class="rows compact"></ul>
+      </details>
+      <div class="seg small" role="tablist">
+        <button type="button" class="on" data-sort="value">Most valuable first</button>
+        <button type="button" data-sort="added">Newest first</button>
       </div>
       <ul id="coll-list" class="rows"></ul>
       <p id="coll-empty" class="empty">Scanned cards you add show up here. Tap a card to check or correct it.</p>
