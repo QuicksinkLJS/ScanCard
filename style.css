@@ -339,6 +339,8 @@ textarea.field.area { min-height: 92px; resize: vertical; font-family: inherit; 
 .h-shine.a-name { --x1: 6.6%; --x2: 84.5%; --y1: 4.2%; --y2: 10.8%; --e: 1.2%; }
 .h-shine.a-art { --x1: 11.6%; --x2: 88.4%; --y1: 17.9%; --y2: 70.8%; --e: 1.4%; }
 .lay-pendulum .h-shine.a-art { --x1: 6.4%; --x2: 93.6%; --y1: 17.6%; --y2: 63%; }
+.lay-manga .h-shine.a-art { --x1: 7.6%; --x2: 92.6%; --y1: 17.4%; --y2: 76%; }
+.lay-manga .h-shine.a-name { --x1: 4%; --x2: 62%; --y1: 3%; --y2: 10.8%; }
 .h-fx { position: absolute; inset: 0; }
 .h-pic { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .h-glare { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: overlay; opacity: calc(.25 + var(--hyp) * .55);
@@ -395,15 +397,21 @@ textarea.field.area { min-height: 92px; resize: vertical; font-family: inherit; 
 .fx-prism-coarse .h-fx { --s: 22px; }
 .fx-prism-coarse { opacity: calc(.55 + var(--hyp) * .3); }
 .fx-prism-fine { opacity: calc(.7 + var(--hyp) * .25); }
-/* Ultimate: the picture pressed into the card (emboss), matte gold, no rainbow */
-.fx-relief { mix-blend-mode: overlay; opacity: calc(.75 + var(--hyp) * .2); }
-.fx-relief .h-pic { filter: url(#cs-emboss) contrast(2.2); }
-.fx-relief .h-fx { mix-blend-mode: multiply; opacity: .55; background-image: linear-gradient(110deg, #a5803a calc(var(--p) - 50%), #f6e2a6 var(--p), #a5803a calc(var(--p) + 50%)); }
-.k-relief .h-base { filter: sepia(.6) saturate(.7) brightness(.98); }
-/* Ghost: pale, silvery, almost transparent picture */
-.fx-ghost { mix-blend-mode: screen; opacity: calc(.82 + var(--hyp) * .18); }
-.fx-ghost .h-pic { filter: grayscale(1) brightness(1.15) contrast(.7); }
-.fx-ghost .h-fx { mix-blend-mode: multiply; background-image: linear-gradient(115deg, #8d9bb8 calc(var(--p) - 45%), #f2f6ff var(--p), #8d9bb8 calc(var(--p) + 45%)); }
+/* Tint: a soft iridescent multiply that also shows on white and pale cards (manga style, ghost rares) */
+.fx-tint { mix-blend-mode: multiply; opacity: calc(.32 + var(--hyp) * .3); }
+.fx-tint .h-fx { background-image: linear-gradient(115deg, #ffc4dc, #fff0b8, #c8ffd8, #bfeaff, #d9c8ff, #ffc4dc, #fff0b8);
+  background-size: 300% 300%; background-position: var(--p) var(--p); }
+/* Ultimate: the picture pressed into the card – the emboss is lit from the light point – with a matte gold metal sheen */
+.fx-relief { mix-blend-mode: soft-light; opacity: calc(.55 + var(--hyp) * .3); }
+.fx-relief .h-pic { filter: url(#cs-emboss) contrast(1.5); }
+.fx-gold-metal { mix-blend-mode: soft-light; opacity: calc(.45 + var(--hyp) * .35); }
+.fx-gold-metal .h-fx { background-image: linear-gradient(110deg, #6b4b12 calc(var(--p) - 50%), #e8c46a calc(var(--p) - 10%), #fff3c8 var(--p), #d8ad4e calc(var(--p) + 12%), #6b4b12 calc(var(--p) + 50%)); }
+/* Ghost: a hologram shimmer across the already pale, silvery picture – bright bands that run over it */
+.fx-ghost { mix-blend-mode: soft-light; opacity: calc(.7 + var(--hyp) * .3); }
+.fx-ghost .h-fx { background-image:
+    repeating-linear-gradient(105deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.9) 4%, rgba(160,190,255,.6) 7%, rgba(255,255,255,0) 12%),
+    linear-gradient(115deg, #6f7f9f, #e6eeff 50%, #6f7f9f);
+  background-size: 260% 260%, 100% 100%; background-position: var(--p) var(--p), 0 0; }
 @media (prefers-reduced-motion: reduce) { .holo-card.shiny { animation: none; --t: .5; } }
 
 /* big card on the card page */

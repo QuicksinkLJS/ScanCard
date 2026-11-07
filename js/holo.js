@@ -30,30 +30,38 @@ export function holoKind(rarity) {
 // Where on the card each rarity shines, and how: [area, effect]. Areas have soft edges (CSS masks) and follow
 // the real card layout (artwork window, name bar, whole card).
 //   Rare: silver name · Super: rainbow foil artwork · Ultra: rainbow foil artwork + gold name
-//   Secret: fine diagonal lines with rainbow + sparkle in the artwork, silver name · Ultimate: raised matte gold
-//   on artwork, name and frame, no rainbow · Ghost: pale silvery ghost picture · Starlight: the whole card glitters
+//   Secret: fine diagonal lines with rainbow + sparkle in the artwork, silver name · Ultimate: raised (emboss that
+//   follows the light) with a matte gold metal sheen, no rainbow · Ghost: hologram shimmer on the pale picture · Starlight: the whole card glitters
 //   QCSR: secret lines + glitter over the whole card · Collector's: fine prism texture · Prismatic: coarse prism texture
+// 'tint' is a soft iridescent multiply layer: color-dodge cannot show on pure white or black (manga cards, ghost
+// rares), the tint can.
 const LOOK = {
   rare: [['name', 'silver']],
-  super: [['art', 'rainbow']],
-  ultra: [['art', 'rainbow'], ['name', 'gold']],
-  secret: [['art', 'secret'], ['name', 'silver']],
-  relief: [['all', 'relief'], ['name', 'gold']],
-  ghost: [['art', 'ghost'], ['name', 'silver']],
-  starlight: [['all', 'glitter'], ['all', 'rainbow-soft']],
-  qcsr: [['all', 'secret'], ['all', 'glitter']],
-  rainbow: [['all', 'glitter'], ['all', 'rainbow-soft']],
-  collector: [['art', 'prism-fine'], ['all', 'glitter-soft'], ['name', 'silver']],
-  prismatic: [['art', 'prism-coarse'], ['name', 'silver']],
+  super: [['art', 'tint'], ['art', 'rainbow']],
+  ultra: [['art', 'tint'], ['art', 'rainbow'], ['name', 'gold']],
+  secret: [['art', 'tint'], ['art', 'secret'], ['name', 'silver']],
+  relief: [['all', 'relief'], ['all', 'gold-metal'], ['all', 'glitter-soft']],
+  ghost: [['art', 'tint'], ['art', 'ghost'], ['art', 'glitter-soft']],
+  starlight: [['all', 'tint'], ['all', 'glitter'], ['all', 'rainbow-soft']],
+  qcsr: [['all', 'tint'], ['all', 'secret'], ['all', 'glitter']],
+  rainbow: [['all', 'tint'], ['all', 'glitter'], ['all', 'rainbow-soft']],
+  collector: [['art', 'tint'], ['art', 'prism-fine'], ['all', 'glitter-soft'], ['name', 'silver']],
+  prismatic: [['art', 'tint'], ['art', 'prism-coarse'], ['name', 'silver']],
 };
-const NEEDS_PICTURE = new Set(['relief', 'ghost']);
+const NEEDS_PICTURE = new Set(['relief']);
+
+// Card layouts: normal (also Link/Spell/Trap), pendulum (wider artwork), manga (Original Artwork Collection / YAC1:
+// black-and-white manga style, bigger artwork window, small name top left). Manga cards are recognised from the picture.
+export function layoutOf(src, layout = 'normal') {
+  return /original-artwork-collection|yac1/i.test(src || '') ? 'manga' : layout;
+}
 
 // src: picture URL; kind: holoKind(); shine: false = tilt only (cards that are not yours)
 // prev: picture shown before (fades out, for a soft change when a version is picked)
-// layout: 'normal' | 'pendulum' (Pendulum artworks are wider; Link and YAC1 use the normal one)
+// layout: 'normal' | 'pendulum' | 'manga'
 export function holoCardHTML({ src, kind = 'plain', shine = true, alt = '', prev = '', layout = 'normal' }) {
   const look = shine ? (LOOK[kind] || []) : [];
-  return `<div class="holo-card k-${kind} lay-${layout} ${shine ? 'shiny' : ''}">
+  return `<div class="holo-card k-${kind} lay-${layoutOf(src, layout)} ${shine ? 'shiny' : ''}">
       <img class="h-base" src="${esc(src)}" alt="${esc(alt)}" draggable="false">
       ${look.map(([area, fx]) => `<div class="h-shine a-${area} fx-${fx}">${NEEDS_PICTURE.has(fx) ? `<img class="h-pic" src="${esc(src)}" alt="" draggable="false">` : ''}<div class="h-fx"></div></div>`).join('')}
       <div class="h-glare"></div>
