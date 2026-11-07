@@ -8,9 +8,10 @@
 // }
 // hooks = { onChange(subject), onAdd(subject), onRemove(subject), addLabel }
 
-import { $, esc, eur, range } from './util.js';
+import { $, esc, eur, range, toast } from './util.js';
 import { cardmarketSearchUrl, normName } from './parse.js';
 import { matchCode } from './codematch.js';
+import { findWatch, toggleWatch, findWish, setWish, removeWish } from './lists.js';
 import { versionOptions, rankOptions, bestOptions, priceOf, tierOfPrice, oddValues, optionCode, versionLabel, cardmarketUrl, versionImage } from './prices.js';
 
 let api = null;
@@ -159,8 +160,39 @@ function render() {
       <a class="btn" href="${esc(chosen ? cardmarketUrl(chosen, info?.name || s.name) : cardmarketSearchUrl(info?.name || s.name))}" target="_blank" rel="noopener">${chosen ? (chosen.path ? 'This version on Cardmarket' : 'Find in this set on Cardmarket') : 'Open on Cardmarket'}</a>
       ${hooks.onAdd ? `<button class="btn primary" type="button" id="card-add">${esc(hooks.addLabel?.(s) || 'Add to collection')}</button>` : ''}
     </div>
+    <div class="actions">
+      <button class="btn ${findWatch(s) ? 'on' : ''}" type="button" id="card-watch">${findWatch(s) ? '★ Watching' : '☆ Watch price'}</button>
+      <button class="btn ${findWish(s) ? 'on' : ''}" type="button" id="card-wish">${findWish(s) ? `♥ Wish ≤ ${eur(findWish(s).target)}` : '♡ Wishlist'}</button>
+    </div>
+    <form id="wish-form" class="inline-form" hidden>
+      <input id="wish-target" class="field" type="number" inputmode="decimal" step="0.01" min="0" placeholder="Target price €">
+      <button class="btn primary" type="submit">Save</button>
+      ${findWish(s) ? '<button class="btn" type="button" id="wish-remove">Remove</button>' : ''}
+    </form>
     ${hooks.onRemove ? `<button class="btn wide danger" type="button" id="card-remove">${esc(hooks.removeLabel || 'Remove from collection')}</button>` : ''}
   `;
+  const priceNow = () => ({ lo: price.lo, hi: price.hi, label: chosen ? [`${chosen.set}`, versionLabel(chosen)].join(' · ') : 'any version' });
+  $('card-watch').addEventListener('click', () => {
+    const on = toggleWatch(s, priceNow());
+    toast(on ? 'Added to your watchlist (Market tab)' : 'Removed from your watchlist');
+    render();
+  });
+  $('card-wish').addEventListener('click', () => {
+    const f = $('wish-form');
+    f.hidden = !f.hidden;
+    const w = findWish(s);
+    $('wish-target').value = w ? w.target : (price.lo != null ? (Math.floor(price.lo * 0.9 * 100) / 100).toFixed(2) : '');
+    if (!f.hidden) $('wish-target').focus();
+  });
+  $('wish-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const t = parseFloat(String($('wish-target').value).replace(',', '.'));
+    if (!(t >= 0)) { toast('Enter a target price'); return; }
+    setWish(s, t, priceNow());
+    toast(`On your wishlist – marked when it is ${eur(t)} or less`);
+    render();
+  });
+  $('wish-remove')?.addEventListener('click', () => { removeWish(s); toast('Removed from your wishlist'); render(); });
 
   $('card-body').querySelectorAll('.versions button').forEach((b) => b.addEventListener('click', () => {
     s.vkey = s.vkey === b.dataset.key ? null : b.dataset.key;

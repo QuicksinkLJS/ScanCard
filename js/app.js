@@ -14,6 +14,7 @@ import { portfolio, changeOf, mid, pctText } from './depot.js';
 import { versionImage } from './prices.js';
 import { createMasters } from './masters.js';
 import { createDecks } from './decks.js';
+import { loadWatch, loadWish, removeWatch, belowTarget } from './lists.js';
 import {
   loadCollection, saveCollection, newId, loadPack, savePack, putSample, updateSample, allSamples, countSamples,
 } from './store.js';
@@ -264,10 +265,61 @@ document.querySelectorAll('#coll-tabs [data-ctab]').forEach((b) => b.addEventLis
   document.querySelectorAll('#coll-tabs [data-ctab]').forEach((x) => x.classList.toggle('on', x === b));
   $('masters').hidden = collTab !== 'masters';
   $('decks').hidden = collTab !== 'decks';
+  $('wish').hidden = collTab !== 'wish';
+  if (collTab === 'wish') renderWish();
   $('coll-cards').hidden = collTab !== 'cards';
   if (collTab === 'masters') masters.renderList();
   if (collTab === 'decks') decks.renderList();
 }));
+
+// ---------- wishlist and watchlist ----------
+async function renderWish() {
+  const list = loadWish();
+  $('wish-empty').hidden = list.length > 0;
+  const rows = await Promise.all(list.map(async (w) => ({ w, p: await quickPrice(api, { name: w.name, vkey: w.vkey }).catch(() => null) })));
+  rows.sort((a, b) => belowTarget(b.w, b.p) - belowTarget(a.w, a.p));
+  $('wish-list').innerHTML = rows.map(({ w, p }) => {
+    const hit = belowTarget(w, p);
+    return `<li class="${hit ? 'deal' : ''}"><button type="button" data-name="${esc(w.name)}" data-vkey="${esc(w.vkey || '')}">
+      <span class="what"><b>${esc(w.name)}</b><small>${hit ? '<span class="dealtag">At your price!</span> ' : ''}${esc(w.label || '')} · target ${eur(w.target)}</small></span>
+      <span class="eur">${range(p?.lo, p?.hi)}</span></button></li>`;
+  }).join('');
+  $('wish-list').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => openCardPage({ name: b.dataset.name, vkey: b.dataset.vkey || null }, plainHooks)));
+  return rows.filter((r) => belowTarget(r.w, r.p)).length;
+}
+
+async function renderWatch() {
+  const list = loadWatch();
+  $('watch-empty').hidden = list.length > 0;
+  const rows = await Promise.all(list.map(async (w) => ({ w, p: await quickPrice(api, { name: w.name, vkey: w.vkey }).catch(() => null) })));
+  $('watch-list').innerHTML = rows.map(({ w, p }, i) => {
+    const now = p?.lo, then = w.at;
+    const pct = now != null && then ? (now - then) / then * 100 : null;
+    const since = new Date(w.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    return `<li><button type="button" data-i="${i}">
+      <span class="what"><b>${esc(w.name)}</b><small>${esc(w.label || '')} · ${eur(then)} on ${since}</small></span>
+      <span class="eur">${range(p?.lo, p?.hi)}${pct != null && Math.abs(pct) >= 0.05 ? `<small class="${pct >= 0 ? 'up' : 'down'}">${pctText(pct)}</small>` : '<small>±0 %</small>'}</span>
+    </button></li>`;
+  }).join('');
+  $('watch-list').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
+    const w = rows[Number(b.dataset.i)].w;
+    openCardPage({ name: w.name, vkey: w.vkey }, plainHooks);
+  }));
+}
+let marketTab = 'movers';
+document.querySelectorAll('#market-tabs [data-mtab]').forEach((b) => b.addEventListener('click', () => {
+  marketTab = b.dataset.mtab;
+  document.querySelectorAll('#market-tabs [data-mtab]').forEach((x) => x.classList.toggle('on', x === b));
+  $('watch').hidden = marketTab !== 'watch';
+  $('movers').hidden = marketTab !== 'movers';
+  if (marketTab === 'watch') renderWatch(); else renderMarket();
+}));
+// once per start: tell when a wished card is at the target price
+setTimeout(async () => {
+  if (!loadWish().length) return;
+  const n = await renderWish().catch(() => 0);
+  if (n) toast(`${n} card${n > 1 ? 's' : ''} on your wishlist at your price – see Collection › Wishlist`, 4500);
+}, 2500);
 
 // ---------- market ----------
 let marketKind = 'short', marketDir = 'up';
@@ -385,7 +437,11 @@ $('pack-off').addEventListener('click', () => { setPack(null); history.back(); }
 
 // Android back button / browser back closes the open sheet.
 window.addEventListener('popstate', () => {
-  if (!$('card-page').hidden) { closeCardPage(); masters.refresh(); decks.refresh(); }
+  if (!$('card-page').hidden) {
+    closeCardPage(); masters.refresh(); decks.refresh();
+    if (!$('view-collection').hidden && collTab === 'wish') renderWish();
+    if (!$('view-market').hidden && marketTab === 'watch') renderWatch();
+  }
   else if (!$('deck-page').hidden) decks.closeDeck();
   else if (!$('set-page').hidden) masters.closeSet();
   else if (!$('pack-page').hidden) { $('pack-page').hidden = true; syncBody(); }
@@ -397,7 +453,7 @@ function showView(name) {
   document.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('on', b.dataset.view === name));
   window.scrollTo(0, 0);
   if (name === 'collection') { renderCollection(); refreshCollectionPrices(); if (collTab === 'masters') masters.renderList(); if (collTab === 'decks') decks.renderList(); }
-  if (name === 'market') renderMarket();
+  if (name === 'market') { if (marketTab === 'watch') renderWatch(); else renderMarket(); }
   if (name === 'more') renderMore();
 }
 document.querySelectorAll('.tabs button').forEach((b) => b.addEventListener('click', () => showView(b.dataset.view)));

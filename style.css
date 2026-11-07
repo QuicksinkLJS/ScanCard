@@ -269,3 +269,9 @@ textarea.field.area { min-height: 92px; resize: vertical; font-family: inherit; 
 .prefs label { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .prefs .check { justify-content: flex-start; }
 .field.small-field { width: auto; min-width: 150px; padding: 8px 10px; margin: 0; }
+
+/* Watch / wishlist */
+.btn.on { border-color: var(--accent); color: var(--accent); }
+.rows li.deal > button { box-shadow: inset 3px 0 0 #4fd08a; padding-left: 12px; }
+.dealtag { color: #4fd08a; font-weight: 700; }
+#coll-tabs button, #market-tabs button { font-size: 13.5px; padding: 0 4px; }

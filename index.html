@@ -64,6 +64,11 @@
         <button type="button" class="on" data-ctab="cards">Cards</button>
         <button type="button" data-ctab="masters">Mastersets</button>
         <button type="button" data-ctab="decks">Decks</button>
+        <button type="button" data-ctab="wish">Wishlist</button>
+      </div>
+      <div id="wish" hidden>
+        <ul id="wish-list" class="rows"></ul>
+        <p id="wish-empty" class="empty">Tap “♡ Wishlist” on a card and set the price you want to pay. Cards at or below it are marked here.</p>
       </div>
       <div id="decks" hidden>
         <ul id="decks-list" class="rows"></ul>
@@ -110,6 +115,15 @@
     <!-- ================= MARKET ================= -->
     <section id="view-market" class="view" hidden>
       <header class="top"><h1>Market</h1></header>
+      <div class="seg" role="tablist" id="market-tabs">
+        <button type="button" class="on" data-mtab="movers">Tops &amp; flops</button>
+        <button type="button" data-mtab="watch">Watchlist</button>
+      </div>
+      <div id="watch" hidden>
+        <ul id="watch-list" class="rows"></ul>
+        <p id="watch-empty" class="empty">Tap “☆ Watch price” on any card to follow its price here.</p>
+      </div>
+      <div id="movers">
       <div class="seg" role="tablist">
         <button type="button" class="on" data-kind="short">Short term</button>
         <button type="button" data-kind="stable">Stable trend</button>
@@ -120,6 +134,7 @@
         <button type="button" data-dir="down">Flops</button>
       </div>
       <ul id="market-list" class="rows"></ul>
+      </div>
     </section>
 
     <!-- ================= MORE ================= -->
