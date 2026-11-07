@@ -23,6 +23,7 @@ export function createScanner({ api, recognizer, detector, getOcr, getPack, setP
     const id = ++scanId;
     packs = 1;
     showPhoto(image);
+    scanning(true);
     cards = [];
     renderList();
     try {
@@ -51,7 +52,7 @@ export function createScanner({ api, recognizer, detector, getOcr, getPack, setP
       await recogniseAll(id, found);
     } catch (err) {
       console.error(err);
-      if (id === scanId) setStatus(`Recognition failed: ${err.message || err}`, true);
+      if (id === scanId) { setStatus(`Recognition failed: ${err.message || err}`, true); scanning(false); }
     }
   }
 
@@ -59,6 +60,7 @@ export function createScanner({ api, recognizer, detector, getOcr, getPack, setP
   async function scanCard(canvas) {
     const id = ++scanId;
     showPhoto(canvas);
+    scanning(true);
     cards = [];
     renderList();
     try {
@@ -67,8 +69,13 @@ export function createScanner({ api, recognizer, detector, getOcr, getPack, setP
       await recogniseAll(id, [{ canvas, box: { cx: W / 2, cy: H / 2, w: W * 0.98, h: H * 0.98, angle: 0 } }]);
     } catch (err) {
       console.error(err);
-      if (id === scanId) setStatus(`Recognition failed: ${err.message || err}`, true);
+      if (id === scanId) { setStatus(`Recognition failed: ${err.message || err}`, true); scanning(false); }
     }
+  }
+
+  function scanning(on) {
+    $('scan-result').querySelector('.photo-wrap').classList.toggle('scanning', on);
+    if (!on) navigator.vibrate?.(35);
   }
 
   async function allowed() {
@@ -124,6 +131,7 @@ export function createScanner({ api, recognizer, detector, getOcr, getPack, setP
     await Promise.all(cards.map(async (c) => { c.price = await quickPrice(api, c); }));
     if (id !== scanId) return;
     setStatus('');
+    scanning(false);
     renderList();
     readCodes(id);
   }
@@ -194,14 +202,26 @@ export function createScanner({ api, recognizer, detector, getOcr, getPack, setP
     if (!photoSize) return;
     svg.setAttribute('viewBox', `0 0 ${photoSize.W} ${photoSize.H}`);
     const r = Math.max(photoSize.W, photoSize.H) / 45;
+    const best = [...cards].filter((c) => c.price?.hi != null).sort((a, b) => b.price.hi - a.price.hi)[0];
+    const tag = (c) => {
+      const p = c.price;
+      if (!p || p.lo == null) return '';
+      const f = (v) => (v >= 10 ? `€${Math.round(v)}` : `€${v.toFixed(2)}`);
+      return Math.abs(p.hi - p.lo) < 0.005 ? f(p.lo) : `${f(p.lo)}–${f(p.hi)}`;
+    };
     svg.innerHTML = cards.map((c) => {
       if (!c.box) return '';
       const pts = corners(c.box).map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
       const col = COLORS[tierOf(c)];
-      return `<g data-n="${c.n}" style="cursor:pointer">
+      const t = tag(c);
+      const fs = r * 1.05, tw = t.length * fs * 0.6 + fs, th = fs * 1.7;
+      const ty = c.box.cy + r * 1.4;
+      return `<g data-n="${c.n}" style="cursor:pointer" class="${c === best && (c.price.hi ?? 0) >= 1 ? 'best' : ''}">
         <polygon points="${pts}" stroke="${col}"/>
         <circle cx="${c.box.cx}" cy="${c.box.cy}" r="${r}" fill="${col}" stroke="#fff" stroke-width="${r / 6}"/>
-        <text class="num" x="${c.box.cx}" y="${c.box.cy}" style="font-size:${r * 1.2}px">${c.n}</text></g>`;
+        <text class="num" x="${c.box.cx}" y="${c.box.cy}" style="font-size:${r * 1.2}px">${c.n}</text>
+        ${t ? `<rect class="ptag" x="${c.box.cx - tw / 2}" y="${ty}" width="${tw}" height="${th}" rx="${th / 2}"/>
+        <text class="ptxt" x="${c.box.cx}" y="${ty + th / 2}" style="font-size:${fs}px">${t}</text>` : ''}</g>`;
     }).join('');
     svg.querySelectorAll('g').forEach((g) => g.addEventListener('click', () => open(Number(g.dataset.n))));
   }
@@ -303,6 +323,7 @@ export function createScanner({ api, recognizer, detector, getOcr, getPack, setP
     scanId++;
     cards = [];
     photoSize = null;
+    $('scan-result').querySelector('.photo-wrap').classList.remove('scanning');
     $('scan-result').hidden = true;
     setStatus('');
   }

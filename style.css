@@ -326,3 +326,29 @@ textarea.field.area { min-height: 92px; resize: vertical; font-family: inherit; 
 .holo-info b { font-size: 18px; }
 .holo-info span { font-size: 14px; }
 .holo-btn { display: inline-flex; align-items: center; gap: 6px; }
+
+/* Price tags in the photo; the most valuable one glows */
+.marks .ptag { fill: rgba(13,13,17,.82); stroke: rgba(255,255,255,.35); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.marks .ptxt { font-weight: 800; font-family: system-ui, sans-serif; fill: #fff; text-anchor: middle; dominant-baseline: central; }
+.marks g.best .ptag { fill: #ffcf5a; stroke: #fff; animation: tag-glow 1.6s ease-in-out infinite; }
+.marks g.best .ptxt { fill: #1a1300; }
+.marks g.best polygon { animation: box-glow 1.6s ease-in-out infinite; }
+@keyframes tag-glow { 50% { filter: drop-shadow(0 0 10px rgba(255,207,90,.95)); } }
+@keyframes box-glow { 50% { filter: drop-shadow(0 0 8px rgba(255,207,90,.9)); } }
+
+/* Scan animation: a light sweeping over the photo while it is read */
+.photo-wrap.scanning::after { content: ''; position: absolute; left: 0; right: 0; height: 22%; top: -22%;
+  background: linear-gradient(180deg, transparent, rgba(155,135,255,.35) 70%, rgba(200,190,255,.9) 98%, transparent);
+  animation: sweep 1.4s ease-in-out infinite; pointer-events: none; }
+.photo-wrap.scanning::before { content: ''; position: absolute; inset: 0; pointer-events: none;
+  background-image: linear-gradient(rgba(155,135,255,.12) 1px, transparent 1px), linear-gradient(90deg, rgba(155,135,255,.12) 1px, transparent 1px);
+  background-size: 28px 28px; animation: gridfade 1.4s ease-in-out infinite; }
+@keyframes sweep { from { top: -22%; } to { top: 100%; } }
+@keyframes gridfade { 50% { opacity: .4; } }
+@media (prefers-reduced-motion: reduce) { .photo-wrap.scanning::after, .marks g.best .ptag, .marks g.best polygon { animation: none; } }
+
+/* Your photo next to the official picture */
+.compare { display: flex; gap: 10px; margin: 12px 0 4px; }
+.compare figure { flex: 1; margin: 0; text-align: center; }
+.compare img { width: 100%; aspect-ratio: 59 / 86; object-fit: cover; border-radius: 6px; background: var(--surface); }
+.compare figcaption { font-size: 12px; color: var(--muted); margin-top: 4px; }

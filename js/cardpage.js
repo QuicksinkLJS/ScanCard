@@ -149,6 +149,8 @@ function render() {
         <div class="badges">${lang ? `<span class="badge">${esc(lang.name)}</span>` : ''}${banBadges(info)}</div>
       </div>
     </div>
+    ${s.thumb && chosen?.image ? `<div class="compare"><figure><img src="${s.thumb}" alt=""><figcaption>Your photo</figcaption></figure>
+      <figure><img src="${esc(versionImage(chosen, 'show'))}" alt="" onerror="this.closest('figure').remove()"><figcaption>${esc(versionLabel(chosen))} (official)</figcaption></figure></div>` : ''}
     ${hooks.own && chosen?.image ? `<button type="button" class="btn wide holo-btn" id="card-holo">✨ View your card</button>` : ''}
     ${priceBox}
     ${notes.map((n) => `<p class="note">${n}</p>`).join('')}
