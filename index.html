@@ -419,6 +419,26 @@
   </section>
 
   <!-- ================= HOLOGRAM ================= -->
+  <div id="live" class="live" hidden>
+    <div class="sheet-bar">
+      <button id="live-back" class="link" type="button">‹ Back</button>
+      <span class="muted small" id="live-title"></span>
+    </div>
+    <div class="live-body">
+      <div class="live-stage" id="live-stage">
+        <canvas id="live-canvas" class="live-canvas"></canvas>
+        <div id="live-wait" class="live-wait"><div class="live-ring" aria-hidden="true"></div><p id="live-msg">…</p><div id="live-bar" class="live-bar" hidden></div></div>
+      </div>
+      <p class="small muted live-hint">Tilt your phone or drag across the card.</p>
+      <div class="actions live-tools">
+        <button id="live-flat" class="btn" type="button">Hold: without depth</button>
+        <label class="live-depth">Depth <input id="live-depth" type="range" min="0" max="100" value="47"></label>
+      </div>
+      <p class="small muted" id="live-low" hidden>Small photo from your collection – scan the card again for a sharper picture.</p>
+      <p class="small muted">Prototype: the depth is estimated on your phone by an AI model (Depth Anything V2 Small) from your own photo.</p>
+    </div>
+  </div>
+
   <div id="hg" class="hg" hidden>
     <video id="hg-video" class="hg-video" playsinline muted></video>
     <div class="hg-floor" aria-hidden="true"></div>

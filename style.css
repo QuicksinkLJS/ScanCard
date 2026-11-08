@@ -934,3 +934,27 @@ button.qt-row:disabled { cursor: default; }
 .rar-table .rar-mine { width: 100%; white-space: normal; line-height: 1.2; }
 .rar-cmp.on { border-color: var(--accent); color: var(--accent); }
 .rg-list .fold { margin: 6px 0; }
+
+/* Living artwork (8 Nov) */
+.live { position: fixed; inset: 0; z-index: 46; background: radial-gradient(120% 80% at 50% 30%, #1d1830, #08070c 70%); display: flex; flex-direction: column; overflow-y: auto; }
+.live .sheet-bar { background: transparent; }
+.live-body { padding: 8px 18px 28px; display: flex; flex-direction: column; align-items: center; }
+.live-stage { position: relative; width: min(84vw, 430px); perspective: 1100px; touch-action: none; margin: 8px 0 6px; }
+.live-canvas { display: block; width: 100%; aspect-ratio: var(--card-ar, 59 / 86); border-radius: 4.5% / 3.2%; box-shadow: 0 24px 60px rgba(0, 0, 0, .6), 0 0 0 1px rgba(255, 255, 255, .06);
+  transform-style: preserve-3d; will-change: transform; background: #111; }
+.live-wait { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px; text-align: center;
+  background: rgba(8, 7, 12, .72); border-radius: 4.5% / 3.2%; color: var(--text); }
+.live-wait p { margin: 0; font-size: 14px; }
+.live-ring { width: 44px; height: 44px; border-radius: 50%; border: 3px solid rgba(255, 255, 255, .15); border-top-color: var(--accent); animation: live-spin 0.9s linear infinite; }
+@keyframes live-spin { to { transform: rotate(360deg); } }
+.live-bar { width: 70%; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .12); overflow: hidden; }
+.live-bar::after { content: ''; display: block; height: 100%; width: var(--p, 0%); background: var(--accent); transition: width .2s; }
+.live[data-state='error'] .live-ring { display: none; }
+.live-hint { text-align: center; margin: 4px 0 8px; }
+.live-tools { justify-content: center; align-items: center; flex-wrap: wrap; gap: 10px; }
+.live-tools #live-flat { touch-action: none; user-select: none; -webkit-user-select: none; }
+.live-tools #live-flat.on { border-color: var(--accent); color: var(--accent); }
+.live-depth { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.live-depth input { width: 120px; accent-color: var(--accent); }
+.live-body > p { max-width: 430px; text-align: center; }
+.hg-row { justify-content: center; margin-top: 0; }

@@ -11,7 +11,7 @@ const DATA = 'cardscan-data';
 const SHELL = [
   './', 'index.html', 'style.css', 'manifest.webmanifest', 'icon.svg', 'icons/icon-192.png',
   'js/app.js', 'js/api.js', 'js/camera.js', 'js/cardpage.js', 'js/codematch.js', 'js/detect.js',
-  'js/ocr.js', 'js/parse.js', 'js/prices.js', 'js/recognize.js', 'js/scan.js', 'js/store.js', 'js/util.js', 'js/depot.js', 'js/share.js', 'js/masters.js', 'js/mastercalc.js', 'js/deck.js', 'js/decks.js', 'js/lists.js', 'js/holo.js', 'js/sortpile.js', 'js/i18n.js', 'js/learn.js', 'js/reveal.js', 'js/fan.js', 'js/copy.js', 'js/readtext.js', 'js/friends.js', 'js/backup.js', 'js/placement.js', 'js/boxtally.js', 'js/friendsui.js', 'js/tilt.js', 'js/tiltui.js', 'js/game.js', 'js/life.js', 'js/sure.js', 'js/importer.js', 'js/importui.js', 'js/safety.js', 'js/safestore.js', 'js/rarities.js', 'js/rarityui.js', 'js/quartet.js', 'js/quartetui.js', 'js/passport.js', 'js/cardtrack.js', 'js/passstore.js', 'js/passui.js', 'js/holomath.js', 'js/hologram.js', 'js/vendor/qrcode.js',
+  'js/ocr.js', 'js/parse.js', 'js/prices.js', 'js/recognize.js', 'js/scan.js', 'js/store.js', 'js/util.js', 'js/depot.js', 'js/share.js', 'js/masters.js', 'js/mastercalc.js', 'js/deck.js', 'js/decks.js', 'js/lists.js', 'js/holo.js', 'js/sortpile.js', 'js/i18n.js', 'js/learn.js', 'js/reveal.js', 'js/fan.js', 'js/copy.js', 'js/readtext.js', 'js/friends.js', 'js/backup.js', 'js/placement.js', 'js/boxtally.js', 'js/friendsui.js', 'js/tilt.js', 'js/tiltui.js', 'js/game.js', 'js/life.js', 'js/sure.js', 'js/importer.js', 'js/importui.js', 'js/safety.js', 'js/safestore.js', 'js/rarities.js', 'js/rarityui.js', 'js/livemath.js', 'js/depth.js', 'js/living.js', 'js/quartet.js', 'js/quartetui.js', 'js/passport.js', 'js/cardtrack.js', 'js/passstore.js', 'js/passui.js', 'js/holomath.js', 'js/hologram.js', 'js/vendor/qrcode.js',
 ];
 
 self.addEventListener('install', (e) => {
@@ -52,7 +52,9 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin === location.origin) {
-    if (url.pathname.includes('/data/')) e.respondWith(networkFirst(req, DATA));
+    // the depth model (27 MB): its own cache, kept across app updates
+    if (url.pathname.includes('/js/depth/')) e.respondWith(cacheFirst(req, 'curio-depth'));
+    else if (url.pathname.includes('/data/')) e.respondWith(networkFirst(req, DATA));
     else if (url.pathname.includes('/models/')) e.respondWith(cacheFirst(req, APP));
     else e.respondWith(networkFirst(req, APP)); // app files: always fresh when online
   } else if (url.hostname === 'cdn.jsdelivr.net' || url.hostname.endsWith('tessdata.projectnaptha.com')) {

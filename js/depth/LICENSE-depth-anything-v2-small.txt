@@ -1,0 +1,11 @@
+depth-anything-v2-small-int8.onnx
+
+Depth Anything V2 – Small (ViT-S) by Lihe Yang, Bingyi Kang, Zilong Huang, Zhen Zhao, Xiaogang Xu, Jiashi Feng,
+Hengshuang Zhao (https://github.com/DepthAnything/Depth-Anything-V2). The Small model is released under the
+Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0). (The Base/Large/Giant models are CC-BY-NC-4.0
+and are NOT used here.)
+
+ONNX export: Fabio Sim, https://github.com/fabio-sim/Depth-Anything-ONNX (release v2.0.0,
+depth_anything_v2_vits_dynamic.onnx, Apache-2.0).
+Changed for Curio (8 Nov 2026): weights of MatMul and Conv quantised to uint8 with onnxruntime
+quantize_dynamic (99 MB -> 27 MB; mean depth difference ~3 % on card artworks).

@@ -35,6 +35,7 @@ import { GAME, applyGameStyle } from './game.js';
 import { addLife, addEvent, removeNote } from './life.js';
 import { bindImport, importOnBack } from './importui.js';
 import { bindRarityGuide, rarityGuideOnBack } from './rarityui.js';
+import { bindLiving, livingOnBack } from './living.js';
 import { takeCopy, restoreCopy, listCopies, keepData, isKept } from './safestore.js';
 import { backupReminder, REASONS, SNOOZE } from './safety.js';
 import {
@@ -475,6 +476,7 @@ bindTiltScan();
 bindHologram({ detector });
 bindQuartet();
 bindRarityGuide();
+bindLiving();
 bindPassport();
 const friends = createFriends({ api, openCard: (s) => openCardPage(s, plainHooks), loadDecks });
 friends.fromLink();
@@ -789,6 +791,7 @@ $('pack-off').addEventListener('click', () => { setPack(null); history.back(); }
 
 // Android back button / browser back closes the open sheet.
 window.addEventListener('popstate', () => {
+  if (livingOnBack()) return;
   if (rarityGuideOnBack()) return;
   if (importOnBack()) return;
   if (hologramOnBack()) return;

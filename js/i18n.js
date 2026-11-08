@@ -535,6 +535,16 @@ P.push(
   [/^What each rarity looks like and how to tell it apart\. Tap one to see its foil – simulated on (this card|a sample card)\.$/, (m, x) => `Wie jede Seltenheit aussieht und wie du sie unterscheidest. Tippe eine an, um ihre Folie zu sehen – simuliert auf ${x === 'this card' ? 'dieser Karte' : 'einer Beispielkarte'}.`],
   [/^Often mixed up with: (.*)$/, 'Oft verwechselt mit: $1'],
 );
+// Living artwork (8 Nov)
+Object.assign(DE, {
+  '✦ Living artwork': '✦ Lebendiges Artwork', 'Tilt your phone or drag across the card.': 'Kipp dein Handy oder streich über die Karte.',
+  'Hold: without depth': 'Halten: ohne Tiefe', 'Depth': 'Tiefe', 'Waking up the artwork…': 'Das Artwork erwacht…',
+  'Small photo from your collection – scan the card again for a sharper picture.': 'Kleines Foto aus deiner Sammlung – scanne die Karte nochmal für ein schärferes Bild.',
+  'Prototype: the depth is estimated on your phone by an AI model (Depth Anything V2 Small) from your own photo.': 'Prototyp: Die Tiefe schätzt ein KI-Modell (Depth Anything V2 Small) auf deinem Handy aus deinem eigenen Foto.',
+  "This phone can't draw it (no WebGL).": 'Dieses Handy kann es nicht darstellen (kein WebGL).',
+  'The artwork could not be brought to life – check the connection and try again.': 'Das Artwork ließ sich nicht zum Leben erwecken – prüfe die Verbindung und versuch es nochmal.',
+});
+P.push([/^Loading the depth model \((\d+) MB, only the first time\)…$/, 'Lade das Tiefen-Modell ($1 MB, nur beim ersten Mal)…']);
 const MONTHS = { Jan: 'Jan.', Feb: 'Feb.', Mar: 'März', Apr: 'Apr.', May: 'Mai', Jun: 'Juni', Jul: 'Juli', Aug: 'Aug.', Sept: 'Sept.', Sep: 'Sept.', Oct: 'Okt.', Nov: 'Nov.', Dec: 'Dez.',
   January: 'Januar', February: 'Februar', March: 'März', April: 'April', June: 'Juni', July: 'Juli', August: 'August', September: 'September', October: 'Oktober', November: 'November', December: 'Dezember' };
 
