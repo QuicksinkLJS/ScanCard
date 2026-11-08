@@ -11,12 +11,14 @@
 import { $, esc, eur, range, toast } from './util.js';
 import { cardmarketSearchUrl, normName } from './parse.js';
 import { matchCode } from './codematch.js';
-import { openHolo, holoCardHTML, holoKind, attachTilt } from './holo.js';
+import { openHolo, holoCardHTML, holoKind, attachTilt, layoutOf } from './holo.js';
 import { findWatch, toggleWatch, findWish, toggleWish, restoreWish, restoreWatch, setWatchTarget, updateWish } from './lists.js';
 import { CONDS, LANGS, hasFirstEdition, copyText, langOf } from './copy.js';
 import { openTiltScan } from './tiltui.js';
 import { openHologram } from './hologram.js';
 import { lifeOf, TAGS, NOTE_MAX } from './life.js';
+import { openPassport } from './passui.js';
+import { passesFor } from './passstore.js';
 import { tiltRank } from './tilt.js';
 import { rarityQuery, fairTrend, filterOptions, versionOptions, rankOptions, bestOptions, priceOf, tierOfPrice, oddValues, optionCode, versionLabel, cardmarketUrl, versionImage, historyOf } from './prices.js';
 
@@ -126,6 +128,35 @@ function bindStory(s, hooks, render) {
     render();
     if (gone) toast('Moment removed', 2600, { label: 'Undo', run: () => { hooks.onNote?.(s, gone); render(); } });
   }));
+}
+
+// ---------- card passport (your copy, cards from about €50) ----------
+export const PASS_FROM = 50;
+function passBox(s, hooks, value) {
+  const entry = hooks.story?.(s);
+  if (!entry) return '';
+  const rec = value != null && value >= PASS_FROM;
+  return `<div class="pass-box ${rec ? 'rec' : ''}" id="pass-box">
+    <div class="pass-head"><b>🛡 Card passport</b> <span class="proto-tag">PROTOTYPE</span>
+      <small class="muted">${rec ? `Recommended – this card is worth ${eur(value)}` : `Worth it for cards from ${eur(PASS_FROM)}`}</small></div>
+    <ul class="rows compact" id="pass-list"></ul>
+    <button type="button" class="btn wide" id="pass-new">Record a passport of this copy</button>
+  </div>`;
+}
+async function fillPassBox(s, hooks, ctxFor) {
+  const entry = hooks.story?.(s);
+  const ul = $('pass-list');
+  if (!entry || !ul) return;
+  const list = await passesFor(entry.id);
+  if ($('pass-list') !== ul) return;
+  ul.innerHTML = list.map((p) => `<li><button type="button" data-pid="${esc(p.id)}"><span class="what"><b>${esc(p.id)}</b>
+    <small>${esc(new Date(p.t).toLocaleDateString(document.documentElement.lang === 'de' ? 'de-DE' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' }))}${p.label ? ` · ${esc(p.label)}` : ''}</small></span>
+    <span class="eur">›</span></button></li>`).join('');
+  ul.querySelectorAll('button[data-pid]').forEach((b) => b.addEventListener('click', () => {
+    const pass = list.find((p) => p.id === b.dataset.pid);
+    openPassport({ ...ctxFor(), mode: 'view', pass });
+  }));
+  if (list.length) $('pass-new').textContent = 'Record another passport';
 }
 
 function bindCopyBoxes(s, chosen, hooks, render) {
@@ -325,6 +356,7 @@ function render() {
     </form>` : ''}
     ${copyBoxes(s, chosen, hooks)}
     ${storyBox(s, hooks, chosen && price.lo != null ? (price.hi != null ? (price.lo + price.hi) / 2 : price.lo) : null)}
+    ${passBox(s, hooks, chosen && price.lo != null ? (price.hi != null ? (price.lo + price.hi) / 2 : price.lo) : price.lo ?? null)}
     ${hooks.onRemove ? `<button class="btn wide danger" type="button" id="card-remove">${esc(hooks.removeLabel || 'Remove from collection')}</button>` : ''}
   `;
   const priceNow = () => ({ lo: price.lo, hi: price.hi, label: chosen ? [`${chosen.set}`, versionLabel(chosen)].join(' · ') : 'any version' });
@@ -359,6 +391,16 @@ function render() {
   });
   bindCopyBoxes(s, chosen, hooks, render);
   bindStory(s, hooks, render);
+  const passCtx = () => ({
+    entryId: hooks.story?.(s)?.id, name: info?.name || s.name, version: chosen ? [chosen.set, versionLabel(chosen)].filter(Boolean).join(' · ') : '',
+    kind: chosen ? holoKind(chosen.rarity || versionLabel(chosen)) : '', layout: layoutOf(holo?.src || ''),
+    onCreated: (rec, restored) => { if (!restored) hooks.onPass?.(s, rec); fillPassBox(s, hooks, passCtx); },
+    onDeleted: () => fillPassBox(s, hooks, passCtx),
+  });
+  if ($('pass-box')) {
+    fillPassBox(s, hooks, passCtx);
+    $('pass-new').addEventListener('click', () => openPassport({ ...passCtx(), mode: 'create' }));
+  }
   $('watch-target-clear')?.addEventListener('click', () => { setWatchTarget(s, null, priceNow()); toast('No target price'); render(); });
 
   const bindVersions = () => $('card-body').querySelectorAll('.versions button').forEach((b) => b.addEventListener('click', () => {

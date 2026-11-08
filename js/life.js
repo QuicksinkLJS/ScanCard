@@ -6,6 +6,7 @@
 //   add  {how: 'scan' | 'pack' | 'manual', pack?: set name, value?: € (middle of the price range)}
 //   ver  {v: version label}            copy {c: "NM · Japanese · 1st"}
 //   note {x: text, tag?: 'pulled' | 'gift' | 'trade' | 'bought' | 'event'}
+//   pass {id: passport id}  (card passport recorded, passui.js)
 
 export const LIFE_MAX = 40;          // events kept per card (oldest notes stay, oldest automatic ones go first)
 const MERGE_MS = 10 * 60 * 1000;     // changing version / copy again within 10 minutes replaces the last change
@@ -83,6 +84,7 @@ export function lifeOf(entry, { now = Date.now(), value = null, eur = (v) => `�
         sub: x.value != null ? `worth ${eur(x.value)} then` : '' };
       case 'ver': return { t: x.t, k: 'ver', text: `Version: ${x.v}`, sub: '' };
       case 'copy': return { t: x.t, k: 'copy', text: `Your copy: ${x.c}`, sub: '' };
+      case 'pass': return { t: x.t, k: 'pass', text: 'Card passport recorded', sub: x.id || '' };
       case 'note': return { t: x.t, k: 'note', text: x.x || TAGS[x.tag] || '', sub: x.x && x.tag ? TAGS[x.tag] : '', own: true, tag: x.tag || '' };
       default: return null;
     }

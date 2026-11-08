@@ -205,6 +205,7 @@
       <div class="actions">
         <button id="bk-csv" class="btn" type="button">Collection as CSV</button>
         <button id="bk-sell" class="btn" type="button">Sell list (Cardmarket IDs)</button>
+        <button id="bk-pass" class="btn" type="button">Card passports (for the twin test)</button>
       </div>
       <p class="muted small">The sell list has one row per version with its Cardmarket product id, quantity, language and condition – the format seller tools like TCG PowerTools import.</p>
 
@@ -336,6 +337,32 @@
     <div id="holo-stage"></div>
     <div id="holo-info" class="holo-info"></div>
   </div>
+
+  <section id="pass-page" class="sheet" hidden>
+    <div class="sheet-bar">
+      <button id="pass-back" class="link" type="button">‹ Back</button>
+      <span class="muted small">Card passport <span class="proto-tag">PROTOTYPE</span></span>
+    </div>
+    <div class="sheet-body">
+      <p id="pass-name" class="tilt-name"></p>
+      <div id="pass-cap">
+        <div id="pass-stage" class="tilt-stage pass-stage">
+          <video id="pass-video" playsinline muted></video>
+          <div id="pass-guide" class="tilt-guide"></div>
+          <p id="pass-step" class="pass-step" hidden></p>
+        </div>
+        <div class="tilt-prog"><i id="pass-prog"></i></div>
+        <p id="pass-status" class="tilt-status"></p>
+        <label class="pass-label small muted">Note (optional, e.g. "copy A")
+          <input id="pass-label" class="field" type="text" maxlength="40" autocomplete="off" spellcheck="false" placeholder="e.g. copy A"></label>
+        <div class="actions">
+          <button id="pass-light" class="btn" type="button" hidden>💡 Light</button>
+          <button id="pass-go" class="btn primary" type="button" disabled>Start</button>
+        </div>
+      </div>
+      <div id="pass-view"></div>
+    </div>
+  </section>
 
   <section id="quartet-page" class="sheet" hidden>
     <div class="sheet-bar">

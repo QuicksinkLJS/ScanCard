@@ -29,6 +29,7 @@ import { valueSeries } from './depot.js';
 import { bindTiltScan, tiltOnBack } from './tiltui.js';
 import { bindHologram, hologramOnBack } from './hologram.js';
 import { bindQuartet } from './quartetui.js';
+import { bindPassport, passOnBack, exportPasses } from './passui.js';
 import { loadWatch, loadWish, removeWatch, belowTarget, migrateLists, removeWishId, restoreWish } from './lists.js';
 import { GAME, applyGameStyle } from './game.js';
 import { addLife, addEvent, removeNote } from './life.js';
@@ -200,6 +201,13 @@ const storyHooks = {
     const e = list.find((x) => x.id === s.collId);
     if (!e) return;
     addLife(e, { ...note, k: 'note' });
+    saveCollection(list);
+  },
+  onPass: (s, rec) => {
+    const list = loadCollection();
+    const e = list.find((x) => x.id === s.collId);
+    if (!e) return;
+    addLife(e, { k: 'pass', id: rec.id });
     saveCollection(list);
   },
   onNoteRemove: (s, t) => {
@@ -457,6 +465,7 @@ const decks = createDecks({ api, openCard: (s) => openCardPage(s, plainHooks) })
 bindTiltScan();
 bindHologram({ detector });
 bindQuartet();
+bindPassport();
 const friends = createFriends({ api, openCard: (s) => openCardPage(s, plainHooks), loadDecks });
 friends.fromLink();
 window.addEventListener('hashchange', () => friends.fromLink());
@@ -655,6 +664,12 @@ $('bk-file').addEventListener('change', async (ev) => {
   toast('Backup restored', 6000, { label: 'Undo', run: () => { restoreBackup(before); location.reload(); } });
   setTimeout(() => location.reload(), 6200);
 });
+$('bk-pass').addEventListener('click', async () => {
+  const data = await exportPasses();
+  if (!data.records.length) { toast('No card passports yet'); return; }
+  const r = await saveFile(JSON.stringify(data), `curio-passports-${today()}.json`, 'application/json');
+  if (r !== 'cancelled') toast(`${data.records.length} recordings exported`);
+});
 $('bk-csv').addEventListener('click', async () => {
   const list = loadCollection();
   if (!list.length) { toast('Your collection is empty'); return; }
@@ -713,6 +728,7 @@ $('pack-off').addEventListener('click', () => { setPack(null); history.back(); }
 // Android back button / browser back closes the open sheet.
 window.addEventListener('popstate', () => {
   if (hologramOnBack()) return;
+  if (passOnBack()) return;
   if (tiltOnBack()) return;
   if (!$('holo').hidden) { closeHolo(); return; }
   if (!$('card-page').hidden) {

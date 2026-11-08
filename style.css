@@ -804,3 +804,39 @@ button.qt-row:disabled { cursor: default; }
 @keyframes qt-flip { from { transform: rotateX(90deg); opacity: 0; } to { transform: none; opacity: 1; } }
 .qt-hint { text-align: center; margin: 0 0 10px; }
 @media (prefers-reduced-motion: reduce) { .qt-row.flip .qt-v { animation: none; } }
+
+/* ---------- card passport ---------- */
+.pass-box { margin: 4px 0 14px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; }
+.pass-box.rec { border-color: rgba(255, 215, 106, .45); background: rgba(255, 215, 106, .05); }
+.pass-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; margin-bottom: 6px; }
+.pass-head small { flex-basis: 100%; }
+.pass-box .rows { margin: 0 0 8px; }
+.pass-stage { position: relative; margin: 0 auto 8px; background: #000; border-radius: 12px; overflow: hidden; }
+.pass-step { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); margin: 0; padding: 10px 16px; border-radius: 12px;
+  background: rgba(0, 0, 0, .6); color: #fff; font-size: 20px; font-weight: 700; white-space: nowrap; pointer-events: none; }
+.pass-label { display: flex; flex-direction: column; gap: 4px; margin: 6px 0; }
+.pass-card { display: grid; grid-template-columns: minmax(0, 44%) 1fr; gap: 12px; align-items: start; margin: 8px 0 12px; }
+.pass-img { position: relative; margin: 0; border-radius: 8px; overflow: hidden; box-shadow: 0 8px 20px rgba(0, 0, 0, .4); }
+.pass-img img { display: block; width: 100%; }
+.pass-img .pl { position: absolute; background: rgba(120, 220, 255, .9); box-shadow: 0 0 4px rgba(120, 220, 255, .9); }
+.pass-img .pl.v { top: 0; bottom: 0; width: 1px; }
+.pass-img .pl.h { left: 0; right: 0; height: 1px; }
+.pass-id { margin: 0 0 4px; font: 700 13px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; color: #ffd76a; letter-spacing: .04em; }
+.pass-name { margin: 0 0 8px; display: flex; flex-direction: column; }
+.pass-name small { color: var(--muted); font-size: 12px; }
+.pass-nums { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; font-size: 13px; }
+.pass-info dl { margin: 0; display: grid; grid-template-columns: 1fr; gap: 1px; font-size: 13px; }
+.pass-info dt { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; margin-top: 6px; }
+.pass-info dt, .pass-nums dt { color: var(--muted); }
+.pass-info dd, .pass-nums dd { margin: 0; display: flex; flex-direction: column; overflow-wrap: anywhere; }
+.pass-info dd small { color: var(--muted); font-size: 11px; }
+.pass-verdict { display: flex; flex-direction: column; align-items: center; gap: 2px; margin: 10px 0 14px; padding: 16px; border-radius: 14px; border: 1px solid var(--border); text-align: center; }
+.pass-verdict span { font-size: 40px; line-height: 1; }
+.pass-verdict b { font-size: 22px; }
+.pass-verdict small { color: var(--muted); }
+.pass-verdict.ok { border-color: rgba(79, 209, 139, .7); background: rgba(79, 209, 139, .1); }
+.pass-verdict.odd { border-color: rgba(255, 122, 107, .6); background: rgba(255, 122, 107, .08); }
+.pass-verdict.unsure { border-color: rgba(255, 215, 106, .5); }
+.pass-nums { margin-bottom: 12px; }
+[data-truth].on { border-color: var(--accent); background: var(--accent-soft); }
+.st-pass .st-dot { border-color: #ffd76a; background: rgba(255, 215, 106, .35); }
