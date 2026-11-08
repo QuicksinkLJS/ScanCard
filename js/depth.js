@@ -8,6 +8,7 @@ const ORT_URL = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.31.1/dist/ort.mi
 // inside js/ so the beta channel (which takes js/ from the beta branch) has it too
 const MODEL_URL = new URL('./depth/depth-anything-v2-small-int8.onnx', import.meta.url).href;
 export const MODEL_MB = 27;
+const MODEL_BYTES = 27084785;   // unpacked size (the server sends it gzipped, so content-length is smaller)
 
 function loadScript(src) {
   return new Promise((resolve, reject) => {
@@ -24,7 +25,8 @@ const cache = new Map();   // picture key -> {map, focus, spread, size}
 async function download(onProgress) {
   const res = await fetch(MODEL_URL);
   if (!res.ok) throw new Error(`model ${res.status}`);
-  const total = Number(res.headers.get('content-length')) || MODEL_MB * 1e6;
+  const sent = Number(res.headers.get('content-length')) || 0;
+  const total = res.headers.get('content-encoding') || !sent ? MODEL_BYTES : Math.max(sent, MODEL_BYTES);
   if (!res.body?.getReader) return new Uint8Array(await res.arrayBuffer());
   const reader = res.body.getReader();
   const parts = [];
