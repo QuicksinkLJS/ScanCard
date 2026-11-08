@@ -94,3 +94,9 @@ test('helpers', () => {
   assert.ok(!fitsLang(lob, 'JP'));
   assert.ok(fitsLang(null, 'JP'));
 });
+
+test('a version taken over from an import counts as decided', () => {
+  const c = certainty(rank({ vkey: '3' }), { vkey: '3', vby: 'import' });
+  assert.equal(c.level, 'picked');
+  assert.match(c.why, /import/);
+});

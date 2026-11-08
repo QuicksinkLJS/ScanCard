@@ -23,3 +23,12 @@ test('German: version certainty', () => {
   assert.equal(translate('105 versions – Curio won\'t guess'), '105 Versionen – Curio rät nicht');
   assert.equal(translate('6 cards added to your collection · 2 with the version still open – pick it later'), '6 Karte(n) zur Sammlung hinzugefügt · 2 mit noch offener Version – später wählen');
 });
+
+test('German: data safety and import', () => {
+  assert.equal(translate('Dragon Shield file'), 'Dragon Shield-Datei');
+  assert.equal(translate('Left out: 2 other games · 1 watchlist entries'), 'Ausgelassen: 2 andere Spiele · 1 Merklisten-Einträge');
+  assert.equal(translate('412 cards imported · 60 with the version still open'), '412 Karte(n) importiert · 60 mit noch offener Version');
+  assert.equal(translate('Imported from Dragon Shield · Binder'), 'Importiert aus Dragon Shield · Binder');
+  assert.equal(translate('Daily copy · 12 cards'), 'Tageskopie · 12 Karte(n)');
+  assert.equal(translate('Import 3 cards'), '3 Karte(n) importieren');
+});

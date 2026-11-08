@@ -106,6 +106,7 @@
         <input id="masters-search" class="field" type="search" placeholder="Set name, e.g. Original Artwork Collection" autocomplete="off">
         <ul id="masters-results" class="rows compact"></ul>
       </div>
+      <div id="bk-remind" class="remind" hidden></div>
       <div id="coll-cards">
       <div id="coll-fan"></div>
       <div class="summary">
@@ -194,6 +195,21 @@
       <h2>Help the scanner learn</h2>
       <p class="muted small">Every card you add or correct is kept on this phone as a training example (picture + right answer). Nothing is uploaded.</p>
       <button id="export" class="btn wide" type="button">Export training data</button>
+
+      <h2>Your data</h2>
+      <div class="safe-box" id="safe-box">
+        <p class="small" id="safe-status">Checking…</p>
+        <p class="small" id="safe-file"></p>
+        <details class="fold" id="safe-copies"><summary>Earlier states on this phone <span class="muted small" id="safe-count"></span></summary>
+          <ul class="rows compact" id="safe-list"></ul>
+          <p class="muted small">Curio keeps a copy of everything once a day and before imports, restoring or clearing – the last 7 days and 4 weeks. These copies are on this phone too: if the phone is lost or the app's data is deleted, only a backup file helps.</p>
+        </details>
+      </div>
+
+      <h2>Import from another app</h2>
+      <p class="muted small">Moving from Dragon Shield, Collectr or TCGplayer? Export your collection there as a CSV file and open it here. Any spreadsheet with a header row works too (name or set code, quantity, condition, language…).</p>
+      <label class="btn wide" for="imp-file">Import a CSV file</label>
+      <input id="imp-file" type="file" accept=".csv,.txt,.tsv,text/csv,text/plain" hidden>
 
       <h2>Backup &amp; export</h2>
       <p class="muted small">Your collection, wishlist, decks, sets and friends are only on this phone. Save a backup now and then – for a new phone, or if the browser data gets cleared.</p>
@@ -365,6 +381,14 @@
       </div>
       <div id="pass-view"></div>
     </div>
+  </section>
+
+  <section id="import-page" class="sheet" hidden>
+    <div class="sheet-bar">
+      <button id="imp-back" class="link" type="button">‹ Back</button>
+      <span class="muted small" id="imp-title">Import</span>
+    </div>
+    <div class="sheet-body" id="imp-body"></div>
   </section>
 
   <section id="quartet-page" class="sheet" hidden>

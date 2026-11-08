@@ -3,7 +3,8 @@
 // on the collection entry (old app versions ignore it and keep it). No browser APIs – tested in Node.
 //
 // event: { t: time (ms), k: kind, ... }
-//   add  {how: 'scan' | 'pack' | 'manual', pack?: set name, value?: € (middle of the price range)}
+//   add  {how: 'scan' | 'pack' | 'manual' | 'import', pack?: set name, value?: € (middle of the price range),
+//         from?: 'Dragon Shield · Binder' (import), paid?: € you paid (import)}
 //   ver  {v: version label}            copy {c: "NM · Japanese · 1st"}
 //   note {x: text, tag?: 'pulled' | 'gift' | 'trade' | 'bought' | 'event'}
 //   pass {id: passport id}  (card passport recorded, passui.js)
@@ -80,8 +81,9 @@ export function lifeOf(entry, { now = Date.now(), value = null, eur = (v) => `�
   life.sort((a, b) => a.t - b.t);
   const out = life.map((x) => {
     switch (x.k) {
-      case 'add': return { t: x.t, k: 'add', text: x.how === 'pack' ? (x.pack ? `Pulled from a pack: ${x.pack}` : 'Pulled from a pack') : 'Came into your collection',
-        sub: x.value != null ? `worth ${eur(x.value)} then` : '' };
+      case 'add': return { t: x.t, k: 'add',
+        text: x.how === 'pack' ? (x.pack ? `Pulled from a pack: ${x.pack}` : 'Pulled from a pack') : x.how === 'import' ? (x.from ? `Imported from ${x.from}` : 'Imported') : 'Came into your collection',
+        sub: [x.paid != null ? `you paid ${eur(x.paid)}` : '', x.value != null ? (x.how === 'import' ? `worth ${eur(x.value)} when imported` : `worth ${eur(x.value)} then`) : ''].filter(Boolean).join(' · ') };
       case 'ver': return { t: x.t, k: 'ver', text: `Version: ${x.v}`, sub: '' };
       case 'copy': return { t: x.t, k: 'copy', text: `Your copy: ${x.c}`, sub: '' };
       case 'pass': return { t: x.t, k: 'pass', text: 'Card passport recorded', sub: x.id || '' };

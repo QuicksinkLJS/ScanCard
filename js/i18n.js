@@ -400,6 +400,63 @@ P.push(
   [/^probably (.*)$/, 'wahrscheinlich $1'],
   [/^(\d+) cards? added to your collection · (\d+) with the version still open – pick it later$/, '$1 Karte(n) zur Sammlung hinzugefügt · $2 mit noch offener Version – später wählen'],
 );
+// Data safety + import (8 Nov)
+Object.assign(DE, {
+  'Your data': 'Deine Daten', 'Checking…': 'Prüfe…', 'Earlier states on this phone': 'Frühere Stände auf diesem Handy',
+  "Curio keeps a copy of everything once a day and before imports, restoring or clearing – the last 7 days and 4 weeks. These copies are on this phone too: if the phone is lost or the app's data is deleted, only a backup file helps.":
+    'Curio speichert einmal am Tag und vor Importen, Wiederherstellen oder Leeren eine Kopie von allem – die letzten 7 Tage und 4 Wochen. Diese Kopien liegen auch auf diesem Handy: Geht das Handy verloren oder werden die App-Daten gelöscht, hilft nur eine Sicherungsdatei.',
+  'Import from another app': 'Aus einer anderen App importieren',
+  'Moving from Dragon Shield, Collectr or TCGplayer? Export your collection there as a CSV file and open it here. Any spreadsheet with a header row works too (name or set code, quantity, condition, language…).':
+    'Du kommst von Dragon Shield, Collectr oder TCGplayer? Exportiere deine Sammlung dort als CSV-Datei und öffne sie hier. Jede Tabelle mit Kopfzeile geht auch (Name oder Set-Code, Anzahl, Zustand, Sprache…).',
+  'Import a CSV file': 'CSV-Datei importieren', 'Import': 'Import', 'Go back': 'Zurückholen', 'Go back to this state?': 'Zu diesem Stand zurück?',
+  'No copies yet.': 'Noch keine Kopien.', 'This copy could not be read': 'Diese Kopie ließ sich nicht lesen', 'Back to the earlier state': 'Früherer Stand zurückgeholt',
+  'Automatic copies on:': 'Automatische Kopien an:', 'Automatic copies on': 'Automatische Kopien an', '– the first one is made today': '– die erste entsteht heute',
+  "✓ The browser keeps Curio's data, even when space runs low": '✓ Der Browser behält Curios Daten, auch wenn der Speicher knapp wird',
+  "The browser may clear Curio's data when space runs low – install the app to prevent that": 'Der Browser darf Curios Daten löschen, wenn der Speicher knapp wird – installiere die App, um das zu verhindern',
+  'No backup file yet': 'Noch keine Sicherungsdatei', '– save one to keep your cards safe on another device': '– speichere eine, damit deine Karten auch auf einem anderen Gerät sicher sind',
+  'Daily copy': 'Tageskopie', 'Before an import': 'Vor einem Import', 'Before restoring': 'Vor dem Wiederherstellen', 'Before clearing the collection': 'Vor dem Leeren der Sammlung', 'Saved by hand': 'Von Hand gespeichert',
+  'A backup file keeps them safe on a new phone or after clearing the browser – 10 seconds.': 'Eine Sicherungsdatei schützt sie auf einem neuen Handy oder nach dem Löschen der Browserdaten – 10 Sekunden.',
+  'Later': 'Später', 'Collection cleared – a copy is kept under More › Your data': 'Sammlung geleert – eine Kopie liegt unter Mehr › Deine Daten',
+  'cards found': 'Karten gefunden', 'version sure': 'Version sicher', 'version open': 'Version offen', 'rows not found': 'Zeilen nicht gefunden',
+  'Open versions come in without a version – Curio doesn\'t guess. Pick them later on the card page (Collection › filter "choose rarity").':
+    'Offene Versionen kommen ohne Version rein – Curio rät nicht. Wähle sie später auf der Kartenseite (Sammlung › Filter „Seltenheit wählen“).',
+  "Usually cards with a name Curio doesn't know (e.g. Japanese names) or sealed products. Add them by scanning.": 'Meist Karten mit einem Namen, den Curio nicht kennt (z. B. japanische Namen), oder versiegelte Produkte. Füge sie per Scan hinzu.',
+  'Saving a copy first…': 'Speichere erst eine Kopie…', 'Try again': 'Nochmal versuchen',
+  'Before importing, Curio saves a copy of your current data – you can go back any time (More › Your data).': 'Vor dem Import speichert Curio eine Kopie deiner aktuellen Daten – du kannst jederzeit zurück (Mehr › Deine Daten).',
+  'Preview': 'Vorschau', 'Import undone': 'Import rückgängig gemacht', 'Imported': 'Importiert',
+  'Not enough space on this phone for that many cards – nothing was imported': 'Nicht genug Platz auf diesem Handy für so viele Karten – nichts importiert',
+  'The file could not be read': 'Die Datei ließ sich nicht lesen',
+  'No card list found in this file – it needs a header row with e.g. "Name" or "Card Number"': 'Keine Kartenliste in dieser Datei – sie braucht eine Kopfzeile mit z. B. „Name“ oder „Card Number“',
+  'Taken over from your import (set code, set and rarity fit)': 'Aus deinem Import übernommen (Set-Code, Set und Seltenheit passen)',
+});
+const SKIPPED_DE = { 'other games': 'andere Spiele', 'watchlist entries': 'Merklisten-Einträge', 'rows with quantity 0': 'Zeilen mit Anzahl 0', 'empty rows': 'leere Zeilen' };
+P.push(
+  [/^last (.*) · (\d+) kept$/, 'zuletzt $1 · $2 gespeichert'],
+  [/^Last backup file: (.*)$/, 'Letzte Sicherungsdatei: $1'],
+  [/^(\d+) cards?$/, '$1 Karte(n)'],
+  [/^\((\d+)\)$/, '($1)'],
+  [/^Your (\d+) cards are only on this phone$/, 'Deine $1 Karten sind nur auf diesem Handy'],
+  [/^Last backup (\d+) days ago$/, 'Letzte Sicherung vor $1 Tagen'],
+  [/^(\d+) new cards since$/, '$1 neue Karten seitdem'],
+  [/^(Dragon Shield|Collectr|TCGplayer|Curio|Spreadsheet) file$/, (m, f) => (f === 'Spreadsheet' ? 'Tabelle' : `${f}-Datei`)],
+  [/^Finding (\d+) rows in Curio's card list…$/, 'Suche $1 Zeilen in Curios Kartenliste…'],
+  [/^prices (\d+)$/, 'Preise $1'],
+  [/^(\d+) rows$/, '$1 Zeilen'],
+  [/^(\d+) of these cards are already in your collection – they are added as extra copies\.$/, '$1 dieser Karten sind schon in deiner Sammlung – sie kommen als zusätzliche Exemplare dazu.'],
+  [/^Left out: (.*)$/, (m, x) => `Ausgelassen: ${x.replace(/(\d+) ([a-z0-9 ]+)/g, (y, n, k) => `${n} ${SKIPPED_DE[k.trim()] || k.trim()}${k.endsWith(' ') ? ' ' : ''}`)}`],
+  [/^Only the first (\d+) cards are imported – more would not fit on this phone\.$/, 'Nur die ersten $1 Karten werden importiert – mehr passt nicht auf dieses Handy.'],
+  [/^Not found \((\d+)\)$/, 'Nicht gefunden ($1)'],
+  [/^line (\d+)$/, 'Zeile $1'],
+  [/^Import (\d+) cards?$/, '$1 Karte(n) importieren'],
+  [/^… and (\d+) more$/, '… und $1 weitere'],
+  [/^⚠ You imported this file on (.*) – importing it again adds the cards a second time\.$/, '⚠ Du hast diese Datei am $1 importiert – nochmal importieren fügt die Karten ein zweites Mal hinzu.'],
+  [/^(\d+) cards? imported( · (\d+) with the version still open)?( \(no safety copy – storage full\?\))?$/, (m, n, a, k, c) => `${n} Karte(n) importiert${a ? ` · ${k} mit noch offener Version` : ''}${c ? ' (keine Sicherheitskopie – Speicher voll?)' : ''}`],
+  [/^Imported from (.*)$/, (m, x) => `Importiert aus ${x.replace(/^a spreadsheet/, 'einer Tabelle')}`],
+  [/^you paid (.*)$/, 'du hast $1 bezahlt'],
+  [/^worth (.*) when imported$/, 'beim Import $1 wert'],
+  [/^Graded: (.*)$/, 'Bewertet: $1'],
+  [/^(\d+) rows?: name and set code don't belong together – taken by the name, version open \((.*)\)$/, '$1 Zeile(n): Name und Set-Code passen nicht zusammen – nach Name übernommen, Version offen ($2)'],
+);
 const MONTHS = { Jan: 'Jan.', Feb: 'Feb.', Mar: 'März', Apr: 'Apr.', May: 'Mai', Jun: 'Juni', Jul: 'Juli', Aug: 'Aug.', Sept: 'Sept.', Sep: 'Sept.', Oct: 'Okt.', Nov: 'Nov.', Dec: 'Dez.',
   January: 'Januar', February: 'Februar', March: 'März', April: 'April', June: 'Juni', July: 'Juli', August: 'August', September: 'September', October: 'Oktober', November: 'November', December: 'Dezember' };
 

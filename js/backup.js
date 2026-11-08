@@ -3,7 +3,7 @@
 // Cardmarket product id (the format seller tools such as TCG PowerTools read).
 
 export const BACKUP_APP = 'CardScan';   // file format id of backups – stays (app renamed to Curio), old backups must load
-const SKIP = new Set(['cardscan-lang']); // settings of this phone, not your data
+const SKIP = new Set(['cardscan-lang', 'cardscan-backup-snooze']); // settings of this phone, not your data
 
 // ---------- backup ----------
 export function makeBackup(storage = localStorage) {

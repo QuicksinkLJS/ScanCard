@@ -886,3 +886,20 @@ button.qt-row:disabled { cursor: default; }
 .vs-tag.ok { color: var(--up); background: rgba(79, 209, 139, .12); }
 .vs-tag.mid { color: var(--mid-ink); background: var(--mid-bg); }
 .vs-tag.open { color: var(--high-ink); background: var(--high-bg); }
+
+/* Data safety + import (8 Nov) */
+.safe-box { padding: 12px 14px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); }
+.safe-box p { margin: 0 0 6px; }
+.safe-box .fold { margin-top: 4px; }
+.safe-box .row .btn { min-height: 36px; }
+.remind { margin: 12px 0 4px; padding: 12px 14px; border-radius: 14px; border: 1px solid rgba(255, 176, 46, .45); background: var(--mid-bg); }
+.remind p { margin: 0; }
+.remind .actions { margin: 10px 0 0; }
+.imp-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 12px 0; }
+.imp-tiles > div { padding: 10px 4px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); text-align: center; }
+.imp-tiles b { display: block; font-size: 20px; }
+.imp-tiles small { color: var(--muted); font-size: 11px; line-height: 1.2; display: block; }
+.imp-tiles .ok b { color: var(--up); }
+.imp-tiles .open b { color: var(--mid); }
+.imp-tiles .bad b { color: var(--down); }
+.imp-list .row { align-items: center; }

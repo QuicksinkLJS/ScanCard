@@ -141,6 +141,7 @@ export function certainty(ranked, s = {}, { rarity = '', max = 3 } = {}) {
   if (!ranked.length) return { ...base, level: 'none', why: 'No version on Cardmarket' };
   if (chosen) {
     if (s.vby === 'user') return { ...base, level: 'picked', why: 'You picked this version' };
+    if (s.vby === 'import') return { ...base, level: 'picked', why: 'Taken over from your import (set code, set and rarity fit)' };
     const best = bestOptions(ranked);
     const proof = reasons(chosen, s);
     if (best.length === 1 && best[0].key === chosen.key && chosen.likely >= AUTO_FROM && proof.length) {

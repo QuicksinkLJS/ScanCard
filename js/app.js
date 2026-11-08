@@ -33,6 +33,9 @@ import { bindPassport, passOnBack, exportPasses } from './passui.js';
 import { loadWatch, loadWish, removeWatch, belowTarget, migrateLists, removeWishId, restoreWish } from './lists.js';
 import { GAME, applyGameStyle } from './game.js';
 import { addLife, addEvent, removeNote } from './life.js';
+import { bindImport, importOnBack } from './importui.js';
+import { takeCopy, restoreCopy, listCopies, keepData, isKept } from './safestore.js';
+import { backupReminder, REASONS, SNOOZE } from './safety.js';
 import {
   loadCollection, saveCollection, newId, loadPack, savePack, putSample, updateSample, allSamples, countSamples,
 } from './store.js';
@@ -485,6 +488,7 @@ document.querySelectorAll('#coll-tabs [data-ctab]').forEach((b) => b.addEventLis
   if (collTab === 'friends') friends.renderList();
   if (collTab === 'wish') renderWish();
   $('coll-cards').hidden = collTab !== 'cards';
+  renderRemind();
   if (collTab === 'masters') masters.renderList();
   if (collTab === 'decks') decks.renderList();
 }));
@@ -644,17 +648,25 @@ $('export').addEventListener('click', async () => {
 $('clear-coll').addEventListener('click', () => {
   if (!loadCollection().length) return;
   if (!window.confirm('Remove all cards from your collection? Training examples stay.')) return;
-  saveCollection([]);
-  renderCollection();
+  takeCopy('clear').finally(() => {
+    saveCollection([]);
+    renderCollection();
+    toast('Collection cleared – a copy is kept under More › Your data');
+  });
 });
 
 // ---------- backup & export ----------
 const today = () => new Date().toISOString().slice(0, 10);
-$('bk-save').addEventListener('click', async () => {
+async function saveBackupFile() {
   const b = makeBackup();
   const r = await saveFile(JSON.stringify(b), `curio-backup-${today()}.json`, 'application/json');
-  if (r !== 'cancelled') { try { localStorage.setItem('cardscan-lastbackup', String(Date.now())); } catch { /* ignore */ } toast(r === 'shared' ? 'Backup ready – keep it somewhere safe' : 'Backup saved'); }
-});
+  if (r !== 'cancelled') {
+    try { localStorage.setItem('cardscan-lastbackup', String(Date.now())); localStorage.setItem('cardscan-lastbackup-cards', String(loadCollection().length)); } catch { /* ignore */ }
+    toast(r === 'shared' ? 'Backup ready – keep it somewhere safe' : 'Backup saved');
+    renderRemind(); renderSafety();
+  }
+}
+$('bk-save').addEventListener('click', saveBackupFile);
 $('bk-file').addEventListener('change', async (ev) => {
   const file = ev.target.files[0];
   ev.target.value = '';
@@ -665,6 +677,7 @@ $('bk-file').addEventListener('change', async (ev) => {
   const v = await choose('Restore backup?', [{ label: 'Replace everything', value: 'yes', danger: true }],
     `Backup from ${date} with ${b.cards} cards. Everything on this phone is replaced by it.`);
   if (v !== 'yes') return;
+  await takeCopy('restore');
   const before = restoreBackup(b);
   toast('Backup restored', 6000, { label: 'Undo', run: () => { restoreBackup(before); location.reload(); } });
   setTimeout(() => location.reload(), 6200);
@@ -694,6 +707,7 @@ $('bk-sell').addEventListener('click', async () => {
 });
 
 async function renderMore() {
+  renderSafety();
   const n = await countSamples();
   $('export').textContent = `Export training data (${n})`;
   try {
@@ -702,6 +716,46 @@ async function renderMore() {
     $('data-info').textContent = `Prices of ${d} · ${ix.sets.length} set codes · ${loadCollection().length} cards in your collection`;
   } catch { $('data-info').textContent = 'Price data not available.'; }
 }
+
+// ---------- data safety: automatic copies, kept storage, backup reminder ----------
+const dayTime = (t) => new Date(t).toLocaleString(lang === 'de' ? 'de-DE' : 'en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+const readNum = (k) => { try { const v = localStorage.getItem(k); return v == null ? null : Number(v); } catch { return null; } };
+async function renderSafety() {
+  const [copies, kept] = await Promise.all([listCopies(), isKept()]);
+  const last = copies[0];
+  $('safe-status').innerHTML = `${last ? `🛡 <b>Automatic copies on:</b> last ${esc(dayTime(last.t))} · ${copies.length} kept` : '🛡 <b>Automatic copies on</b> – the first one is made today'}<br>
+    ${kept === true ? '✓ The browser keeps Curio\'s data, even when space runs low' : kept === false ? 'The browser may clear Curio\'s data when space runs low – install the app to prevent that' : ''}`;
+  const lf = readNum('cardscan-lastbackup');
+  $('safe-file').innerHTML = lf ? `Last backup file: ${esc(dayTime(lf))}` : '<b>No backup file yet</b> – save one to keep your cards safe on another device';
+  $('safe-count').textContent = copies.length ? `(${copies.length})` : '';
+  $('safe-list').innerHTML = copies.map((c) => `<li><div class="row"><span class="what"><b>${esc(dayTime(c.t))}</b>
+    <small>${esc(REASONS[c.reason] || c.reason)} · ${c.cards} card${c.cards === 1 ? '' : 's'}</small></span>
+    <button type="button" class="btn small-btn" data-copy="${esc(c.id)}">Go back</button></div></li>`).join('') || '<li><div class="row muted small">No copies yet.</div></li>';
+  $('safe-list').querySelectorAll('[data-copy]').forEach((b) => b.addEventListener('click', async () => {
+    const c = copies.find((x) => x.id === b.dataset.copy);
+    const v = await choose('Go back to this state?', [{ label: 'Go back', value: 'yes', danger: true }],
+      `${dayTime(c.t)} · ${c.cards} cards. Everything on this phone is replaced by it – the current state is kept as a copy first.`);
+    if (v !== 'yes') return;
+    try { await restoreCopy(c.id); } catch { toast('This copy could not be read'); return; }
+    toast('Back to the earlier state');
+    setTimeout(() => location.reload(), 1200);
+  }));
+}
+function renderRemind() {
+  const el = $('bk-remind');
+  const r = collTab === 'cards' ? backupReminder({ cards: loadCollection().length, lastFile: readNum('cardscan-lastbackup'), cardsAtFile: readNum('cardscan-lastbackup-cards'), snoozeUntil: readNum('cardscan-backup-snooze') || 0 }) : null;
+  el.hidden = !r;
+  if (!r) return;
+  el.innerHTML = `<p class="small"><b>🛡 ${r.never ? `Your ${r.cards} cards are only on this phone` : `Last backup ${r.days} days ago${r.newCards ? ` · ${r.newCards} new cards since` : ''}`}</b><br>
+    <span class="muted">A backup file keeps them safe on a new phone or after clearing the browser – 10 seconds.</span></p>
+    <div class="actions"><button type="button" class="btn primary" id="rm-save">Save backup</button><button type="button" class="btn" id="rm-later">Later</button></div>`;
+  $('rm-save').addEventListener('click', saveBackupFile);
+  $('rm-later').addEventListener('click', () => { try { localStorage.setItem('cardscan-backup-snooze', String(Date.now() + SNOOZE)); } catch { /* ignore */ } renderRemind(); });
+}
+// on start (after the first paint): keep the data, take the daily copy; again when the app goes to the background
+setTimeout(() => { keepData(); takeCopy('daily'); }, 2500);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') takeCopy('daily'); });
+bindImport({ api, quickPrice, loadCollection, saveCollection, newId, onDone: () => { renderCollection(); renderRemind(); renderSafety(); } });
 
 // ---------- pack picker ----------
 let allSets = null;
@@ -733,6 +787,7 @@ $('pack-off').addEventListener('click', () => { setPack(null); history.back(); }
 
 // Android back button / browser back closes the open sheet.
 window.addEventListener('popstate', () => {
+  if (importOnBack()) return;
   if (hologramOnBack()) return;
   if (passOnBack()) return;
   if (tiltOnBack()) return;
@@ -753,7 +808,7 @@ function showView(name) {
   document.querySelectorAll('.view').forEach((v) => { v.hidden = v.id !== `view-${name}`; });
   document.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('on', b.dataset.view === name));
   window.scrollTo(0, 0);
-  if (name === 'collection') { $('coll-total')._val = null; $('coll-total')._now = null; renderCollection(); refreshCollectionPrices(); if (collTab === 'masters') masters.renderList(); if (collTab === 'decks') decks.renderList(); }
+  if (name === 'collection') { renderRemind(); $('coll-total')._val = null; $('coll-total')._now = null; renderCollection(); refreshCollectionPrices(); if (collTab === 'masters') masters.renderList(); if (collTab === 'decks') decks.renderList(); }
   if (name === 'market') { if (marketTab === 'watch') renderWatch(); else renderMarket(); }
   if (name === 'more') renderMore();
 }
