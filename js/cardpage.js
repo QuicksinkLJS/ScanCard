@@ -21,6 +21,8 @@ import { openPassport } from './passui.js';
 import { passesFor } from './passstore.js';
 import { tiltRank } from './tilt.js';
 import { autoPick, certainty, quickChoices, narrow, pickLabel, rarityGuesses, shortRarity, fitsLang } from './sure.js';
+import { rarityBoxHTML, bindRarityBox } from './rarityui.js';
+import { rarityOf } from './rarities.js';
 import { rarityQuery, fairTrend, filterOptions, versionOptions, rankOptions, bestOptions, priceOf, tierOfPrice, oddValues, optionCode, versionLabel, cardmarketUrl, versionImage, historyOf } from './prices.js';
 
 let api = null;
@@ -160,11 +162,13 @@ function bindVersionBox(s, hooks, render) {
     copy(patch);
     settle();
   }));
-  box.querySelectorAll('.vs-rar').forEach((b) => b.addEventListener('click', () => {
-    cur.rq = sameText(cur.rq, b.dataset.v) ? '' : b.dataset.v;
+  // a rarity picked (chip, or "Mine is this one" in the rarity teacher); the same rarity again clears it
+  cur.pickRarity = (r, toggle = true) => {
+    cur.rq = toggle && sameText(cur.rq, r) ? '' : r;
     if (cur.rq && s.vkey && s.vby !== 'user') { s.vkey = null; s.vby = null; hooks.onChange?.(s, cur); }
     settle();
-  }));
+  };
+  box.querySelectorAll('.vs-rar').forEach((b) => b.addEventListener('click', () => cur.pickRarity(b.dataset.v)));
   box.querySelectorAll('.vs-first').forEach((b) => b.addEventListener('click', () => {
     const v = b.dataset.v === '1';
     copy({ first: s.first === v ? null : v });
@@ -424,6 +428,7 @@ function render() {
     </div>
     ${priceBox}
     ${hooks.own ? versionBox(s, ranked, current.rq || '') : ''}
+    ${rarityBoxHTML({ chosen, ranked, open: hooks.own && !chosen && !current.rq ? quickChoices(ranked, { lang: langOf(s) }).rarities.filter((r) => rarityOf(r)) : [], src: holo?.src || '' })}
     ${s.thumb && chosen?.image ? `<div class="compare"><figure><img src="${s.thumb}" alt=""><figcaption>Your photo</figcaption></figure>
       <figure><img src="${esc(versionImage(chosen, 'show'))}" alt="" onerror="this.closest('figure').remove()"><figcaption>${esc(versionLabel(chosen))} (official)</figcaption></figure></div>` : ''}
     ${notes.map((n) => `<p class="note">${n}</p>`).join('')}
@@ -487,6 +492,10 @@ function render() {
   });
   bindCopyBoxes(s, chosen, hooks, render);
   bindVersionBox(s, hooks, render);
+  bindRarityBox({ src: holo?.src || '', onPick: (r) => {
+    if (current.pickRarity) current.pickRarity(r, false); else { current.rq = r; render(); }
+    $('vsure')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  } });
   bindStory(s, hooks, render);
   const passCtx = () => ({
     entryId: hooks.story?.(s)?.id, name: info?.name || s.name, version: chosen ? [chosen.set, versionLabel(chosen)].filter(Boolean).join(' · ') : '',

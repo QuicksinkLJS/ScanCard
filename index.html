@@ -196,6 +196,10 @@
       <p class="muted small">Every card you add or correct is kept on this phone as a training example (picture + right answer). Nothing is uploaded.</p>
       <button id="export" class="btn wide" type="button">Export training data</button>
 
+      <h2>Rarities</h2>
+      <p class="muted small">Secret, Prismatic, Platinum, Quarter Century, Starlight … what each rarity looks like and how to tell them apart.</p>
+      <button id="rg-open" class="btn wide" type="button">Rarity guide</button>
+
       <h2>Your data</h2>
       <div class="safe-box" id="safe-box">
         <p class="small" id="safe-status">Checking…</p>
@@ -381,6 +385,14 @@
       </div>
       <div id="pass-view"></div>
     </div>
+  </section>
+
+  <section id="rarity-page" class="sheet" hidden>
+    <div class="sheet-bar">
+      <button id="rg-back" class="link" type="button">‹ Back</button>
+      <span class="muted small">Rarity guide</span>
+    </div>
+    <div class="sheet-body" id="rg-body"></div>
   </section>
 
   <section id="import-page" class="sheet" hidden>
