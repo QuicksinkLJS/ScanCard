@@ -307,6 +307,8 @@
       <div id="tilt-stage" class="tilt-stage">
         <video id="tilt-video" playsinline muted></video>
         <div id="tilt-guide" class="tilt-guide"></div>
+        <canvas id="tilt-overlay" class="track-overlay"></canvas>
+        <div id="tilt-arrow" class="tilt-arrow" hidden><b></b><span></span><i><em></em></i></div>
       </div>
       <div class="tilt-prog"><i id="tilt-prog"></i></div>
       <p id="tilt-status" class="tilt-status"></p>
@@ -349,6 +351,7 @@
         <div id="pass-stage" class="tilt-stage pass-stage">
           <video id="pass-video" playsinline muted></video>
           <div id="pass-guide" class="tilt-guide"></div>
+          <canvas id="pass-overlay" class="track-overlay"></canvas>
           <p id="pass-step" class="pass-step" hidden></p>
         </div>
         <div class="tilt-prog"><i id="pass-prog"></i></div>
@@ -357,7 +360,7 @@
           <input id="pass-label" class="field" type="text" maxlength="40" autocomplete="off" spellcheck="false" placeholder="e.g. copy A"></label>
         <div class="actions">
           <button id="pass-light" class="btn" type="button" hidden>💡 Light</button>
-          <button id="pass-go" class="btn primary" type="button" disabled>Start</button>
+          <button id="pass-go" class="btn primary" type="button" disabled>Take picture now</button>
         </div>
       </div>
       <div id="pass-view"></div>

@@ -29,8 +29,7 @@ def open_coll_card(page):
     page.wait_for_timeout(400)
 
 def capture(page):
-    page.wait_for_selector('#pass-go:not([disabled])', timeout=15000)
-    page.click('#pass-go')
+    # no button: the picture is taken by itself once the card is found and still
     page.wait_for_selector('#pass-view .pass-card, #pass-view .pass-verdict, #pass-status b', timeout=40000)
     st = page.inner_text('#pass-status')
     assert 'not found' not in st, st

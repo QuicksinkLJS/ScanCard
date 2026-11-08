@@ -17,7 +17,7 @@ const inName = (x, y) => x > 0.07 && x < 0.84 && y > 0.045 && y < 0.105;
 const inArt = (x, y) => x > 0.13 && x < 0.87 && y > 0.19 && y < 0.70;
 const inText = (x, y) => x > 0.09 && x < 0.91 && y > 0.765 && y < 0.9;
 
-const LOOKS = {
+export const LOOKS = {
   common: {},
   rare: { name: 'silver' },
   super: { art: 'rainbow' },
@@ -26,7 +26,7 @@ const LOOKS = {
   starlight: { all: 'glitter', name: 'silver' },
 };
 
-function cardPixel(u, v, t, look, seed) {
+export function cardPixel(u, v, t, look, seed) {
   const x = u / GRID_W, y = v / GRID_H;
   const ui = Math.floor(u), vi = Math.floor(v);
   let c, letter = false;

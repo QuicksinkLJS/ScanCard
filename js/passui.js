@@ -1,18 +1,17 @@
 // Card passport sheet (prototype): record ONE copy of a card – a sharp straight photo (cut edges, centering,
-// edge wear, fine texture) plus a short tilt (how the foil shines) – and later check whether a card in front
+// edge wear, fine texture) – and later check whether a card in front
 // of the camera is that same copy. Recordings stay on the phone (passstore.js).
-// Steps on screen: hold still (sharp photo) → tilt in four directions, in a random order (so an old video
-// can't simply be played back) → result.
+// The card frame turns green when the card is found; held still, the picture is taken by itself.
 
 import { $, esc, toast } from './util.js';
 import { syncBody } from './cardpage.js';
-import { analyzeTilt, guessRarity, GRID_W, GRID_H, MARGIN, CAP_W, CAP_H } from './tilt.js';
-import { grayOf, sharpness, findCardQuad, rectify, passFeatures, comparePass, centeringText, foilCheck, packFeatures, unpackFeatures, passId, PASS_W, PASS_H, PX_PER_MM, EDGE_SEGS } from './passport.js';
+import { GRID_W, GRID_H } from './tilt.js';
+import { createTracker } from './cardtrack.js';
+import { grayOf, sharpness, findCardQuad, rectify, passFeatures, comparePass, centeringText, packFeatures, unpackFeatures, passId, PASS_W, PASS_H, PX_PER_MM, EDGE_SEGS } from './passport.js';
 import { savePass, getPass, deletePass, allPasses } from './passstore.js';
 import { shareCanvas } from './share.js';
 import { blobToDataURL } from './util.js';
 
-const STILL_MS = 1500, STILL_EVERY = 150, TILT_FRAMES = 24, TILT_EVERY = 100;
 let stream = null, ctx = null, busy = false, timer = null, viewUrl = null, torch = false;
 
 // ---------- camera ----------
@@ -46,14 +45,16 @@ async function startCamera() {
     const [track] = stream.getVideoTracks();
     try { await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }); } catch { /* not supported */ }
     $('pass-light').hidden = !track.getCapabilities?.().torch;
-    $('pass-go').disabled = false;
-    setStatus('Card out of its sleeve, on a plain dark surface, fully inside the frame. Phone straight above it, one lamp. Then press Start.');
+    lastHint = '';
+    tracker = createTracker({ video: v, overlay: $('pass-overlay'), guide: guideBox, guideEl: $('pass-guide'), onTick });
+    tracker.start();
   } catch {
     setStatus('The camera could not be opened. Allow camera access and try again.');
   }
 }
 function stopCamera() {
   clearTimeout(timer);
+  tracker?.stop(); tracker = null;
   stream?.getTracks().forEach((t) => t.stop());
   stream = null;
   busy = false;
@@ -72,91 +73,91 @@ const setStep = (t) => { $('pass-step').textContent = t || ''; $('pass-step').hi
 const progress = (p) => { $('pass-prog').style.width = `${Math.round(p * 100)}%`; };
 
 // ---------- recording ----------
-const full = document.createElement('canvas'), best = document.createElement('canvas');
-const big = document.createElement('canvas'), small = document.createElement('canvas');
-function tiltGrab(video) {   // like the tilt scan: card + margin, scaled down in two steps
-  const g = guideBox(video.videoWidth, video.videoHeight), s = g.w / GRID_W;
-  big.width = CAP_W * 3; big.height = CAP_H * 3;
-  const bx = big.getContext('2d', { willReadFrequently: true });
-  bx.imageSmoothingQuality = 'high';
-  bx.drawImage(video, g.x - MARGIN * s, g.y - MARGIN * s, CAP_W * s, CAP_H * s, 0, 0, big.width, big.height);
-  small.width = CAP_W; small.height = CAP_H;
-  const sx = small.getContext('2d', { willReadFrequently: true });
-  sx.imageSmoothingQuality = 'high';
-  sx.drawImage(big, 0, 0, CAP_W, CAP_H);
-  return { data: sx.getImageData(0, 0, CAP_W, CAP_H).data };
+// The live tracker looks for the card edges; when the card is found, big enough and held still for a
+// moment, the picture is taken by itself (or with the button). No tilting – one sharp straight photo.
+const AUTO_AFTER = 5;          // steady looks in a row (~0.6 s)
+const MIN_SIZE = 0.7;          // card height / frame height
+let tracker = null, lastHint = '';
+function hint(t) { if (t !== lastHint) { lastHint = t; setStatus(t); } }
+function onTick(info) {
+  if (busy || $('pass-cap').hidden) return;
+  $('pass-go').disabled = !info.found;
+  if (!info.found) { hint('Put the card completely inside the frame – out of its sleeve, on a plain darker surface.'); return; }
+  if (info.size < MIN_SIZE) { hint('A bit closer – the card should fill the frame.'); return; }
+  if (!info.steady || info.steadyN < AUTO_AFTER) { hint('<b>Found.</b> Hold still…'); return; }
+  capture(info.quad);
 }
 
-const DIRS = [['Tilt left ←', 'l'], ['Tilt right →', 'r'], ['Tilt towards you ↓', 'd'], ['Tilt away ↑', 'u']];
-function shuffled(a) { const b = [...a]; for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; }
-
-function record() {
+const full = document.createElement('canvas');
+function capture(quadHint) {
   if (busy || !stream) return;
+  const video = $('pass-video');
+  if (!video.videoWidth) return;
   busy = true;
+  tracker?.stop();
   $('pass-go').disabled = true;
   $('pass-view').innerHTML = '';
-  const video = $('pass-video');
-  if (!video.videoWidth) { busy = false; $('pass-go').disabled = false; return; }
-  const vw = video.videoWidth, vh = video.videoHeight, g = guideBox(vw, vh);
-  full.width = best.width = vw; full.height = best.height = vh;
-  const fx = full.getContext('2d', { willReadFrequently: true });
-  let bestSharp = -1, t0 = performance.now();
-  const order = shuffled(DIRS);
-  const frames = [];
   setStep('Hold still');
-  const still = () => {
-    if ($('pass-page').hidden) return;
-    fx.drawImage(video, 0, 0, vw, vh);
-    const region = fx.getImageData(Math.round(g.x), Math.round(g.y), Math.round(g.w), Math.round(g.h));
-    const sh = sharpness(grayOf(region.data, region.width, region.height), region.width, region.height, { step: 3 });
-    if (sh > bestSharp) { bestSharp = sh; best.getContext('2d').drawImage(full, 0, 0); }
-    const el = performance.now() - t0;
-    progress(Math.min(0.4, el / STILL_MS * 0.4));
-    if (el < STILL_MS) { timer = setTimeout(still, STILL_EVERY); return; }
-    tilt();
-  };
-  const tilt = () => {
-    if ($('pass-page').hidden) return;
-    frames.push(tiltGrab(video));
-    progress(0.4 + 0.6 * frames.length / TILT_FRAMES);
-    const step = order[Math.min(3, Math.floor(frames.length / (TILT_FRAMES / 4)))];
-    setStep(step[0]);
-    if (frames.length < TILT_FRAMES) { timer = setTimeout(tilt, TILT_EVERY); return; }
+  hint('Taking the picture…');
+  const quad = quadHint || tracker?.last?.quad;
+  const vw = video.videoWidth, vh = video.videoHeight;
+  // area around the card (the tracker's corners), at full camera resolution
+  const g = guideBox(vw, vh);
+  const box = quad ? (() => {
+    const xs = quad.map((p) => p[0]), ys = quad.map((p) => p[1]), pad = (Math.max(...ys) - Math.min(...ys)) * 0.1;
+    const x = Math.max(0, Math.min(...xs) - pad), y = Math.max(0, Math.min(...ys) - pad);
+    return { x, y, w: Math.min(vw - x, Math.max(...xs) - Math.min(...xs) + 2 * pad), h: Math.min(vh - y, Math.max(...ys) - Math.min(...ys) + 2 * pad) };
+  })() : { x: Math.max(0, g.x - g.w * 0.15), y: Math.max(0, g.y - g.h * 0.15), w: Math.min(vw, g.w * 1.3), h: Math.min(vh, g.h * 1.3) };
+  full.width = Math.round(box.w); full.height = Math.round(box.h);
+  const fx = full.getContext('2d', { willReadFrequently: true });
+  let best = null, bestSharp = -1, n = 0;
+  const shot = () => {
+    if ($('pass-page').hidden) { busy = false; return; }
+    fx.drawImage(video, box.x, box.y, box.w, box.h, 0, 0, full.width, full.height);
+    const img = fx.getImageData(0, 0, full.width, full.height);
+    const sh = sharpness(grayOf(img.data, img.width, img.height), img.width, img.height, { step: 3 });
+    if (sh > bestSharp) { bestSharp = sh; best = img; }
+    progress(++n / 4);
+    if (n < 4) { timer = setTimeout(shot, 120); return; }
     setStep('');
-    setStatus('Reading the card…');
-    setTimeout(() => finish(best, g, frames, order.map((d) => d[1]).join('')), 40);
+    hint('Reading the card…');
+    setTimeout(() => finish(best, box, quad), 30);
   };
-  still();
+  shot();
 }
 
-async function finish(canvas, guide, frames, order) {
-  busy = false;
-  $('pass-go').disabled = false;
+async function finish(img, box, quadHint) {
   progress(0);
-  const fxc = canvas.getContext('2d', { willReadFrequently: true });
-  const img = fxc.getImageData(0, 0, canvas.width, canvas.height);
   const gray = grayOf(img.data, img.width, img.height);
-  const found = findCardQuad(gray, img.width, img.height, guide);
-  if (!found) {
-    setStatus('<b>The card edges were not found.</b> Lay the card on a plain, darker surface (or a lighter one for a dark card), out of the sleeve, completely inside the frame – and keep the phone still at the start.');
+  // precise edges at full resolution, searched around the tracker's corners
+  let quad = null;
+  if (quadHint) {
+    const q = quadHint.map(([x, y]) => [x - box.x, y - box.y]);
+    const xs = q.map((p) => p[0]), ys = q.map((p) => p[1]);
+    const rect = { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) };
+    quad = findCardQuad(gray, img.width, img.height, rect, { band: 0.06 })?.quad || q;
+  } else {
+    const g = { x: img.width * 0.115, y: img.height * 0.115, w: img.width * 0.77, h: img.height * 0.77 };
+    quad = findCardQuad(gray, img.width, img.height, g)?.quad || null;
+  }
+  busy = false;
+  if (!quad) {
+    hint('<b>The card edges were not found.</b> Lay the card on a plain, darker surface (or a lighter one for a dark card), out of the sleeve, completely inside the frame – and keep the phone still at the start.');
+    tracker?.start();
     return;
   }
-  const flat = rectify(img.data, img.width, img.height, found.quad);
+  const flat = rectify(img.data, img.width, img.height, quad);
   const feat = passFeatures(flat, { layout: ctx.layout || 'normal' });
-  let tilt = null;
-  try { const r = analyzeTilt(frames); if (r?.ok) tilt = guessRarity(r); } catch { tilt = null; }
   const c = document.createElement('canvas');
   c.width = PASS_W; c.height = PASS_H;
   c.getContext('2d').putImageData(new ImageData(flat, PASS_W, PASS_H), 0, 0);
   const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.9));
   const rec = {
     id: passId(), kind: ctx.mode === 'check' ? 'check' : 'pass', entryId: ctx.entryId || null, name: ctx.name || '', version: ctx.version || '', holo: ctx.kind || '',
-    t: Date.now(), label: ($('pass-label').value || '').trim().slice(0, 40), order, sharp: Math.round(sharpness(grayOf(flat, PASS_W, PASS_H), PASS_W, PASS_H)),
-    feat: packFeatures(feat), cent: feat.cent,
-    tilt: tilt ? { list: tilt.list.slice(0, 3).map(({ key, label }) => ({ key, label })), why: tilt.why, clear: tilt.clear } : null,
-    foil: foilCheck(tilt, ctx.kind), img: blob,
+    t: Date.now(), label: ($('pass-label').value || '').trim().slice(0, 40), sharp: Math.round(sharpness(grayOf(flat, PASS_W, PASS_H), PASS_W, PASS_H)),
+    feat: packFeatures(feat), cent: feat.cent, tilt: null, foil: { state: 'none', text: 'Use the tilt scan on the card page for the shine' }, img: blob,
   };
-  setStatus('');
+  hint('');
   if (ctx.mode === 'check') {
     const pass = ctx.pass;
     rec.against = pass.id;
@@ -205,7 +206,7 @@ function show(rec) {
           <dt>Recorded</dt><dd>${esc(dateText(rec.t))}${rec.label ? ` · ${esc(rec.label)}` : ''}</dd>
           <dt>Centering</dt><dd>${c ? `${esc(centeringText(c, ctx.layout))}<small>${c.l.toFixed(2)} / ${c.r.toFixed(2)} / ${c.t.toFixed(2)} / ${c.b.toFixed(2)} mm</small>` : 'not measured'}</dd>
           <dt>Edges</dt><dd>${esc(edgeText(unpackFeatures(rec.feat)?.edges))}</dd>
-          <dt>Shine</dt><dd><span>${FOIL_ICON[rec.foil?.state] || '⚪'} <span>${esc(rec.foil?.text || '')}</span></span></dd>
+          ${rec.foil && rec.foil.state !== 'none' ? `<dt>Shine</dt><dd><span>${FOIL_ICON[rec.foil?.state] || '⚪'} <span>${esc(rec.foil?.text || '')}</span></span></dd>` : ''}
           <dt>Fingerprint</dt><dd>print position, edges, ${rec.feat?.tex?.length || 0} detail areas</dd>
         </dl>
       </div>
@@ -236,7 +237,7 @@ function showCheck(rec, pass) {
       <dt>Print position</dt><dd>${r.cent == null ? '–' : `${r.cent.toFixed(2)} mm difference`}</dd>
       <dt>Fine details</dt><dd>${r.tex == null ? '–' : `${Math.round(r.tex * 100)} % alike`}</dd>
       <dt>Edge wear</dt><dd>${r.edge == null ? '–' : `${Math.round(r.edge * 100)} % alike`}</dd>
-      <dt>Shine</dt><dd><span>${FOIL_ICON[rec.foil?.state] || '⚪'} <span>${esc(rec.foil?.text || '')}</span></span></dd>
+      ${rec.foil && rec.foil.state !== 'none' ? `<dt>Shine</dt><dd><span>${FOIL_ICON[rec.foil?.state] || '⚪'} <span>${esc(rec.foil?.text || '')}</span></span></dd>` : ''}
     </dl>
     <p class="small muted">Compared with passport ${esc(pass.id)} from ${esc(dateText(pass.t))}. Prototype – the limits are still being tuned.</p>
     <p class="small"><b>Was it really the same card?</b> Your answer helps tune the check.</p>
@@ -266,7 +267,6 @@ function startCheck(pass) {
   $('pass-label').value = '';
   showCapture(true);
   $('pass-view').innerHTML = '';
-  $('pass-go').textContent = 'Start';
   startCamera();
 }
 
@@ -309,7 +309,6 @@ export function openPassport(opts) {
   syncBody();
   history.pushState({ sheet: 'pass' }, '');
   page.scrollTop = 0;
-  $('pass-go').textContent = 'Start';
   if (ctx.mode === 'view' && ctx.pass) {
     $('pass-name').textContent = ctx.name || ctx.pass.name;
     show(ctx.pass);
@@ -344,7 +343,7 @@ export async function exportPasses() {
 
 export function bindPassport() {
   $('pass-back').addEventListener('click', () => history.back());
-  $('pass-go').addEventListener('click', record);
+  $('pass-go').addEventListener('click', () => { const q = tracker?.last?.found ? tracker.last.quad : null; capture(q); });
   $('pass-light').addEventListener('click', toggleLight);
   $('pass-video').addEventListener('loadedmetadata', layoutGuide);
 }

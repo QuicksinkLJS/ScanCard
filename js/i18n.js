@@ -197,6 +197,17 @@ Object.assign(DE, {
   'You win!': 'Du gewinnst!', "It's a draw": 'Unentschieden', 'Play again': 'Nochmal spielen', 'You': 'Du', 'Dealing the cards…': 'Karten werden verteilt…',
   'Pick a category on your card – the better value wins the round': 'Wähle eine Kategorie auf deiner Karte – der bessere Wert gewinnt die Runde',
   "Prices of today. Your friend's cards are from the code they showed you last.": 'Preise von heute. Die Karten deines Freundes stammen aus dem Code, den er dir zuletzt gezeigt hat.',
+  // live tracking (passport, tilt scan)
+  'Take picture now': 'Jetzt aufnehmen', 'Taking the picture…': 'Bild wird aufgenommen…', 'Found.': 'Gefunden.', 'Hold still…': 'Ruhig halten…',
+  'Put the card completely inside the frame – out of its sleeve, on a plain darker surface.': 'Leg die Karte ganz in den Rahmen – aus der Hülle, auf eine einfarbige dunklere Unterlage.',
+  'A bit closer – the card should fill the frame.': 'Etwas näher – die Karte soll den Rahmen ausfüllen.',
+  'Use the tilt scan on the card page for the shine': 'Für den Glanz den Kipp-Scan auf der Kartenseite nutzen',
+  'Card found.': 'Karte gefunden.', 'Press Start, then tilt the card (or the phone) slowly as the arrow shows.': 'Drück Start und kipp dann die Karte (oder das Handy) langsam, wie der Pfeil zeigt.',
+  'Hold the card inside the frame – out of its sleeve, under one lamp, on a plain darker surface.': 'Halte die Karte im Rahmen – aus der Hülle, unter einer Lampe, auf einer einfarbigen dunkleren Unterlage.',
+  'Keep the whole card inside the frame – tilt a little less.': 'Lass die ganze Karte im Rahmen – etwas weniger kippen.',
+  'Tilt the card to one side': 'Kipp die Karte zur Seite', 'Now to the other side': 'Jetzt zur anderen Seite', 'Tilt it forwards or backwards': 'Kipp sie nach vorn oder hinten', 'Now the other way': 'Jetzt in die andere Richtung',
+  'slowly – keep the card inside the frame': 'langsam – Karte im Rahmen lassen',
+  'Not enough pictures of the card. Keep it inside the frame, plain darker surface, and tilt slowly.': 'Zu wenige Bilder der Karte. Lass sie im Rahmen, einfarbige dunklere Unterlage, und kipp langsam.',
   // card passport
   'Card passport': 'Kartenpass', '🛡 Card passport': '🛡 Kartenpass', 'Record a passport of this copy': 'Pass für dieses Exemplar aufnehmen', 'Record another passport': 'Weiteren Pass aufnehmen',
   'Card passports (for the twin test)': 'Kartenpässe (für den Zwillings-Test)', 'No card passports yet': 'Noch keine Kartenpässe', 'Card passport recorded': 'Kartenpass aufgenommen',

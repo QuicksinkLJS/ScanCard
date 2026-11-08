@@ -4,10 +4,11 @@
 import { $, esc } from './util.js';
 import { syncBody } from './cardpage.js';
 import { analyzeTilt, guessRarity, GRID_W, GRID_H, MARGIN, CAP_W, CAP_H, CELL } from './tilt.js';
+import { createTracker, createTiltGuide, TILT_STEPS } from './cardtrack.js';
 
-const FRAMES = 24, EVERY = 100;   // ms between frames
+const MAX_FRAMES = 48, TIMEOUT = 30000;
 
-let stream = null, busy = false, onResult = null, last = null, timer = null, deliver = null;
+let stream = null, busy = false, onResult = null, last = null, timer = null, deliver = null, tracker = null, guided = null;
 
 // Card frame in video pixels: 72 % of the height, never wider than 80 % of the width.
 function guideBox(vw, vh) {
@@ -29,21 +30,6 @@ function layoutGuide() {
   });
 }
 
-// The card frame plus a margin, scaled down in two steps (a camera-like average, no flicker of fine print).
-const big = document.createElement('canvas'), small = document.createElement('canvas');
-function grab(video) {
-  const g = guideBox(video.videoWidth, video.videoHeight), s = g.w / GRID_W;
-  big.width = CAP_W * 3; big.height = CAP_H * 3;
-  const bx = big.getContext('2d', { willReadFrequently: true });
-  bx.imageSmoothingQuality = 'high';
-  bx.drawImage(video, g.x - MARGIN * s, g.y - MARGIN * s, CAP_W * s, CAP_H * s, 0, 0, big.width, big.height);
-  small.width = CAP_W; small.height = CAP_H;
-  const sx = small.getContext('2d', { willReadFrequently: true });
-  sx.imageSmoothingQuality = 'high';
-  sx.drawImage(big, 0, 0, CAP_W, CAP_H);
-  return { data: sx.getImageData(0, 0, CAP_W, CAP_H).data };
-}
-
 function setStatus(t) { $('tilt-status').innerHTML = t; }
 function progress(p) { $('tilt-prog').style.width = `${Math.round(p * 100)}%`; }
 
@@ -59,8 +45,8 @@ async function startCamera() {
     const [track] = stream.getVideoTracks();
     try { await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }); } catch { /* not supported */ }
     $('tilt-light').hidden = !track.getCapabilities?.().torch;
-    $('tilt-go').disabled = false;
-    setStatus('Hold the card inside the frame – out of its sleeve, under one lamp. Press Start and tilt it slowly.');
+    tracker = createTracker({ video: v, overlay: $('tilt-overlay'), guide: guideBox, guideEl: $('tilt-guide'), onTick });
+    tracker.start();
   } catch {
     setStatus('The camera could not be opened. Allow camera access and try again.');
   }
@@ -68,6 +54,8 @@ async function startCamera() {
 
 function stop() {
   clearTimeout(timer);
+  tracker?.stop(); tracker = null; guided = null;
+  $('tilt-arrow').hidden = true;
   stream?.getTracks().forEach((t) => t.stop());
   stream = null;
   busy = false;
@@ -82,29 +70,69 @@ async function toggleLight() {
   $('tilt-light').classList.toggle('on', torch);
 }
 
-const STEPS = ['Tilt left ←', 'Tilt right →', 'Tilt towards you ↓', 'Tilt away ↑'];
+// Guided tilting: an arrow shows where to tilt, the next direction comes only when the card really is
+// tilted (read from its shape in the picture). Every look with the card found becomes a straightened frame.
+let lastHint = '';
+function hint(t) { if (t !== lastHint) { lastHint = t; setStatus(t); } }
+function onTick(info) {
+  if (!guided) {
+    if (busy) return;
+    $('tilt-go').disabled = !info.found;
+    hint(info.found ? '<b>Card found.</b> Press Start, then tilt the card (or the phone) slowly as the arrow shows.'
+      : 'Hold the card inside the frame – out of its sleeve, under one lamp, on a plain darker surface.');
+    return;
+  }
+  const g = guided;
+  if (performance.now() - g.t0 > TIMEOUT) { endGuided(); return; }
+  if (!info.found) {
+    if (++g.lost > 8) hint('Keep the whole card inside the frame – tilt a little less.');
+    return;
+  }
+  g.lost = 0;
+  g.frames.push(tracker.tiltFrame(info.quad));
+  if (g.frames.length > MAX_FRAMES) g.frames = g.frames.filter((f, i) => i % 2 === 0);
+  const u = g.guide.update(info.metrics);
+  const st = TILT_STEPS[Math.min(u.step, TILT_STEPS.length - 1)];
+  const el = $('tilt-arrow');
+  el.hidden = false;
+  el.querySelector('b').textContent = st.arrow;
+  el.querySelector('span').textContent = st.label;
+  el.querySelector('em').style.width = `${Math.round((u.done ? 1 : u.progress) * 100)}%`;
+  progress((u.step + (u.done ? 0 : u.progress)) / TILT_STEPS.length);
+  hint(`<b>${u.step + (u.done ? 0 : 1)} / ${TILT_STEPS.length}</b> <span>slowly – keep the card inside the frame</span>`);
+  if (u.done) endGuided();
+}
+
 function capture() {
-  if (busy || !stream) return;
+  if (busy || !stream || !tracker) return;
   busy = true;
   $('tilt-go').disabled = true;
   $('tilt-result').innerHTML = '';
   $('tilt-map').hidden = true;
-  const frames = [], video = $('tilt-video');
-  const shot = () => {
-    if ($('tilt-page').hidden) return;
-    frames.push(grab(video));
-    progress(frames.length / FRAMES);
-    setStatus(`<b>${STEPS[Math.min(STEPS.length - 1, Math.floor(frames.length / FRAMES * STEPS.length))]}</b> <span>slowly, keep the card in the frame</span>`);
-    if (frames.length < FRAMES) { timer = setTimeout(shot, EVERY); return; }
-    setStatus('Looking at the shine…');
-    setTimeout(() => finish(frames), 30);   // let the status paint first
-  };
-  shot();
+  guided = { guide: createTiltGuide(), frames: [], t0: performance.now(), lost: 0 };
+  hint('');
+}
+
+function endGuided() {
+  const g = guided;
+  guided = null;
+  $('tilt-arrow').hidden = true;
+  tracker?.stop();
+  if (!g || g.frames.length < 8) {
+    busy = false; progress(0);
+    $('tilt-go').disabled = false;
+    hint('Not enough pictures of the card. Keep it inside the frame, plain darker surface, and tilt slowly.');
+    tracker?.start();
+    return;
+  }
+  hint('Looking at the shine…');
+  setTimeout(() => finish(g.frames), 30);
 }
 
 function finish(frames) {
   let r = null;
-  try { r = analyzeTilt(frames); } catch { r = null; }
+  const still = frames.map(() => ({ dx: 0, dy: 0, sx: 1, sy: 1, cost: 0 }));   // straightened by the tracker
+  try { r = analyzeTilt(frames, { motions: still }); } catch { r = null; }
   busy = false;
   $('tilt-go').disabled = false;
   $('tilt-go').textContent = 'Again';
@@ -112,6 +140,7 @@ function finish(frames) {
   if (!r?.ok) {
     last = null;
     setStatus('The card moved too much or left the frame. Keep it inside the frame and tilt it slowly – just the angle, not the place.');
+    tracker?.start();
     return;
   }
   const g = guessRarity(r);
@@ -132,6 +161,8 @@ function finish(frames) {
     <div class="actions"><button class="btn primary" type="button" id="tilt-use">Show matching versions</button></div>
     <p class="small muted">Prototype: the guess only orders the versions, nothing is changed without you.</p>`;
   setStatus('');
+  lastHint = '';
+  tracker?.start();   // for "Again"
   // the result is handed over when the back step closes the sheet (tiltOnBack)
   $('tilt-use').addEventListener('click', () => { deliver = last; history.back(); });
 }
@@ -164,6 +195,7 @@ function drawMap(frame, r) {
 
 export function openTiltScan({ name, onResult: cb }) {
   onResult = cb;
+  lastHint = '';
   last = null; deliver = null;
   const page = $('tilt-page');
   $('tilt-name').textContent = name || '';
@@ -200,6 +232,7 @@ export function tiltOnBack() {
 export function bindTiltScan() {
   $('tilt-back').addEventListener('click', () => history.back());
   $('tilt-go').addEventListener('click', capture);
+  $('tilt-go').addEventListener('dblclick', (e) => e.preventDefault());
   $('tilt-light').addEventListener('click', toggleLight);
   $('tilt-video').addEventListener('loadedmetadata', layoutGuide);
 }

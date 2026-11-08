@@ -1,11 +1,11 @@
-# Tilt scan (prototype) with a fake camera: a synthetic tilted Ultra Rare / Common is played as the
-# camera video; the guess must come out right and order the versions on the card page.
+# Guided tilt scan (prototype) with a fake camera: a synthetic Ultra Rare / Common really tilted in perspective
+# (mk_tilt_video.mjs); the arrow guides, the guess must come out right and order the versions on the card page.
 import sys; sys.path.insert(0, __import__('os').path.dirname(__file__))
 from harness import *
 VIDEO = '/home/claude/work/tilt/%s.y4m'
 with sync_playwright() as p:
     for kind, expect in [('ultra', 'Ultra Rare'), ('common', 'Common')]:
-        b, page = open_app(p, args=('--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', f'--use-file-for-fake-video-capture={VIDEO % kind}'))
+        b, page = open_app(p, args=('--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', f'--use-file-for-fake-video-capture={VIDEO % kind}'), init=force_cam())
         open_card(page, 'Blue-Eyes White Dragon')
         page.click('#tilt-btn')
         page.wait_for_selector('#tilt-page:not([hidden])')
@@ -16,7 +16,9 @@ with sync_playwright() as p:
         page.wait_for_selector('#tilt-go:not([disabled])', timeout=10000)
         print(kind, 'status:', page.inner_text('#tilt-status'))
         page.click('#tilt-go')
-        page.wait_for_selector('#tilt-result .tilt-guess', timeout=20000)
+        page.wait_for_selector('#tilt-arrow:not([hidden])', timeout=10000)
+        page.wait_for_timeout(1500); page.screenshot(path=f'/home/claude/shots/t39_{kind}_guide.png')
+        page.wait_for_selector('#tilt-result .tilt-guess', timeout=40000)
         guess = page.inner_text('#tilt-result .tilt-guess'); why = page.inner_text('#tilt-result > .small')
         print(kind, '→', guess, '|', why)
         page.screenshot(path=f'/home/claude/shots/t39_{kind}_result.png', full_page=False)

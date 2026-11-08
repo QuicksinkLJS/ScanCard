@@ -18,9 +18,10 @@ def route_cdn(route):
         print('missing lib', path)
     return route.abort()
 
-def open_app(p, args=(), mobile=True):
+def open_app(p, args=(), mobile=True, init=None):
     b = p.chromium.launch(executable_path='/usr/bin/google-chrome', headless=True, args=['--no-sandbox', *args])
     ctx = b.new_context(viewport={'width': 412, 'height': 900}, device_scale_factor=2, is_mobile=mobile, has_touch=mobile)
+    if init: ctx.add_init_script(init)
     page = ctx.new_page()
     page.on('console', lambda m: m.type in ('error', 'warning') and print('console', m.type, m.text[:300]))
     page.on('pageerror', lambda e: print('PAGEERROR', e))
@@ -37,3 +38,8 @@ def open_card(page, name):
     page.click(f'#name-results button[data-name="{name}"]')
     page.wait_for_selector('#card-body .versions, #card-body .pricebox')
     page.wait_for_timeout(300)
+
+# the fake camera must deliver the video file's size (otherwise Chrome stretches it)
+def force_cam(w=1080, h=1920):
+    return """(() => { const md = navigator.mediaDevices; if (!md) return; const orig = md.getUserMedia.bind(md);
+  md.getUserMedia = (c) => orig({ ...c, video: c && c.video ? { width: { exact: %d }, height: { exact: %d } } : c.video }); })();""" % (w, h)
