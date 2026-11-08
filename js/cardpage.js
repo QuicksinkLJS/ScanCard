@@ -17,6 +17,7 @@ import { CONDS, LANGS, hasFirstEdition, copyText, langOf } from './copy.js';
 import { openTiltScan } from './tiltui.js';
 import { openHologram } from './hologram.js';
 import { openLiving, livingPicture } from './living.js';
+import { openSummon } from './summon.js';
 import { lifeOf, TAGS, NOTE_MAX } from './life.js';
 import { openPassport } from './passui.js';
 import { passesFor } from './passstore.js';
@@ -419,7 +420,7 @@ function render() {
     ${holo ? `<div class="card-holo" id="card-holo">${holoCardHTML({ ...holo, alt: s.name, prev })}</div>
       <p class="small muted card-holo-hint">${holo.official ? (hooks.own ? 'Tilt your phone · tap for full screen' : 'Official picture · tap for full screen') : 'Your photo – pick your version below for the official picture'}</p>
       <div class="actions hg-row"><button type="button" class="btn hg-open" id="hg-open">◈ Hologram</button>
-        ${hooks.own && livingPicture(s) ? '<button type="button" class="btn hg-open live-open" id="live-open">✦ Living artwork</button>' : ''}</div>` : ''}
+        ${hooks.own && livingPicture(s) ? '<button type="button" class="btn hg-open live-open" id="live-open">✦ Living artwork</button><button type="button" class="btn hg-open sm-open" id="sm-open">⚔ Summon</button>' : ''}</div>` : ''}
     <div class="card-head">
       ${s.thumb && !holo ? `<img src="${s.thumb}" alt="">` : ''}
       <div>
@@ -471,6 +472,10 @@ function render() {
   $('live-open')?.addEventListener('click', () => {
     const pic = livingPicture(s);
     if (pic) openLiving({ src: pic.src, low: pic.low, layout: layoutOf(holo?.src || ''), name: info?.name || s.name });
+  });
+  $('sm-open')?.addEventListener('click', () => {
+    const pic = livingPicture(s);
+    if (pic) openSummon({ src: pic.src, layout: layoutOf(holo?.src || ''), name: info?.name || s.name });
   });
   $('hg-open')?.addEventListener('click', () => openHologram({ src: holo.src, name: info?.name || s.name, rarity: chosen ? (chosen.rarity || versionLabel(chosen)) : '', price: chosen?.trend }));
   $('card-watch').addEventListener('click', () => {

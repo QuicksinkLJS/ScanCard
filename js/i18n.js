@@ -544,6 +544,15 @@ Object.assign(DE, {
   "This phone can't draw it (no WebGL).": 'Dieses Handy kann es nicht darstellen (kein WebGL).',
   'The artwork could not be brought to life – check the connection and try again.': 'Das Artwork ließ sich nicht zum Leben erwecken – prüfe die Verbindung und versuch es nochmal.',
 });
+// Summon (8 Nov)
+Object.assign(DE, {
+  '⚔ Summon': '⚔ Beschwören', '⚔ Summon again': '⚔ Nochmal beschwören', 'Calling the monster…': 'Das Monster wird gerufen…',
+  'Drag to walk around it – or tilt your phone.': 'Wisch, um es zu umrunden – oder kipp dein Handy.',
+  "Curio couldn't find a figure in this artwork that could step out.": 'Curio hat in diesem Artwork keine Figur gefunden, die heraustreten könnte.',
+  'Works best with monsters that stand out from the background – try Living artwork for this one.': 'Klappt am besten mit Monstern, die sich vom Hintergrund abheben – probier hier das Lebendige Artwork.',
+  'The monster could not be summoned – check the connection and try again.': 'Das Monster ließ sich nicht beschwören – prüfe die Verbindung und versuch es nochmal.',
+  'Prototype: Curio cuts the monster out of your own photo with an AI depth model and gives it a body. From the front it looks best; from far to the side you see it is a relief.': 'Prototyp: Curio schneidet das Monster mit einem KI-Tiefenmodell aus deinem eigenen Foto aus und gibt ihm einen Körper. Von vorn wirkt es am besten; weit von der Seite sieht man, dass es ein Relief ist.',
+});
 P.push([/^Loading the depth model \((\d+) MB, only the first time\)…$/, 'Lade das Tiefen-Modell ($1 MB, nur beim ersten Mal)…']);
 const MONTHS = { Jan: 'Jan.', Feb: 'Feb.', Mar: 'März', Apr: 'Apr.', May: 'Mai', Jun: 'Juni', Jul: 'Juli', Aug: 'Aug.', Sept: 'Sept.', Sep: 'Sept.', Oct: 'Okt.', Nov: 'Nov.', Dec: 'Dez.',
   January: 'Januar', February: 'Februar', March: 'März', April: 'April', June: 'Juni', July: 'Juli', August: 'August', September: 'September', October: 'Oktober', November: 'November', December: 'Dezember' };

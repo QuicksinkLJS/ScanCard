@@ -439,6 +439,23 @@
     </div>
   </div>
 
+  <div id="summon" class="summon" hidden>
+    <div class="sheet-bar">
+      <button id="sm-back" class="link" type="button">‹ Back</button>
+      <span class="muted small" id="sm-title"></span>
+    </div>
+    <div class="sm-stage" id="sm-stage">
+      <canvas id="sm-canvas" class="sm-canvas"></canvas>
+      <div id="sm-wait" class="live-wait sm-wait"><div class="live-ring" aria-hidden="true"></div><p id="sm-msg">…</p><div id="sm-bar" class="live-bar" hidden></div>
+        <p class="small muted" id="sm-fallback" hidden>Works best with monsters that stand out from the background – try Living artwork for this one.</p></div>
+    </div>
+    <div class="sm-foot">
+      <p class="small muted">Drag to walk around it – or tilt your phone.</p>
+      <button id="sm-again" class="btn" type="button">⚔ Summon again</button>
+      <p class="small muted">Prototype: Curio cuts the monster out of your own photo with an AI depth model and gives it a body. From the front it looks best; from far to the side you see it is a relief.</p>
+    </div>
+  </div>
+
   <div id="hg" class="hg" hidden>
     <video id="hg-video" class="hg-video" playsinline muted></video>
     <div class="hg-floor" aria-hidden="true"></div>
