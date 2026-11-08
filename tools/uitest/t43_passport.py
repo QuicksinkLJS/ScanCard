@@ -14,7 +14,7 @@ def launch(p, video):
     ctx = p.chromium.launch_persistent_context(PROFILE, executable_path='/usr/bin/google-chrome', headless=True,
         args=['--no-sandbox', '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', f'--use-file-for-fake-video-capture={VID % video}'],
         viewport={'width': 412, 'height': 900}, device_scale_factor=2, is_mobile=True, has_touch=True, accept_downloads=True)
-    ctx.add_init_script(INIT)
+    ctx.add_init_script(INIT + "\ntry { localStorage.setItem('cardscan-lab', '1'); } catch (e) {}")
     page = ctx.pages[0] if ctx.pages else ctx.new_page()
     page.on('console', lambda m: m.type in ('error',) and print('console', m.type, m.text[:300]))
     page.on('pageerror', lambda e: print('PAGEERROR', e))

@@ -132,6 +132,9 @@ function bindStory(s, hooks, render) {
 
 // ---------- card passport (your copy, cards from about €50) ----------
 export const PASS_FROM = 50;
+// Parked 8 Nov (Christian: not reliable enough with a hand-held phone). Code stays; switch on for tests with
+// localStorage 'cardscan-lab' = '1'.
+const LAB = (() => { try { return localStorage.getItem('cardscan-lab') === '1'; } catch { return false; } })();
 function passBox(s, hooks, value) {
   const entry = hooks.story?.(s);
   if (!entry) return '';
@@ -332,7 +335,7 @@ function render() {
       <figure><img src="${esc(versionImage(chosen, 'show'))}" alt="" onerror="this.closest('figure').remove()"><figcaption>${esc(versionLabel(chosen))} (official)</figcaption></figure></div>` : ''}
     ${notes.map((n) => `<p class="note">${n}</p>`).join('')}
     ${ranked.length ? `<h2>Which version do you have?</h2>
-      ${rarityCount > 1 ? `<button type="button" class="btn tilt-btn ${current.tilt ? 'on' : ''}" id="tilt-btn">✨ ${current.tilt ? 'Tilt scan again' : 'Tilt scan: find the rarity by the shine'}</button>` : ''}
+      ${LAB && rarityCount > 1 ? `<button type="button" class="btn tilt-btn ${current.tilt ? 'on' : ''}" id="tilt-btn">✨ ${current.tilt ? 'Tilt scan again' : 'Tilt scan: find the rarity by the shine'}</button>` : ''}
       ${ranked.length > 4 ? `<input id="ver-filter" class="field ver-filter" type="search" placeholder="Set code, set or rarity, e.g. MP19 or QCSR" autocomplete="off" spellcheck="false" value="${esc(current.vq || '')}">` : ''}
       <ul class="versions">${versions}</ul>` : ''}
     ${ranked.length > 8 && !current.showAll && !current.vq ? `<button type="button" class="link more-btn" id="show-all">Show all ${ranked.length} versions</button>` : ''}
@@ -356,7 +359,7 @@ function render() {
     </form>` : ''}
     ${copyBoxes(s, chosen, hooks)}
     ${storyBox(s, hooks, chosen && price.lo != null ? (price.hi != null ? (price.lo + price.hi) / 2 : price.lo) : null)}
-    ${passBox(s, hooks, chosen && price.lo != null ? (price.hi != null ? (price.lo + price.hi) / 2 : price.lo) : price.lo ?? null)}
+    ${LAB ? passBox(s, hooks, chosen && price.lo != null ? (price.hi != null ? (price.lo + price.hi) / 2 : price.lo) : price.lo ?? null) : ''}
     ${hooks.onRemove ? `<button class="btn wide danger" type="button" id="card-remove">${esc(hooks.removeLabel || 'Remove from collection')}</button>` : ''}
   `;
   const priceNow = () => ({ lo: price.lo, hi: price.hi, label: chosen ? [`${chosen.set}`, versionLabel(chosen)].join(' · ') : 'any version' });

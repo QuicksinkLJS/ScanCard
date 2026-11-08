@@ -664,6 +664,7 @@ $('bk-file').addEventListener('change', async (ev) => {
   toast('Backup restored', 6000, { label: 'Undo', run: () => { restoreBackup(before); location.reload(); } });
   setTimeout(() => location.reload(), 6200);
 });
+try { if (localStorage.getItem('cardscan-lab') === '1') $('bk-pass').hidden = false; } catch { /* no storage */ }
 $('bk-pass').addEventListener('click', async () => {
   const data = await exportPasses();
   if (!data.records.length) { toast('No card passports yet'); return; }

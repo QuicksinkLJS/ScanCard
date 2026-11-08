@@ -5,7 +5,7 @@ from harness import *
 VIDEO = '/home/claude/work/tilt/%s.y4m'
 with sync_playwright() as p:
     for kind, expect in [('ultra', 'Ultra Rare'), ('common', 'Common')]:
-        b, page = open_app(p, args=('--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', f'--use-file-for-fake-video-capture={VIDEO % kind}'), init=force_cam())
+        b, page = open_app(p, args=('--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', f'--use-file-for-fake-video-capture={VIDEO % kind}'), init=force_cam() + "\ntry { localStorage.setItem('cardscan-lab', '1'); } catch (e) {}")
         open_card(page, 'Blue-Eyes White Dragon')
         page.click('#tilt-btn')
         page.wait_for_selector('#tilt-page:not([hidden])')
