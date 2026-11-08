@@ -264,7 +264,7 @@ export function createScanner({ api, recognizer, detector, getOcr, getLineOcr = 
     // the text says another card: it wins over an unsure picture, and over a sure one only with a very clear reading
     const before = c.name;
     c.top = [{ name: hit.name, score: hit.score }, ...(c.top || []).filter((t) => t.name !== hit.name)];
-    c.name = hit.name; c.confident = true; c.vkey = null; c.readFrom = before;
+    c.name = hit.name; c.confident = true; c.vkey = null; c.vby = null; c.readFrom = before;
     const info = await api.nameInfo(c.name).catch(() => null);
     if (c.ocrText != null) {
       c.code = matchCode(c.ocrText, info?.bases);
@@ -368,15 +368,23 @@ export function createScanner({ api, recognizer, detector, getOcr, getLineOcr = 
         waiting: '', reading: 'reading set code…', none: 'set code not readable', done: '',
       }[c.codeStatus];
       const sub = [c.price?.label, codeLine].filter(Boolean).join(' · ');
+      // version certainty (versions-sicherheit): sure / your pick / open; 2–3 open versions as tiles to tap
+      const vs = c.price?.sure;
+      const vtag = !vs || vs === 'none' || c.codeStatus === 'reading' || c.codeStatus === 'waiting' ? ''
+        : vs === 'sure' || vs === 'picked' ? '<span class="vs-tag ok">✓ version</span> '
+          : vs === 'check' ? '<span class="vs-tag mid">version?</span> ' : '<span class="vs-tag open">pick version</span> ';
+      const vpicks = c.confident && vs === 'few' && c.price?.picks?.length > 1 && c.codeStatus !== 'reading' && c.codeStatus !== 'waiting' ? c.price.picks : null;
       return `<li><button type="button" data-n="${c.n}">
         <span class="badge-num ${tierOf(c)}">${c.n}</span>
         <img class="thumb" src="${c.thumb}" alt="">
-        <span class="what"><b>${esc(c.name)}</b><small>${(c.alerts || []).map((a) => `<span class="alarm a-${a.kind}">${a.kind === 'wish' ? '♥' : '★'} ${esc(a.text)}</span> `).join('')}${piles ? pileTag(c) : ''}${c.confident ? '' : '<span class="unsure">check</span> '}${c.readBy ? `<span class="readby" title="${esc(c.readFrom ? `Picture said ${c.readFrom}` : '')}">${c.readBy === 'effect' ? 'read from the text' : 'read from the name'}</span> ` : ''}${esc(sub)}</small></span>
+        <span class="what"><b>${esc(c.name)}</b><small>${vtag}${(c.alerts || []).map((a) => `<span class="alarm a-${a.kind}">${a.kind === 'wish' ? '♥' : '★'} ${esc(a.text)}</span> `).join('')}${piles ? pileTag(c) : ''}${c.confident ? '' : '<span class="unsure">check</span> '}${c.readBy ? `<span class="readby" title="${esc(c.readFrom ? `Picture said ${c.readFrom}` : '')}">${c.readBy === 'effect' ? 'read from the text' : 'read from the name'}</span> ` : ''}${esc(sub)}</small></span>
         <span class="eur">${range(c.price?.lo, c.price?.hi)}${c.added ? '<small>added ✓</small>' : ''}</span>
       </button>${!c.confident && c.top?.length > 1 ? `<div class="dym"><small>Did you mean…?</small><div class="dym-row">${c.top.slice(0, 3).map((t, k) => `
-        <button type="button" class="dym-c" data-n="${c.n}" data-name="${esc(t.name)}"><img data-pic="${esc(t.name)}" alt=""><span>${esc(t.name)}</span>${k === 0 ? '<em>current guess</em>' : ''}</button>`).join('')}</div></div>` : ''}</li>`;
+        <button type="button" class="dym-c" data-n="${c.n}" data-name="${esc(t.name)}"><img data-pic="${esc(t.name)}" alt=""><span>${esc(t.name)}</span>${k === 0 ? '<em>current guess</em>' : ''}</button>`).join('')}</div></div>` : ''}${vpicks ? `<div class="dym vrow"><small>Which version?</small><div class="dym-row">${vpicks.map((v) => `
+        <button type="button" class="dym-c vs-c" data-n="${c.n}" data-key="${esc(v.key)}">${v.image ? `<img src="${esc(versionImage({ image: v.image }, 'preview'))}" alt="" onerror="this.remove()">` : `<span class="vs-noimg">${esc(v.short || '?')}</span>`}<span>${esc(v.label)}</span><em>${esc(v.code || v.set)} · ${esc(v.trend == null ? '–' : `€${v.trend.toFixed(2)}`)}</em></button>`).join('')}</div></div>` : ''}</li>`;
     }).join('');
-    $('found').querySelectorAll('.dym-c').forEach((b) => b.addEventListener('click', () => pick(Number(b.dataset.n), b.dataset.name)));
+    $('found').querySelectorAll('.vs-c').forEach((b) => b.addEventListener('click', (ev) => { ev.stopPropagation(); pickVersion(Number(b.dataset.n), b.dataset.key); }));
+    $('found').querySelectorAll('.dym-c:not(.vs-c)').forEach((b) => b.addEventListener('click', () => pick(Number(b.dataset.n), b.dataset.name)));
     $('found').querySelectorAll('[data-spot]').forEach((t) => t.addEventListener('click', (ev) => {
       ev.stopPropagation();
       const c = cards.find((x) => x.n === Number(t.dataset.spot));
@@ -592,7 +600,7 @@ export function createScanner({ api, recognizer, detector, getOcr, getLineOcr = 
     const renamed = c.name !== name;
     c.name = name; c.confident = true; c.corrected = true;
     if (renamed) {
-      c.vkey = null;
+      c.vkey = null; c.vby = null;
       const info = await api.nameInfo(name).catch(() => null);
       if (c.ocrText != null) {
         c.code = matchCode(c.ocrText, info?.bases);
@@ -600,6 +608,17 @@ export function createScanner({ api, recognizer, detector, getOcr, getLineOcr = 
         c.codeStatus = c.code ? 'done' : 'none';
       }
     }
+    c.price = await quickPrice(api, c);
+    renderList();
+    navigator.vibrate?.(20);
+    await onCorrect(c);
+  }
+
+  // a version tapped in the list: your pick
+  async function pickVersion(n, key) {
+    const c = cards.find((x) => x.n === n);
+    if (!c) return;
+    c.vkey = key; c.vby = 'user';
     c.price = await quickPrice(api, c);
     renderList();
     navigator.vibrate?.(20);

@@ -28,6 +28,23 @@ export function versionOptions(rows) {
   return [...byId.values()];
 }
 
+// Print language of a version, from its codes (old sets: one letter, e.g. LOB-G001 = German).
+// Cardmarket lists Korean prints under the Japanese product, so both codes sit on the same option.
+export const LANG_CODES = { EN: ['EN', 'E'], DE: ['DE', 'G'], FR: ['FR', 'F'], IT: ['IT', 'I'], SP: ['SP', 'S'], PT: ['PT', 'P'], JP: ['JP'], KR: ['KR', 'K'], AE: ['AE'] };
+// (English also: old North American codes without a language, e.g. SDK-001)
+const LANG_RE = Object.fromEntries(Object.entries(LANG_CODES).map(([k, v]) => [k, new RegExp(`-(?:(?:${v.join('|')})[A-Z]?${k === 'EN' ? '|' : ''})\\d`)]));
+export const LANG_SCORE = 20;
+export function optionHasLang(o, lang) {
+  const l = lang === 'JA' ? 'JP' : lang;
+  if (l === 'JP' && /\(OCG\)/.test(o.set || '')) return true;
+  const re = LANG_RE[l];
+  return !!re && (o.codes || []).some((c) => re.test(c));
+}
+// The print languages a list of versions offers, in a fixed order.
+export function langsOf(opts) {
+  return Object.keys(LANG_CODES).filter((l) => opts.some((o) => optionHasLang(o, l)));
+}
+
 // Codes shown first: English, other European languages, then Asian prints.
 const CODE_ORDER = ['EN', 'E', '', 'DE', 'G', 'FR', 'F', 'IT', 'I', 'SP', 'S', 'PT', 'P', 'AE', 'KR', 'K', 'JP'];
 
@@ -44,8 +61,8 @@ export function rankOptions(opts, ctx = {}) {
       if (ctx.pack.name && o.set === ctx.pack.name) s += 40;
       else if (o.codes.some((c) => c.startsWith(`${ctx.pack.prefix}-`))) s += 30;
     }
-    // Japanese card: the OCG versions on Cardmarket fit better than the European ones
-    if (ctx.lang && ['JP', 'JA'].includes(ctx.lang) && /\(OCG\)/.test(o.set)) s += 20;
+    // the card's language: versions printed in it fit better (Japanese: also OCG expansions without codes)
+    if (ctx.lang && optionHasLang(o, ctx.lang)) s += LANG_SCORE;
     return s;
   };
   return opts
@@ -163,7 +180,7 @@ export function oddValues(o) {
 // Short label for an option: "Supreme Darkness (2025) · SUDA-EN014"
 export function optionCode(o, lang) {
   if (lang) {
-    const own = o.codes.find((c) => new RegExp(`-${lang}\\d`).test(c));
+    const own = o.codes.find((c) => new RegExp(`-${lang}\\d`).test(c)) || o.codes.find((c) => LANG_RE[lang === 'JA' ? 'JP' : lang]?.test(c));
     if (own) return own;
   }
   return o.codes[0] || '';

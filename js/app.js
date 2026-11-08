@@ -120,7 +120,9 @@ const scanner = createScanner({
   onAddAll: async (list) => {
     for (const c of list) await addScanned(c, false);
     scanner.renderList();
-    toast(`${list.length} card${list.length > 1 ? 's' : ''} added to your collection`, 5000, undoAdd(list.map((c) => c.collId), list));
+    // honest about open versions: they are saved without a version (Collection › "choose rarity"), not with a guess
+    const open = list.filter((c) => !c.price?.exact).length;
+    toast(`${list.length} card${list.length > 1 ? 's' : ''} added to your collection${open ? ` · ${open} with the version still open – pick it later` : ''}`, 6000, undoAdd(list.map((c) => c.collId), list));
   },
 });
 
@@ -163,12 +165,15 @@ document.querySelectorAll('.modes [data-mode]').forEach((b) => b.addEventListene
 function entryFromSubject(s, extra = {}) {
   return {
     id: s.collId || newId(),
-    name: s.name, vkey: s.vkey || null,
+    name: s.name, vkey: s.vkey || null, vby: s.vkey ? s.vby || null : null,
     code: s.code ? { code: s.code.code, base: s.code.base, lang: s.code.lang, language: s.code.language } : null,
     language: s.language || null, ocrText: s.ocrText ?? null,
     pack: s.pack || null, top: s.top || null, confident: s.confident ?? true,
     thumb: (s.canvas ? thumbOf(s.canvas, 180, 0.8) : s.thumb) || null, sampleId: s.sampleId || null,
-    price: s.price || null, added: Date.now(), ...extra,
+    price: s.price ? { ...s.price, picks: undefined } : null, added: Date.now(),
+    // your copy, when set on the card page before adding (quick pick); missing = keep what the entry has
+    ...(s.lang !== undefined ? { lang: s.lang || null } : {}), ...(s.first !== undefined ? { first: s.first ?? null } : {}),
+    ...extra,
   };
 }
 

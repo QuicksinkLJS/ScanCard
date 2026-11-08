@@ -369,6 +369,37 @@ P.push(
   [/^([+−][\d.]+) % since then$/, '$1 % seitdem'],
   [/^(\d+) moments? · stays on this phone \(in your backup\)$/, '$1 Moment(e) · bleibt auf diesem Handy (im Backup)'],
 );
+// Version certainty (8 Nov)
+Object.assign(DE, {
+  '✓ Version: your pick': '✓ Version: deine Wahl', '✓ Version: sure': '✓ Version: sicher', 'Version: please confirm': 'Version: bitte bestätigen',
+  'Version: tap yours': 'Version: tippe deine an', 'Version: not sure': 'Version: unsicher',
+  'You picked this version': 'Du hast diese Version gewählt', 'No version on Cardmarket': 'Keine Version auf Cardmarket',
+  'Picked automatically – nothing on the card proves it': 'Automatisch gewählt – nichts auf der Karte belegt das',
+  "✓ Yes, that's mine": '✓ Ja, das ist meine', 'No, choose again': 'Nein, neu wählen', 'Rarity': 'Seltenheit',
+  'Cardmarket doesn\'t say which product has which rarity – "probably" is a guess by price (cheapest = lowest rarity).':
+    'Cardmarket sagt nicht, welches Produkt welche Seltenheit ist – „wahrscheinlich“ ist geschätzt nach Preis (günstigste = niedrigste Seltenheit).',
+  "Cardmarket doesn't say which of these has that rarity – compare the prices or the pictures.":
+    'Cardmarket sagt nicht, welche davon diese Seltenheit hat – vergleiche Preise oder Bilder.',
+  'Only one version left – picked it': 'Nur noch eine Version übrig – ausgewählt', 'Version saved': 'Version gespeichert',
+  '✓ version': '✓ Version', 'version?': 'Version?', 'pick version': 'Version wählen', 'Which version?': 'Welche Version?',
+  '1 version left': '1 Version übrig',
+});
+const CERT_REASON = [
+  [/^Set code (\S+) read on the card$/, 'Set-Code $1 auf der Karte gelesen'],
+  [/^Set code (\S+) read on the card \(same set and number\)$/, 'Set-Code $1 auf der Karte gelesen (gleiches Set und gleiche Nummer)'],
+  [/^From the pack you are opening \((.*)\)$/, 'Aus dem Pack, das du öffnest ($1)'],
+];
+const reason = (x) => { for (const [re, rep] of CERT_REASON) if (re.test(x)) return x.replace(re, rep); return x; };
+P.push(
+  ...CERT_REASON,
+  [/^(.*) – (\d+) versions fit$/, (m, a, n) => `${a.split(' · ').map(reason).join(' · ')} – ${n} Versionen passen`],
+  [/^(\d+) versions left$/, '$1 Versionen übrig'],
+  [/^(\d+) versions in this language$/, '$1 Versionen in dieser Sprache'],
+  [/^(\d+) versions – Curio won't guess$/, '$1 Versionen – Curio rät nicht'],
+  [/^(\d+) more in the list below$/, '$1 weitere in der Liste unten'],
+  [/^probably (.*)$/, 'wahrscheinlich $1'],
+  [/^(\d+) cards? added to your collection · (\d+) with the version still open – pick it later$/, '$1 Karte(n) zur Sammlung hinzugefügt · $2 mit noch offener Version – später wählen'],
+);
 const MONTHS = { Jan: 'Jan.', Feb: 'Feb.', Mar: 'März', Apr: 'Apr.', May: 'Mai', Jun: 'Juni', Jul: 'Juli', Aug: 'Aug.', Sept: 'Sept.', Sep: 'Sept.', Oct: 'Okt.', Nov: 'Nov.', Dec: 'Dez.',
   January: 'Januar', February: 'Februar', March: 'März', April: 'April', June: 'Juni', July: 'Juli', August: 'August', September: 'September', October: 'Oktober', November: 'November', December: 'Dezember' };
 

@@ -20,6 +20,7 @@ import { lifeOf, TAGS, NOTE_MAX } from './life.js';
 import { openPassport } from './passui.js';
 import { passesFor } from './passstore.js';
 import { tiltRank } from './tilt.js';
+import { autoPick, certainty, quickChoices, narrow, pickLabel, rarityGuesses, shortRarity, fitsLang } from './sure.js';
 import { rarityQuery, fairTrend, filterOptions, versionOptions, rankOptions, bestOptions, priceOf, tierOfPrice, oddValues, optionCode, versionLabel, cardmarketUrl, versionImage, historyOf } from './prices.js';
 
 let api = null;
@@ -79,6 +80,96 @@ function copyBoxes(s, chosen, hooks) {
       </div>${NOTE_PRICE}</details>`;
   }
   return out;
+}
+
+// ---------- version certainty: how sure, 2–3 versions to tap, quick pick (language, rarity, 1st Edition) ----------
+const LANG_CHIP = { EN: 'EN', DE: 'DE', FR: 'FR', IT: 'IT', SP: 'ES', PT: 'PT', JP: 'JP', KR: 'KR', AE: 'AE' };
+const LEVEL = {
+  picked: ['✓ Version: your pick', 3], sure: ['✓ Version: sure', 3], check: ['Version: please confirm', 2],
+  few: ['Version: tap yours', 2], open: ['Version: not sure', 1],
+};
+function versionBox(s, ranked, rq) {
+  const c = certainty(ranked, s, { rarity: rq });
+  if (c.level === 'none') return '';
+  const [title, bars] = LEVEL[c.level];
+  const lang = langOf(s);
+  const g = rarityGuesses(ranked);
+  const tile = (o) => `<button type="button" class="vs-pick" data-key="${esc(o.key)}">
+      ${o.image ? `<img loading="lazy" src="${esc(versionImage(o, 'preview'))}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'vs-noimg',textContent:'?'}))">` : `<span class="vs-noimg">${esc(shortRarity(o.rarity || g.get(o.key) || '') || '?')}</span>`}
+      <span class="vs-set">${esc(o.set)}${o.year ? ` (${o.year})` : ''}</span>
+      <small>${esc(optionCode(o, lang) || '')}</small>
+      <small class="vs-rar">${esc(pickLabel(o, g))}</small>
+      <b>${eur(o.trend)}</b></button>`;
+  const quick = c.level === 'few' || c.level === 'open' || c.level === 'check';
+  const qc = quick ? quickChoices(ranked, { lang, chosen: c.level === 'check' ? c.chosen : null }) : null;
+  const chip = (cls, val, label, on, title = '') => `<button type="button" class="chip ${cls} ${on ? 'on' : ''}" data-v="${esc(val)}"${title ? ` title="${esc(title)}"` : ''}>${esc(label)}</button>`;
+  const langName = (l) => LANGS.find((x) => x[0] === l)?.[1] || l;
+  return `<div class="vsure lv-${c.level}" id="vsure">
+    <div class="vs-head"><span class="vs-meter" aria-hidden="true">${[1, 2, 3].map((i) => `<i class="${i <= bars ? 'on' : ''}"></i>`).join('')}</span>
+      <b>${esc(title)}</b></div>
+    <p class="small vs-why">${esc(c.why)}</p>
+    ${c.level === 'check' ? `<div class="actions"><button type="button" class="btn primary" id="vs-yes">✓ Yes, that's mine</button><button type="button" class="btn" id="vs-no">No, choose again</button></div>` : ''}
+    ${c.picks.length ? `<div class="vs-picks">${c.picks.map(tile).join('')}</div>
+      ${c.left > c.picks.length ? `<p class="small muted">${c.left - c.picks.length} more in the list below</p>` : ''}
+      ${c.byRarity === 'guess' ? '<p class="small muted">Cardmarket doesn\'t say which product has which rarity – "probably" is a guess by price (cheapest = lowest rarity).</p>' : ''}
+      ${c.byRarity === 'maybe' ? '<p class="small muted">Cardmarket doesn\'t say which of these has that rarity – compare the prices or the pictures.</p>' : ''}` : ''}
+    ${quick ? `<div class="vs-quick">
+      ${qc.langs.length > 1 ? `<div class="qrow"><small>Language</small><div class="chips">${qc.langs.map((l) => chip('vs-lang', l, LANG_CHIP[l] || l, lang === l, langName(l))).join('')}</div></div>` : ''}
+      ${qc.rarities.length > 1 ? `<div class="qrow"><small>Rarity</small><div class="chips">${qc.rarities.map((r) => chip('vs-rar', r, shortRarity(r), sameText(rq, r), r)).join('')}</div></div>` : ''}
+      ${qc.first ? `<div class="qrow"><small>Edition</small><div class="chips">${chip('vs-first', '1', '1st Edition', s.first === true)}${chip('vs-first', '0', 'Unlimited', s.first === false)}</div></div>` : ''}
+    </div>` : ''}
+  </div>`;
+}
+const sameText = (a, b) => !!a && !!b && a.toLowerCase() === b.toLowerCase();
+
+function bindVersionBox(s, hooks, render) {
+  const box = $('vsure');
+  if (!box) return;
+  const cur = current;
+  const pickVersion = (key) => {
+    s.vkey = key; s.vby = key ? 'user' : null;
+    hooks.onChange?.(s, cur);
+  };
+  const copy = (patch) => {
+    Object.assign(s, patch);
+    if (hooks.onCopy) hooks.onCopy(s, patch); else hooks.onChange?.(s, cur);
+  };
+  // a quick pick that leaves exactly one version (with a known rarity) picks it
+  const settle = () => {
+    const c = certainty(cur.ranked, s, { rarity: cur.rq });
+    if (!s.vkey && c.left === 1 && c.byRarity !== 'guess' && c.byRarity !== 'maybe') {
+      pickVersion(c.picks[0].key);
+      toast('Only one version left – picked it');
+    }
+    render();
+  };
+  box.querySelectorAll('.vs-pick').forEach((b) => b.addEventListener('click', () => {
+    pickVersion(b.dataset.key);
+    render();
+    toast('Version saved');
+  }));
+  $('vs-yes')?.addEventListener('click', () => { s.vby = 'user'; hooks.onChange?.(s, cur); render(); });
+  $('vs-no')?.addEventListener('click', () => { pickVersion(null); render(); });
+  box.querySelectorAll('.vs-lang').forEach((b) => b.addEventListener('click', () => {
+    const v = langOf(s) === b.dataset.v && s.lang ? null : b.dataset.v;
+    const chosen = s.vkey ? cur.ranked.find((o) => o.key === s.vkey) : null;
+    const patch = { lang: v };
+    if (v && !hasFirstEdition({ lang: v })) patch.first = null;
+    // a European version can't be your Japanese copy (and the other way round)
+    if (v && chosen && !fitsLang(chosen, v)) { s.vkey = null; s.vby = null; hooks.onChange?.(s, cur); }
+    copy(patch);
+    settle();
+  }));
+  box.querySelectorAll('.vs-rar').forEach((b) => b.addEventListener('click', () => {
+    cur.rq = sameText(cur.rq, b.dataset.v) ? '' : b.dataset.v;
+    if (cur.rq && s.vkey && s.vby !== 'user') { s.vkey = null; s.vby = null; hooks.onChange?.(s, cur); }
+    settle();
+  }));
+  box.querySelectorAll('.vs-first').forEach((b) => b.addEventListener('click', () => {
+    const v = b.dataset.v === '1';
+    copy({ first: s.first === v ? null : v });
+    render();
+  }));
 }
 
 // ---------- life story of your copy ----------
@@ -227,12 +318,10 @@ async function loadCard() {
   } else if (s.ocrText) {
     s.code = null;
   }
-  cur.ranked = rankOptions(versionOptions(rows), { code: s.code, pack: s.pack, vkey: s.vkey, lang: (s.code?.language || s.language)?.code });
-  if (s.vkey && !cur.ranked.some((o) => o.key === s.vkey)) s.vkey = null;
-  if (!s.vkey) {
-    const best = bestOptions(cur.ranked);
-    if (best.length === 1) s.vkey = best[0].key;
-  }
+  cur.ranked = rankOptions(versionOptions(rows), { code: s.code, pack: s.pack, vkey: s.vkey, lang: langOf(s) || null });
+  if (s.vkey && !cur.ranked.some((o) => o.key === s.vkey)) { s.vkey = null; s.vby = null; }
+  // Curio picks a version by itself only when the set code / pack proves it (versions-sicherheit)
+  if (!s.vkey) s.vkey = autoPick(cur.ranked);
   render();
 }
 
@@ -306,7 +395,10 @@ function render() {
         <small>${esc([optionCode(o, lang?.code), versionLabel(o)].filter(Boolean).join(' · '))}${!o.label && o.variants > 1 && o.rarities.length ? `<span class="muted"> (one of: ${esc(o.rarities.join(', '))})</span>` : ''}</small></span>
       <span class="eur">${eur(o.trend)}${fairTrend(o).odd ? '<small class="warn-dot">⚠ unusual</small>' : ''}</span>
     </button></li>`).join('') || '<li><div class="row muted small">No version matches.</div></li>';
-  const filtered = filterOptions(tilted, current.vq);
+  // the quick pick (your language, a rarity chip) narrows the list too – "Show all" undoes it
+  const quickOn = hooks.own && !current.showAll && (current.rq || s.lang);
+  const narrowed = quickOn ? narrow(tilted, { lang: s.lang || '', rarity: current.rq || '' }).list : tilted;
+  const filtered = filterOptions(narrowed, current.vq);
   const list = current.showAll || current.vq ? filtered : filtered.slice(0, 8);
   const versions = versionsHTML(list);
 
@@ -331,6 +423,7 @@ function render() {
       </div>
     </div>
     ${priceBox}
+    ${hooks.own ? versionBox(s, ranked, current.rq || '') : ''}
     ${s.thumb && chosen?.image ? `<div class="compare"><figure><img src="${s.thumb}" alt=""><figcaption>Your photo</figcaption></figure>
       <figure><img src="${esc(versionImage(chosen, 'show'))}" alt="" onerror="this.closest('figure').remove()"><figcaption>${esc(versionLabel(chosen))} (official)</figcaption></figure></div>` : ''}
     ${notes.map((n) => `<p class="note">${n}</p>`).join('')}
@@ -338,7 +431,7 @@ function render() {
       ${LAB && rarityCount > 1 ? `<button type="button" class="btn tilt-btn ${current.tilt ? 'on' : ''}" id="tilt-btn">✨ ${current.tilt ? 'Tilt scan again' : 'Tilt scan: find the rarity by the shine'}</button>` : ''}
       ${ranked.length > 4 ? `<input id="ver-filter" class="field ver-filter" type="search" placeholder="Set code, set or rarity, e.g. MP19 or QCSR" autocomplete="off" spellcheck="false" value="${esc(current.vq || '')}">` : ''}
       <ul class="versions">${versions}</ul>` : ''}
-    ${ranked.length > 8 && !current.showAll && !current.vq ? `<button type="button" class="link more-btn" id="show-all">Show all ${ranked.length} versions</button>` : ''}
+    ${(filtered.length > 8 || narrowed.length < ranked.length) && !current.showAll && !current.vq ? `<button type="button" class="link more-btn" id="show-all">Show all ${ranked.length} versions</button>` : ''}
     <h2>Wrong card?</h2>
     ${alts.length ? `<div class="alts">${alts.map((a) => `<button type="button" class="chip alt" data-name="${esc(a.name)}">${esc(a.name)}</button>`).join('')}</div>` : ''}
     <input id="fix-name" class="field" type="search" placeholder="Type the right name" autocomplete="off" spellcheck="false">
@@ -393,6 +486,7 @@ function render() {
     render();
   });
   bindCopyBoxes(s, chosen, hooks, render);
+  bindVersionBox(s, hooks, render);
   bindStory(s, hooks, render);
   const passCtx = () => ({
     entryId: hooks.story?.(s)?.id, name: info?.name || s.name, version: chosen ? [chosen.set, versionLabel(chosen)].filter(Boolean).join(' · ') : '',
@@ -408,13 +502,14 @@ function render() {
 
   const bindVersions = () => $('card-body').querySelectorAll('.versions button').forEach((b) => b.addEventListener('click', () => {
     s.vkey = s.vkey === b.dataset.key ? null : b.dataset.key;
+    s.vby = s.vkey ? 'user' : null;
     hooks.onChange?.(s, current);
     render();
   }));
   bindVersions();
   $('ver-filter')?.addEventListener('input', (e) => {
     current.vq = e.target.value;
-    const f = filterOptions(tilted, current.vq);
+    const f = filterOptions(narrowed, current.vq);
     $('card-body').querySelector('.versions').innerHTML = versionsHTML(current.vq || current.showAll ? f : f.slice(0, 8));
     $('show-all')?.toggleAttribute('hidden', !!current.vq);
     bindVersions();
@@ -447,6 +542,8 @@ async function rename(name) {
   const s = current.subject;
   s.name = name;
   s.vkey = null;
+  s.vby = null;
+  current.rq = '';
   s.confident = true;
   s.corrected = true;
   current.showAll = false;
@@ -476,18 +573,20 @@ export async function searchNames(q, ul, onPick, limit = 8) {
 // Price of a subject without opening the page (used for lists): {lo, hi, exact, setName, code}
 export async function quickPrice(theApi, s) {
   const rows = await theApi.cardDetail(s.name).catch(() => []);
-  const ranked = rankOptions(versionOptions(rows), { code: s.code, pack: s.pack, lang: (s.code?.language || s.language)?.code });
-  if (s.vkey && !ranked.some((o) => o.key === s.vkey)) s.vkey = null;
-  if (!s.vkey) {
-    const best = bestOptions(ranked);
-    if (best.length === 1) s.vkey = best[0].key;
-  }
+  const ranked = rankOptions(versionOptions(rows), { code: s.code, pack: s.pack, lang: langOf(s) || null });
+  if (s.vkey && !ranked.some((o) => o.key === s.vkey)) { s.vkey = null; s.vby = null; }
+  if (!s.vkey) s.vkey = autoPick(ranked);
   const { chosen, best, price } = summarise(ranked, s.vkey);
+  // how sure the version is; for 2–3 open versions also the tiles to tap (scan list)
+  const sure = certainty(ranked, s);
+  const g = sure.level === 'few' ? rarityGuesses(ranked) : null;
+  const picks = sure.level === 'few' ? sure.picks.map((o) => ({ key: o.key, set: o.set, code: optionCode(o, langOf(s)), label: pickLabel(o, g), short: shortRarity(o.rarity || g.get(o.key) || ''), image: o.image || '', trend: o.trend ?? null })) : null;
   const lang = s.code?.language || s.language;
   const label = chosen
     ? [`${chosen.set}${chosen.year ? ` (${chosen.year})` : ''}`, optionCode(chosen, lang?.code), chosen.label || (chosen.variants <= 1 ? chosen.rarities[0] : '')].filter(Boolean).join(' · ')
     : best?.length ? `${best[0].set} · ${best.length} versions` : (ranked.length ? `${ranked.length} version${ranked.length > 1 ? 's' : ''}` : 'no price found');
   return { ...price, label, exact: !!chosen, rarity: chosen ? (chosen.rarity || (chosen.variants <= 1 ? chosen.rarities[0] : '') || '') : '',
     image: chosen?.image || '', guess: likeliest(chosen, best, ranked)?.image || '', hist: historyOf(chosen ? [chosen] : (best?.length ? best : ranked)), set: chosen?.set || (best?.length && best.every((o) => o.set === best[0].set) ? best[0].set : ''),
-    year: chosen ? chosen.year || null : (best?.length && best.every((o) => o.year === best[0].year) ? best[0].year || null : null), pid: chosen ? Number(chosen.key) : null };
+    year: chosen ? chosen.year || null : (best?.length && best.every((o) => o.year === best[0].year) ? best[0].year || null : null), pid: chosen ? Number(chosen.key) : null,
+    sure: sure.level, ...(picks ? { picks } : {}) };
 }

@@ -31,8 +31,21 @@ test('OCG versions first for a Japanese card', () => {
     products: [{ id: 913868, trend: 0.07 }, { id: 913869, trend: 1.14 }] }];
   const ranked = rankOptions(versionOptions(ocg), { lang: 'JP' });
   assert.deepEqual(bestOptions(ranked).map((o) => o.key), ['913868', '913869']);
-  assert.equal(rankOptions(versionOptions(ocg), { lang: 'DE' })[0].set, 'Original Artwork Collection (OCG)'); // newest first, not preferred
-  assert.deepEqual(bestOptions(rankOptions(versionOptions(ocg), { lang: 'DE' })), []);
+  assert.equal(rankOptions(versionOptions(ocg), { lang: 'DE' })[0].set, '2025 Mega-Pack Tin'); // German prints first, then newest
+  // German card: the versions with German codes fit (8 Nov: every print language counts, not only Japanese)
+  assert.deepEqual(bestOptions(rankOptions(versionOptions(ocg), { lang: 'DE' })).map((o) => o.key).sort(), ['806048', '806154', '846169']);
+});
+
+test('print language from the codes (old one-letter codes, NA codes, Korean under the Japanese product)', async () => {
+  const { optionHasLang, langsOf } = await import('../js/prices.js');
+  assert.ok(optionHasLang({ set: 'Legend of Blue Eyes', codes: ['LOB-G001'] }, 'DE'));
+  assert.ok(!optionHasLang({ set: 'Legend of Blue Eyes', codes: ['LOB-G001'] }, 'EN'));
+  assert.ok(optionHasLang({ set: 'Starter Deck Kaiba', codes: ['SDK-001'] }, 'EN'));
+  assert.ok(optionHasLang({ set: 'Movie Pack', codes: ['MVP1-DEG56'] }, 'DE'));
+  assert.ok(optionHasLang({ set: 'Quarter Century Art Collection', codes: ['QCAC-KR019', 'QCAC-JP019'] }, 'KR'));
+  assert.ok(optionHasLang({ set: 'Original Artwork Collection (OCG)', codes: [] }, 'JP'));
+  assert.ok(optionHasLang({ set: 'x', codes: ['QCAC-JP019'] }, 'JA'));
+  assert.deepEqual(langsOf([{ set: 'a', codes: ['MP25-EN265', 'MP25-DE265'] }, { set: 'b', codes: ['QCAC-JP019'] }]), ['EN', 'DE', 'JP']);
 });
 
 test('no evidence: newest release first, nothing marked likely; chosen version on top', () => {
@@ -99,4 +112,9 @@ test('outlier trend (Sky Striker €8975) stays out of ranges and sums', async (
   assert.equal(fairTrend({ trend: 115, low: 5 }).odd, false);
   assert.equal(fairTrend({ trend: 40, low: 1 }).odd, false);
   assert.equal(progress([{ key: 'a', trend: 900, low: 2 }, { key: 'b', trend: 3 }], {}).missingValue, 5);
+});
+
+test('set code in the card\'s language, also old one-letter codes', () => {
+  assert.equal(optionCode({ codes: ['SRL-EN000', 'SRL-G000'] }, 'DE'), 'SRL-G000');
+  assert.equal(optionCode({ codes: ['SRL-EN000', 'SRL-G000'] }, 'JP'), 'SRL-EN000');
 });

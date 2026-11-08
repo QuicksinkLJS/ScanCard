@@ -14,3 +14,12 @@ test('German: exact phrases and patterns, spaces kept', () => {
   assert.equal(translate('2 Sell'), '2 Verkaufen');
   assert.equal(translate('Blue-Eyes White Dragon'), 'Blue-Eyes White Dragon');
 });
+
+test('German: version certainty', () => {
+  assert.equal(translate('✓ Version: sure'), '✓ Version: sicher');
+  assert.equal(translate('Set code LOB-G005 read on the card'), 'Set-Code LOB-G005 auf der Karte gelesen');
+  assert.equal(translate('Set code RA04-DE107 read on the card – 2 versions fit'), 'Set-Code RA04-DE107 auf der Karte gelesen – 2 Versionen passen');
+  assert.equal(translate('probably Secret Rare'), 'wahrscheinlich Secret Rare');
+  assert.equal(translate('105 versions – Curio won\'t guess'), '105 Versionen – Curio rät nicht');
+  assert.equal(translate('6 cards added to your collection · 2 with the version still open – pick it later'), '6 Karte(n) zur Sammlung hinzugefügt · 2 mit noch offener Version – später wählen');
+});
